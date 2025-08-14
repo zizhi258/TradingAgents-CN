@@ -1,0 +1,177 @@
+# =============================================================================
+# Multi-Stage Production API Dockerfile for TradingAgents-CN Backend
+# Enhanced security, performance, and maintainability for API services
+# =============================================================================
+
+# Build arguments for versioning and metadata
+ARG PYTHON_VERSION=3.11
+ARG DEBIAN_VERSION=bookworm
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
+
+# =============================================================================
+# Base Stage - Common foundation
+# =============================================================================
+FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS base
+
+# Install security updates and essential packages
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        gnupg2 \
+        tini \
+        dumb-init \
+        bash \
+        dos2unix \
+        netcat-openbsd && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean && \
+    apt-get autoremove -y
+
+# Create secure non-root user
+RUN groupadd --gid 1001 --system tradinguser && \
+    useradd --uid 1001 --gid 1001 --system --create-home --shell /usr/sbin/nologin tradinguser
+
+# Secure Python environment
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONFAULTHANDLER=1 \
+    PYTHONHASHSEED=random \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# =============================================================================
+# Dependencies Stage - Install and compile dependencies
+# =============================================================================
+FROM base AS dependencies
+
+# Install build dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        gcc \
+        g++ \
+        pkg-config \
+        libffi-dev \
+        libssl-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install uv for faster dependency management (align with production Dockerfile)
+RUN pip install --no-cache-dir uv==0.1.45
+
+WORKDIR /tmp/build
+
+# 复制项目以便安装依赖
+COPY . .
+
+# 创建虚拟环境并安装项目依赖
+RUN python -m venv /opt/venv && \
+    . /opt/venv/bin/activate && \
+    uv pip install --no-cache-dir -e . && \
+    uv pip install --no-cache-dir \
+        fastapi>=0.104.0 \
+        uvicorn[standard]>=0.24.0 \
+        redis>=5.0.0 \
+        pymongo>=4.6.0 \
+        pydantic>=2.5.0 \
+        google-genai>=1.29.0 \
+        pyyaml>=6.0 \
+        requests>=2.32.0 \
+        plotly>=5.0.0 \
+        pandas>=2.3.0 && \
+    pip uninstall -y uv || true
+
+# Clean up build dependencies
+RUN apt-get purge -y build-essential gcc g++ && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /root/.cache/pip/*
+
+# =============================================================================
+# Runtime Stage - Final production image
+# =============================================================================
+FROM base AS runtime
+
+# Copy virtual environment from dependencies stage
+COPY --from=dependencies --chown=root:root /opt/venv /opt/venv
+
+# Set up application directory structure
+WORKDIR /app
+RUN mkdir -p /app/{data,logs,config,reports,temp,run} && \
+    mkdir -p /app/data/{market_sessions,attachments,cache} && \
+    chown -R tradinguser:tradinguser /app && \
+    chmod 755 /app && \
+    chmod -R 755 /app/*
+
+# Copy application code
+COPY --chown=tradinguser:tradinguser . /app/
+
+# Copy service entrypoint and health check scripts
+COPY --chown=tradinguser:tradinguser docker/api-entrypoint.sh /usr/local/bin/api-entrypoint.sh
+COPY --chown=tradinguser:tradinguser docker/healthcheck.sh /usr/local/bin/healthcheck.sh
+# Normalize line endings in case source files are CRLF on Windows
+RUN dos2unix /usr/local/bin/api-entrypoint.sh /usr/local/bin/healthcheck.sh || true && \
+    chmod +x /usr/local/bin/api-entrypoint.sh /usr/local/bin/healthcheck.sh
+
+# Set up Python environment to use virtual environment
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONPATH="/app:/opt/venv/lib/python${PYTHON_VERSION}/site-packages" \
+    \
+    # Application settings
+    TRADINGAGENTS_LOG_LEVEL=INFO \
+    TRADINGAGENTS_LOG_DIR=/app/logs \
+    TRADINGAGENTS_CONFIG_PATH=/app/config \
+    \
+    # API settings
+    API_HOST=0.0.0.0 \
+    API_PORT=8000 \
+    API_WORKERS=4 \
+    API_WORKER_CLASS=uvicorn.workers.UvicornWorker \
+    API_WORKER_TIMEOUT=300 \
+    API_KEEPALIVE=2 \
+    \
+    # Celery settings
+    CELERY_BROKER_URL=redis://redis:6379/0 \
+    CELERY_RESULT_BACKEND=redis://redis:6379/0 \
+    CELERY_WORKER_CONCURRENCY=4 \
+    CELERY_MAX_TASKS_PER_CHILD=100 \
+    CELERY_TASK_TIME_LIMIT=3600 \
+    CELERY_TASK_SOFT_TIME_LIMIT=3000 \
+    \
+    # Performance and security
+    MALLOC_ARENA_MAX=2 \
+    PYTHONHASHSEED=random \
+    TZ=Asia/Shanghai
+
+# Security: Switch to non-root user
+USER tradinguser
+
+# Expose API port
+EXPOSE 8000 5555
+
+# Labels for container management and compliance
+LABEL org.opencontainers.image.title="TradingAgents-CN API Backend" \
+      org.opencontainers.image.description="Market analysis API with FastAPI, background processing, and monitoring" \
+      org.opencontainers.image.version="${VERSION:-unknown}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.vendor="TradingAgents-CN" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.source="https://github.com/yourusername/TradingAgents-CN" \
+      org.opencontainers.image.documentation="https://github.com/yourusername/TradingAgents-CN/tree/main/docs" \
+      com.tradingagents.service="api" \
+      com.tradingagents.tier="backend" \
+      com.tradingagents.component="core"
+
+# Health check for API service
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD ["/usr/local/bin/healthcheck.sh"]
+
+# Use tini for proper signal handling and zombie reaping
+ENTRYPOINT ["/usr/bin/tini", "--"]
+
+# Default command - can be overridden for different services (api, worker, beat, scheduler)
+CMD ["/usr/local/bin/api-entrypoint.sh", "api"]

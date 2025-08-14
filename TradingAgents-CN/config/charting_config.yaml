@@ -1,0 +1,147 @@
+# ChartingArtist Configuration
+# 绘图师专业配置文件
+
+# 功能开关
+charting_artist:
+  enabled: false  # 默认禁用，通过环境变量 CHARTING_ARTIST_ENABLED 控制
+  # 新增：是否启用LLM绘图（优先于程序化绘图）
+  llm_enabled: true
+  # 新增：LLM绘图渲染模式：python 生成 Plotly 代码并执行；html 直接产出嵌入式HTML
+  render_mode: "python"  # python | html
+  
+  # 图表生成设置
+  chart_settings:
+    default_theme: "plotly_dark"  # 默认主题
+    width: 800
+    height: 600
+    show_legend: true
+    interactive: true
+    fancy_interactions: true   # 启用更丰富的交互(时间选择器/游标等等)
+    inline_js: true            # HTML中内联Plotly脚本，提升离线/兼容性
+    enable_animation: true     # HTML端动画效果（折线图时间滑动）
+    animation_max_points: 150  # 动画最大数据点，避免过重
+
+    # 注释/标注
+    annotations:
+      support_resistance: true  # 自动标注支撑/阻力
+      key_levels: true          # 标注关键价位（如最新收盘）
+    
+    # 颜色配置
+    colors:
+      primary: "#1f77b4"
+      secondary: "#ff7f0e" 
+      success: "#2ca02c"
+      danger: "#d62728"
+      warning: "#ff7f0e"
+      info: "#17a2b8"
+      
+    # K线图特殊配置
+    candlestick:
+      increasing_color: "#26a69a"  # 上涨颜色（绿色）
+      decreasing_color: "#ef5350"  # 下跌颜色（红色）
+      show_volume: true
+      show_ma: true  # 显示移动平均线
+      
+  # 技术指标可视化配置
+  technical_indicators:
+    ma_periods: [5, 10, 20, 50]  # 移动平均线周期
+    rsi_period: 14
+    macd_params: [12, 26, 9]
+    bollinger_period: 20
+    
+  # 输出配置
+  output:
+    format: "html"  # html, png, svg
+    save_local: true
+    export_path: "data/attachments/charts"
+    filename_pattern: "{symbol}_{chart_type}_{timestamp}.html"
+    
+  # 性能配置
+  performance:
+    max_concurrent_charts: 3
+    chart_generation_timeout: 30  # 秒
+    cache_enabled: true
+    cache_ttl: 3600  # 缓存1小时
+
+# 图表类型模板
+chart_templates:
+  # 基础价格图表
+  price_analysis:
+    chart_types: ["candlestick", "line_chart"]
+    indicators: ["ma", "volume"]
+    timeframes: ["1d", "1w", "1m"]
+    
+  # 技术分析图表
+  technical_analysis:
+    chart_types: ["candlestick", "line_chart", "scatter_plot"]
+    indicators: ["ma", "rsi", "macd", "bollinger"]
+    overlays: ["support_resistance", "trend_lines"]
+    
+  # 基本面分析图表
+  fundamental_analysis:
+    chart_types: ["bar_chart", "line_chart", "waterfall"]
+    metrics: ["revenue", "profit", "pe_ratio", "debt_ratio"]
+    periods: ["quarterly", "yearly"]
+    
+  # 风险分析图表
+  risk_analysis:
+    chart_types: ["heatmap", "gauge_chart", "radar_chart"]
+    metrics: ["var", "volatility", "beta", "sharpe_ratio"]
+    risk_levels: ["low", "medium", "high"]
+    
+  # 投资组合分析
+  portfolio_analysis:
+    chart_types: ["pie_chart", "treemap", "bar_chart"]
+    breakdowns: ["sector", "asset_class", "geography"]
+    metrics: ["allocation", "performance", "risk_contribution"]
+
+# 数据源映射
+data_source_mapping:
+  # 价格数据
+  price_data:
+    source: "stock_api"
+    fields: ["open", "high", "low", "close", "volume"]
+    required: true
+    
+  # 技术指标
+  technical_data:
+    source: "calculated"
+    fields: ["ma", "rsi", "macd", "bollinger"]
+    required: false
+    
+  # 基本面数据
+  fundamental_data:
+    source: "fundamental_expert"
+    fields: ["revenue", "profit", "pe", "pb", "roe"]
+    required: false
+    
+  # 风险数据
+  risk_data:
+    source: "risk_manager"
+    fields: ["var", "volatility", "beta", "correlation"]
+    required: false
+
+# 图表质量检查
+quality_checks:
+  data_validation:
+    min_data_points: 10
+    max_missing_ratio: 0.1
+    outlier_detection: true
+    
+  visual_validation:
+    min_width: 400
+    min_height: 300
+    color_contrast_check: true
+    accessibility_check: true
+    
+  performance_validation:
+    max_generation_time: 30
+    max_file_size: "5MB"
+    interactive_elements_limit: 100
+
+# 错误处理
+error_handling:
+  fallback_chart_type: "line_chart"
+  default_message: "图表生成失败，请稍后重试"
+  retry_attempts: 3
+  retry_delay: 2  # 秒

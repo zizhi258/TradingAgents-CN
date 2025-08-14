@@ -1,0 +1,13 @@
+{
+  "default_provider": "siliconflow",
+  "default_model": "moonshotai/Kimi-K2-Instruct",
+  "enable_cost_tracking": true,
+  "cost_alert_threshold": 100.0,
+  "currency_preference": "CNY",
+  "auto_save_usage": true,
+  "max_usage_records": 10000,
+  "finnhub_api_key": "",
+  "log_level": "INFO",
+  "data_dir": "/root/Documents/TradingAgents/data",
+  "cache_dir": "/root/Documents/TradingAgents/data/cache"
+}

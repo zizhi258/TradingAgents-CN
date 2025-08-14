@@ -1,0 +1,423 @@
+{
+  "results": {
+    "scan_id": "local_scan_1b26ece8_20250809_175551",
+    "total_stocks": 10,
+    "recommended_stocks": 4,
+    "actual_cost": 0.02,
+    "scan_duration": "1秒",
+    "rankings": [
+      {
+        "symbol": "600030",
+        "name": "600030",
+        "total_score": 86.12,
+        "technical_score": 77.23,
+        "fundamental_score": 89.53,
+        "current_price": 78.78,
+        "change_percent": -4.96,
+        "recommendation": "买入",
+        "target_price": 157.49,
+        "market_cap": 208.83,
+        "pe_ratio": 32.92,
+        "pb_ratio": 4.22,
+        "sector": "制造"
+      },
+      {
+        "symbol": "601012",
+        "name": "601012",
+        "total_score": 84.54,
+        "technical_score": 84.32,
+        "fundamental_score": 75.95,
+        "current_price": 76.11,
+        "change_percent": 2.58,
+        "recommendation": "买入",
+        "target_price": 107.76,
+        "market_cap": 1459.2,
+        "pe_ratio": 11.81,
+        "pb_ratio": 5.77,
+        "sector": "消费"
+      },
+      {
+        "symbol": "002594",
+        "name": "002594",
+        "total_score": 81.69,
+        "technical_score": 82.82,
+        "fundamental_score": 87.96,
+        "current_price": 47.86,
+        "change_percent": -0.33,
+        "recommendation": "买入",
+        "target_price": 258.48,
+        "market_cap": 1410.4,
+        "pe_ratio": 21.22,
+        "pb_ratio": 2.54,
+        "sector": "金融"
+      },
+      {
+        "symbol": "000001",
+        "name": "000001",
+        "total_score": 80.81,
+        "technical_score": 73.82,
+        "fundamental_score": 86.43,
+        "current_price": 138.27,
+        "change_percent": 1.87,
+        "recommendation": "买入",
+        "target_price": 190.58,
+        "market_cap": 341.97,
+        "pe_ratio": 38.45,
+        "pb_ratio": 3.51,
+        "sector": "金融"
+      },
+      {
+        "symbol": "600036",
+        "name": "600036",
+        "total_score": 79.59,
+        "technical_score": 73.84,
+        "fundamental_score": 74.06,
+        "current_price": 175.36,
+        "change_percent": 1.2,
+        "recommendation": "关注",
+        "target_price": 263.95,
+        "market_cap": 1818.89,
+        "pe_ratio": 19.38,
+        "pb_ratio": 0.86,
+        "sector": "科技"
+      },
+      {
+        "symbol": "601318",
+        "name": "601318",
+        "total_score": 77.31,
+        "technical_score": 74.65,
+        "fundamental_score": 72.78,
+        "current_price": 185.37,
+        "change_percent": 4.38,
+        "recommendation": "关注",
+        "target_price": 145.7,
+        "market_cap": 611.16,
+        "pe_ratio": 29.0,
+        "pb_ratio": 1.49,
+        "sector": "科技"
+      },
+      {
+        "symbol": "601988",
+        "name": "601988",
+        "total_score": 73.48,
+        "technical_score": 77.24,
+        "fundamental_score": 64.47,
+        "current_price": 131.02,
+        "change_percent": 2.46,
+        "recommendation": "关注",
+        "target_price": 45.41,
+        "market_cap": 1938.85,
+        "pe_ratio": 28.48,
+        "pb_ratio": 6.88,
+        "sector": "制造"
+      },
+      {
+        "symbol": "601888",
+        "name": "601888",
+        "total_score": 71.57,
+        "technical_score": 62.68,
+        "fundamental_score": 74.7,
+        "current_price": 172.65,
+        "change_percent": 1.05,
+        "recommendation": "关注",
+        "target_price": 268.95,
+        "market_cap": 856.66,
+        "pe_ratio": 28.77,
+        "pb_ratio": 1.52,
+        "sector": "医药"
+      },
+      {
+        "symbol": "600519",
+        "name": "600519",
+        "total_score": 63.57,
+        "technical_score": 64.26,
+        "fundamental_score": 62.08,
+        "current_price": 215.3,
+        "change_percent": 3.6,
+        "recommendation": "持有",
+        "target_price": 53.23,
+        "market_cap": 683.93,
+        "pe_ratio": 17.3,
+        "pb_ratio": 6.71,
+        "sector": "科技"
+      },
+      {
+        "symbol": "300750",
+        "name": "300750",
+        "total_score": 62.28,
+        "technical_score": 69.43,
+        "fundamental_score": 61.32,
+        "current_price": 116.61,
+        "change_percent": -1.45,
+        "recommendation": "持有",
+        "target_price": 11.45,
+        "market_cap": 2056.22,
+        "pe_ratio": 13.68,
+        "pb_ratio": 4.14,
+        "sector": "科技"
+      }
+    ],
+    "sectors": {
+      "制造": {
+        "change_percent": -1.25,
+        "activity_score": 79.8,
+        "recommendation_score": 74.8,
+        "leading_stock": "600030",
+        "recommended_count": 1,
+        "market_cap": 2147.68,
+        "recommended_stocks": [
+          {
+            "symbol": "600030",
+            "name": "600030",
+            "total_score": 86.12,
+            "technical_score": 77.23,
+            "fundamental_score": 89.53,
+            "current_price": 78.78,
+            "change_percent": -4.96,
+            "recommendation": "买入",
+            "target_price": 157.49,
+            "market_cap": 208.83,
+            "pe_ratio": 32.92,
+            "pb_ratio": 4.22,
+            "sector": "制造"
+          },
+          {
+            "symbol": "601988",
+            "name": "601988",
+            "total_score": 73.48,
+            "technical_score": 77.24,
+            "fundamental_score": 64.47,
+            "current_price": 131.02,
+            "change_percent": 2.46,
+            "recommendation": "关注",
+            "target_price": 45.41,
+            "market_cap": 1938.85,
+            "pe_ratio": 28.48,
+            "pb_ratio": 6.88,
+            "sector": "制造"
+          }
+        ]
+      },
+      "消费": {
+        "change_percent": 2.58,
+        "activity_score": 84.54,
+        "recommendation_score": 79.54,
+        "leading_stock": "601012",
+        "recommended_count": 1,
+        "market_cap": 1459.2,
+        "recommended_stocks": [
+          {
+            "symbol": "601012",
+            "name": "601012",
+            "total_score": 84.54,
+            "technical_score": 84.32,
+            "fundamental_score": 75.95,
+            "current_price": 76.11,
+            "change_percent": 2.58,
+            "recommendation": "买入",
+            "target_price": 107.76,
+            "market_cap": 1459.2,
+            "pe_ratio": 11.81,
+            "pb_ratio": 5.77,
+            "sector": "消费"
+          }
+        ]
+      },
+      "金融": {
+        "change_percent": 0.77,
+        "activity_score": 81.25,
+        "recommendation_score": 76.25,
+        "leading_stock": "002594",
+        "recommended_count": 2,
+        "market_cap": 1752.37,
+        "recommended_stocks": [
+          {
+            "symbol": "002594",
+            "name": "002594",
+            "total_score": 81.69,
+            "technical_score": 82.82,
+            "fundamental_score": 87.96,
+            "current_price": 47.86,
+            "change_percent": -0.33,
+            "recommendation": "买入",
+            "target_price": 258.48,
+            "market_cap": 1410.4,
+            "pe_ratio": 21.22,
+            "pb_ratio": 2.54,
+            "sector": "金融"
+          },
+          {
+            "symbol": "000001",
+            "name": "000001",
+            "total_score": 80.81,
+            "technical_score": 73.82,
+            "fundamental_score": 86.43,
+            "current_price": 138.27,
+            "change_percent": 1.87,
+            "recommendation": "买入",
+            "target_price": 190.58,
+            "market_cap": 341.97,
+            "pe_ratio": 38.45,
+            "pb_ratio": 3.51,
+            "sector": "金融"
+          }
+        ]
+      },
+      "科技": {
+        "change_percent": 1.93,
+        "activity_score": 70.69,
+        "recommendation_score": 65.69,
+        "leading_stock": "600036",
+        "recommended_count": 0,
+        "market_cap": 5170.2,
+        "recommended_stocks": [
+          {
+            "symbol": "600036",
+            "name": "600036",
+            "total_score": 79.59,
+            "technical_score": 73.84,
+            "fundamental_score": 74.06,
+            "current_price": 175.36,
+            "change_percent": 1.2,
+            "recommendation": "关注",
+            "target_price": 263.95,
+            "market_cap": 1818.89,
+            "pe_ratio": 19.38,
+            "pb_ratio": 0.86,
+            "sector": "科技"
+          },
+          {
+            "symbol": "601318",
+            "name": "601318",
+            "total_score": 77.31,
+            "technical_score": 74.65,
+            "fundamental_score": 72.78,
+            "current_price": 185.37,
+            "change_percent": 4.38,
+            "recommendation": "关注",
+            "target_price": 145.7,
+            "market_cap": 611.16,
+            "pe_ratio": 29.0,
+            "pb_ratio": 1.49,
+            "sector": "科技"
+          },
+          {
+            "symbol": "600519",
+            "name": "600519",
+            "total_score": 63.57,
+            "technical_score": 64.26,
+            "fundamental_score": 62.08,
+            "current_price": 215.3,
+            "change_percent": 3.6,
+            "recommendation": "持有",
+            "target_price": 53.23,
+            "market_cap": 683.93,
+            "pe_ratio": 17.3,
+            "pb_ratio": 6.71,
+            "sector": "科技"
+          },
+          {
+            "symbol": "300750",
+            "name": "300750",
+            "total_score": 62.28,
+            "technical_score": 69.43,
+            "fundamental_score": 61.32,
+            "current_price": 116.61,
+            "change_percent": -1.45,
+            "recommendation": "持有",
+            "target_price": 11.45,
+            "market_cap": 2056.22,
+            "pe_ratio": 13.68,
+            "pb_ratio": 4.14,
+            "sector": "科技"
+          }
+        ]
+      },
+      "医药": {
+        "change_percent": 1.05,
+        "activity_score": 71.57,
+        "recommendation_score": 66.57,
+        "leading_stock": "601888",
+        "recommended_count": 0,
+        "market_cap": 856.66,
+        "recommended_stocks": [
+          {
+            "symbol": "601888",
+            "name": "601888",
+            "total_score": 71.57,
+            "technical_score": 62.68,
+            "fundamental_score": 74.7,
+            "current_price": 172.65,
+            "change_percent": 1.05,
+            "recommendation": "关注",
+            "target_price": 268.95,
+            "market_cap": 856.66,
+            "pe_ratio": 28.77,
+            "pb_ratio": 1.52,
+            "sector": "医药"
+          }
+        ]
+      }
+    },
+    "breadth": {
+      "up_ratio": 70.0,
+      "up_ratio_change": 0.0,
+      "activity_index": 80.0,
+      "activity_change": 0.0,
+      "net_inflow": 0.0,
+      "net_inflow_change": 0.0,
+      "sentiment_index": 40.0,
+      "sentiment_change": 0.0,
+      "market_strength": 55.0,
+      "limit_up_count": 0,
+      "limit_down_count": 0,
+      "new_high_count": 0,
+      "new_low_count": 0,
+      "high_volume_count": 0
+    },
+    "summary": {
+      "key_insights": [
+        "A股扫描完成：共评估10只股票，买入建议4只",
+        "市场广度上行占比70.0%",
+        "强势板块：制造, 消费, 金融"
+      ],
+      "investment_recommendations": {
+        "buy": [
+          {
+            "symbol": "600030",
+            "reason": "综合评分较高"
+          },
+          {
+            "symbol": "601012",
+            "reason": "综合评分较高"
+          },
+          {
+            "symbol": "002594",
+            "reason": "综合评分较高"
+          },
+          {
+            "symbol": "000001",
+            "reason": "综合评分较高"
+          }
+        ],
+        "watch": [
+          {
+            "symbol": "600036",
+            "reason": "具备一定潜力"
+          }
+        ]
+      },
+      "risk_factors": [
+        "个股波动与流动性风险需关注",
+        "模型数据受离线模式限制，建议结合实盘数据验证"
+      ],
+      "market_outlook": "短期或维持结构性机会，控制仓位、分散风险",
+      "scan_statistics": {
+        "completion_rate": 100,
+        "confidence_level": 80
+      }
+    },
+    "created_at": "2025-08-09T17:55:53.170397"
+  },
+  "cached_at": "2025-08-09T17:55:53.170412"
+}

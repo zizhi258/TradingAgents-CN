@@ -1,0 +1,51 @@
+# Python cache and bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local virtual environments (cause build context errors)
+venv/
+.venv/
+env/
+.env.local
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Git
+.git/
+.gitmodules
+.gitignore
+
+# Test, docs, examples (not needed for runtime image)
+tests/
+docs/
+examples/
+reports/
+
+# Large runtime data/logs (mounted as volumes at runtime)
+logs/
+data/
+reports/
+results/
+eval_results/
+
+# Node/JS (if any in future)
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Keep required files for build
+!pyproject.toml
+!uv.lock*
+!tradingagents/**
+!web/**
+!config/**
+!scripts/**

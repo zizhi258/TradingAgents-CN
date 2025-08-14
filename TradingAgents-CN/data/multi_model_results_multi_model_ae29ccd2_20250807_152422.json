@@ -1,0 +1,76 @@
+{
+  "analysis_id": "multi_model_ae29ccd2_20250807_152422",
+  "status": "completed",
+  "results": {
+    "status": "success",
+    "collaboration_mode": "parallel",
+    "agents_used": [
+      "news_hunter",
+      "fundamental_expert",
+      "technical_analyst",
+      "sentiment_analyst",
+      "risk_manager",
+      "chief_decision_officer"
+    ],
+    "analysis_data": {
+      "stock_symbol": "600519",
+      "market_type": "A股",
+      "analysis_date": "2025-08-07",
+      "research_depth": 5,
+      "custom_requirements": ""
+    },
+    "results": {
+      "news_hunter": {
+        "agent_type": "news_hunter",
+        "analysis": "这是 news_hunter 对 600519 的并行分析结果（模拟）",
+        "confidence": 0.8,
+        "recommendations": "news_hunter 的独立投资建议",
+        "timestamp": "2025-08-07T15:24:26.492614"
+      },
+      "fundamental_expert": {
+        "agent_type": "fundamental_expert",
+        "analysis": "这是 fundamental_expert 对 600519 的并行分析结果（模拟）",
+        "confidence": 0.8,
+        "recommendations": "fundamental_expert 的独立投资建议",
+        "timestamp": "2025-08-07T15:24:26.493684"
+      },
+      "technical_analyst": {
+        "agent_type": "technical_analyst",
+        "analysis": "这是 technical_analyst 对 600519 的并行分析结果（模拟）",
+        "confidence": 0.8,
+        "recommendations": "technical_analyst 的独立投资建议",
+        "timestamp": "2025-08-07T15:24:26.494718"
+      },
+      "sentiment_analyst": {
+        "agent_type": "sentiment_analyst",
+        "analysis": "这是 sentiment_analyst 对 600519 的并行分析结果（模拟）",
+        "confidence": 0.8,
+        "recommendations": "sentiment_analyst 的独立投资建议",
+        "timestamp": "2025-08-07T15:24:26.501794"
+      },
+      "risk_manager": {
+        "agent_type": "risk_manager",
+        "analysis": "这是 risk_manager 对 600519 的并行分析结果（模拟）",
+        "confidence": 0.8,
+        "recommendations": "risk_manager 的独立投资建议",
+        "timestamp": "2025-08-07T15:24:26.502863"
+      },
+      "chief_decision_officer": {
+        "agent_type": "chief_decision_officer",
+        "analysis": "这是 chief_decision_officer 对 600519 的并行分析结果（模拟）",
+        "confidence": 0.8,
+        "recommendations": "chief_decision_officer 的独立投资建议",
+        "timestamp": "2025-08-07T15:24:26.503881"
+      },
+      "summary": {
+        "integration_method": "weighted_average",
+        "overall_recommendation": "基于多智能体并行分析的综合建议（模拟）",
+        "confidence_score": 0.82,
+        "risk_level": "medium",
+        "timestamp": "2025-08-07T15:24:26.504375"
+      }
+    },
+    "timestamp": "2025-08-07T15:24:26.504869"
+  },
+  "timestamp": "2025-08-07T15:24:26.505795"
+}

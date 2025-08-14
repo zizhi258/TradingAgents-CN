@@ -1,0 +1,323 @@
+# Multi-Model Configuration
+# 多模型系统配置 - API提供商和全局设置
+
+# API提供商配置 - 三池旗舰模型架构
+providers:
+  # 🧠 通用深度推理池 - Google AI (Gemini-2.5-Pro 旗舰)
+  google_ai:
+    enabled: true
+    api_key_env: ["GOOGLE_AI_API_KEY", "GOOGLE_API_KEY", "GEMINI_API_KEY"]
+    default_model: "gemini-2.5-pro"
+    flagship_model: "gemini-2.5-pro"  # 旗舰模型
+    fallback_models: ["Qwen/Qwen3-235B-A22B-Instruct-2507", "gemini-1.5-pro"]
+    timeout: 120  # 深度推理需更长时间
+    max_retries: 3
+    priority: 1  # 最高优先级
+    pool_type: "deep_reasoning"
+    description: "通用深度推理池 - 多模态逻辑推理最佳，财报PDF解析突出"
+    capabilities: ["multimodal", "long_context", "financial_analysis", "reasoning_chains"]
+    
+  # 🔄 技术面&长序列池 - SiliconFlow (DeepSeek-V3 旗舰)
+  siliconflow:
+    enabled: true
+    api_key_env: "SILICONFLOW_API_KEY"
+    base_url: "https://api.siliconflow.cn/v1"
+    default_model: "deepseek-ai/DeepSeek-V3"
+    flagship_model: "deepseek-ai/DeepSeek-V3"  # 旗舰模型
+    fallback_models: ["deepseek-ai/DeepSeek-R1", "moonshotai/Kimi-K2-Instruct"]
+    timeout: 90
+    max_retries: 3
+    priority: 2
+    pool_type: "technical_longseq"
+    description: "技术面&长序列池 - 100K+上下文，中文对话能力极强"
+    capabilities: ["long_context", "chinese_optimized", "technical_analysis", "time_series"]
+    
+  # DeepSeek 直连（备用）
+  deepseek:
+    enabled: true
+    api_key_env: "DEEPSEEK_API_KEY"
+    base_url: "https://api.deepseek.com"
+    default_model: "deepseek-chat"
+    timeout: 60
+    max_retries: 3
+    priority: 4
+    pool_type: "backup"
+    description: "DeepSeek直连备用池"
+
+# 具体模型目录（便于前后端一致引用与策略匹配）
+model_catalog:
+  siliconflow:
+    - name: "deepseek-ai/DeepSeek-V3"
+      tags: ["long_context", "chinese", "technical", "general"]
+      cost_tier: "low"
+    - name: "deepseek-ai/DeepSeek-R1"
+      tags: ["reasoning", "think", "long_context"]
+      cost_tier: "mid"
+    - name: "Qwen/Qwen3-235B-A22B-Instruct-2507"
+      tags: ["general", "chinese"]
+      cost_tier: "mid"
+    - name: "Qwen/Qwen3-235B-A22B-Thinking-2507"
+      tags: ["reasoning", "think"]
+      cost_tier: "mid"
+    - name: "Qwen/Qwen3-Coder-480B-A35B-Instruct"
+      tags: ["code_generation", "tools", "reasoning"]
+      cost_tier: "mid"
+    - name: "zai-org/GLM-4.5"
+      tags: ["general", "chinese", "fast"]
+      cost_tier: "low"
+    - name: "moonshotai/Kimi-K2-Instruct"
+      tags: ["long_context", "general", "chinese"]
+      cost_tier: "mid"
+
+# 角色到模型/池的绑定（白/黑名单、偏好与回退链）
+agent_bindings:
+  fundamental_expert:
+    pools: ["deep_reasoning"]
+    allow_models: ["gemini-2.5-pro", "Qwen/Qwen3-235B-A22B-Instruct-2507"]
+    prefer_models: ["gemini-2.5-pro"]
+    deny_models: []
+    fallback_chain: ["gemini-2.5-pro", "Qwen/Qwen3-235B-A22B-Instruct-2507", "deepseek-ai/DeepSeek-R1"]
+    max_cost_per_task: 0.05
+  chief_decision_officer:
+    pools: ["deep_reasoning"]
+    allow_models: ["gemini-2.5-pro", "deepseek-ai/DeepSeek-R1"]
+    prefer_models: ["gemini-2.5-pro"]
+    fallback_chain: ["gemini-2.5-pro", "deepseek-ai/DeepSeek-R1"]
+  technical_analyst:
+    pools: ["technical_longseq"]
+    allow_models: ["deepseek-ai/DeepSeek-V3", "zai-org/GLM-4.5"]
+    prefer_models: ["deepseek-ai/DeepSeek-V3"]
+    fallback_chain: ["deepseek-ai/DeepSeek-V3", "zai-org/GLM-4.5"]
+  news_hunter:
+    pools: ["technical_longseq"]
+    allow_models: ["deepseek-ai/DeepSeek-V3", "Qwen/Qwen3-235B-A22B-Instruct-2507"]
+    prefer_models: ["deepseek-ai/DeepSeek-V3"]
+  sentiment_analyst:
+    pools: ["technical_longseq"]
+    allow_models: ["deepseek-ai/DeepSeek-V3", "zai-org/GLM-4.5"]
+    prefer_models: ["zai-org/GLM-4.5"]
+  tool_engineer:
+    pools: ["technical_longseq"]
+    allow_models: ["Qwen/Qwen3-Coder-480B-A35B-Instruct", "zai-org/GLM-4.5"]
+    prefer_models: ["Qwen/Qwen3-Coder-480B-A35B-Instruct"]
+    requires: ["code_generation"]
+  charting_artist:
+    pools: ["technical_longseq"]
+    allow_models: [
+      "moonshotai/Kimi-K2-Instruct",
+      "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+      "deepseek-ai/DeepSeek-V3",
+      "zai-org/GLM-4.5"
+    ]
+    prefer_models: ["moonshotai/Kimi-K2-Instruct"]
+    requires: ["code_generation", "visualization"]
+    post_processing: true
+    max_cost_per_task: 0.05
+
+# 任务类型绑定（进一步细化池内候选）
+task_bindings:
+  code_generation:
+    allow_models: ["Qwen/Qwen3-Coder-480B-A35B-Instruct", "zai-org/GLM-4.5"]
+    prefer_models: ["Qwen/Qwen3-Coder-480B-A35B-Instruct"]
+  news_analysis:
+    allow_models: ["deepseek-ai/DeepSeek-V3", "Qwen/Qwen3-235B-A22B-Instruct-2507"]
+  decision_making:
+    allow_models: ["gemini-2.5-pro", "deepseek-ai/DeepSeek-R1"]
+    prefer_models: ["gemini-2.5-pro"]
+  visualization:
+    allow_models: ["Qwen/Qwen3-Coder-480B-A35B-Instruct", "deepseek-ai/DeepSeek-V3"]
+    prefer_models: ["Qwen/Qwen3-Coder-480B-A35B-Instruct"]
+    requires: ["code_generation"]
+
+# 池内打分权重（质量/性能/成本权衡，可按角色覆写）
+intra_pool_weights:
+  default: { quality: 0.55, performance: 0.30, cost: 0.15 }
+  tool_engineer: { quality: 0.40, performance: 0.25, cost: 0.05, capability_match: 0.30 }
+  decision_making: { quality: 0.65, performance: 0.25, cost: 0.10 }
+
+# 运行时覆写开关
+runtime_overrides:
+  enable_model_lock: true
+  enable_allowed_models_by_role: true
+  exploration_rate: 0.05
+# 智能路由配置 - 三池映射策略（强制多样化增强版）
+routing:
+  strategy: "pool_based_intelligent"  # 基于池的智能路由
+  enable_caching: true
+  cache_ttl: 3600
+  
+  # 强制多样化配置（增强版）
+  force_diversity: true        # 启用强制多样化
+  diversity_threshold: 0.4     # 降低阈值到40%，更早触发
+  diversity_weight: 0.8        # 提高多样化权重到80%
+  diversification_priority: 0.8  # 多样化优先级
+  
+  # 三池映射规则
+  pool_mapping:
+    # 🧠 通用深度推理池映射
+    deep_reasoning:
+      target_agents: ["fundamental_expert", "chief_decision_officer", "risk_manager", "policy_researcher", "compliance_officer"]
+      task_types: ["financial_report", "risk_assessment", "decision_making", "policy_analysis", "compliance_check"]
+      complexity_threshold: "high"  # 高复杂度任务
+      multimodal_required: true
+      reasoning_required: true
+      
+    # 🔄 技术面&长序列&代码计算池映射 (合并代码计算功能)
+    technical_longseq:
+      target_agents: ["technical_analyst", "news_hunter", "sentiment_analyst", "tool_engineer"]
+      task_types: ["technical_analysis", "news_analysis", "sentiment_analysis", "tool_development", "code_generation", "backtesting"]
+      context_length_threshold: 20000  # 超过20K上下文
+      chinese_optimized: true
+      time_series_data: true
+      code_generation_required: true  # 新增代码生成能力
+      
+    # 💻 代码/表格计算池映射 - 删除独立池，合并到technical_longseq
+    # code_computation:
+    #   target_agents: ["tool_engineer", "chief_decision_officer"]  # 需要代码生成的任务
+    #   task_types: ["code_generation", "backtesting", "table_computation", "factor_analysis"]
+    #   code_generation_required: true
+    #   structured_output_required: true
+  
+  # 路由权重配置（质量优先）
+  weights:
+    quality: 0.6         # 质量权重最高
+    performance: 0.3     # 性能权重
+    cost: 0.1           # 成本权重最低（质量优先）
+    availability: 0.0    # 可用性通过fallback保证
+  
+  # 熔断器配置
+  circuit_breaker:
+    failure_threshold: 3      # 降低失败阈值，快速切换
+    recovery_timeout: 180     # 缩短恢复时间
+    half_open_requests: 2
+    
+  # 重试策略
+  retry_policy:
+    max_attempts: 2          # 减少重试次数，依赖fallback
+    base_delay: 0.5
+    max_delay: 5.0
+    exponential_backoff: true
+    jitter: true
+
+# 成本管理
+cost_management:
+  # 成本限制
+  limits:
+    session_max: 1.00        # 单次会话最大成本（美元）
+    daily_max: 10.00         # 每日最大成本
+    monthly_max: 300.00      # 每月最大成本
+    
+  # 成本监控
+  monitoring:
+    enabled: true
+    alert_threshold: 0.80    # 告警阈值（占限额百分比）
+    track_by_agent: true     # 按智能体跟踪成本
+    track_by_model: true     # 按模型跟踪成本
+
+# 性能优化 - 质量优先配置
+performance:
+  # 并发控制（质量优先，适度并发）
+  concurrency:
+    max_concurrent_requests: 3  # 降低并发，保证质量
+    max_queue_size: 15
+    request_timeout: 180        # 增加超时，支持深度推理
+    
+  # 缓存策略
+  caching:
+    enabled: true
+    max_cache_size: 2000        # 增大缓存
+    ttl: 7200                   # 延长缓存时间
+    cache_by_model: true
+    cache_by_pool: true         # 按池缓存
+    
+  # 预热策略 - 三池旗舰模型
+  warmup:
+    enabled: true
+    warmup_requests: 1          # 减少预热请求
+    warmup_models: 
+      - "gemini-2.5-pro"         # 深度推理池旗舰
+      - "deepseek-ai/DeepSeek-V3" # 技术长序列池旗舰
+      
+  # 质量优化参数 - 旗舰模型最大token配置（不计成本）
+  quality_settings:
+    temperature: 0.2             # 低温度，提高一致性
+    top_p: 0.9
+    max_tokens: 100000           # 全局默认值，各模型将使用各自上限
+    presence_penalty: 0.0
+    frequency_penalty: 0.0
+    
+    # 各旗舰模型专用token上限（不计成本）- 基于官网实际限制
+    flagship_token_limits:
+      "gemini-2.5-pro": 1000000      # Google官网 - 1M tokens
+      "deepseek-ai/DeepSeek-V3": 128000  # SiliconFlow平台 - 128K tokens (比DeepSeek官网64K更高)
+
+# 监控和日志
+monitoring:
+  # 指标收集
+  metrics:
+    enabled: true
+    collect_latency: true
+    collect_throughput: true
+    collect_error_rate: true
+    collect_cost: true
+    
+  # 日志级别
+  logging:
+    level: "INFO"            # DEBUG, INFO, WARNING, ERROR
+    log_requests: true
+    log_responses: false     # 不记录响应内容，保护隐私
+    log_performance: true
+    
+  # 健康检查
+  health_check:
+    enabled: true
+    interval: 300            # 健康检查间隔（秒）
+    timeout: 30              # 健康检查超时
+
+# 协作模式配置
+collaboration:
+  modes:
+    # 串行协作
+    sequential:
+      description: "智能体依次分析，层层递进"
+      max_agents: 9
+      timeout_per_agent: 120
+      
+    # 并行协作  
+    parallel:
+      description: "智能体同时分析，观点整合"
+      max_agents: 6
+      timeout_total: 180
+      
+    # 辩论协作
+    debate:
+      description: "智能体互相质疑，达成共识"
+      max_agents: 4
+      max_rounds: 3
+      timeout_per_round: 200
+
+# 安全和合规
+security:
+  # API密钥管理
+  api_keys:
+    encrypt_at_rest: false   # 静态加密（需要加密密钥）
+    rotate_interval: 90      # 密钥轮换间隔（天）
+    
+  # 数据隐私
+  privacy:
+    anonymize_logs: true     # 匿名化日志
+    data_retention: 30       # 数据保留天数
+    
+  # 访问控制
+  access_control:
+    require_auth: false      # 是否需要认证
+    rate_limiting: true      # 速率限制
+    requests_per_minute: 60
+
+# 调试和开发
+debug:
+  enabled: false
+  verbose_logging: false
+  save_requests: false       # 保存请求用于调试
+  save_responses: false      # 保存响应用于调试
+  mock_responses: false      # 使用模拟响应

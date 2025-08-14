@@ -1,0 +1,197 @@
+# =============================================================================
+# Production Environment Configuration
+# High-performance, secure production deployment
+# =============================================================================
+
+description: "Production environment with maximum security and performance optimization"
+
+config:
+  # Environment identification
+  ENVIRONMENT: "production"
+  DEBUG: false
+  LOG_LEVEL: "INFO"
+  
+  # Application settings
+  TZ: "Asia/Shanghai"
+  PYTHONUNBUFFERED: true
+  PYTHONDONTWRITEBYTECODE: true
+  
+  # Service configuration (production scaling)
+  API_HOST: "0.0.0.0"
+  API_PORT: 8000
+  API_WORKERS: 8
+  WEB_HOST: "0.0.0.0"
+  WEB_PORT: 8501
+  
+  # Database configuration (production cluster)
+  MONGODB_HOST: "mongodb-service"
+  MONGODB_PORT: 27017
+  MONGODB_DATABASE: "tradingagents"
+  MONGODB_MAX_POOL_SIZE: 100
+  MONGODB_MIN_POOL_SIZE: 10
+  MONGODB_CONNECT_TIMEOUT_MS: 30000
+  MONGODB_SERVER_SELECTION_TIMEOUT_MS: 30000
+  
+  # Redis configuration (production)
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: 6379
+  REDIS_DATABASE: 0
+  REDIS_MAX_CONNECTIONS: 100
+  REDIS_CONNECTION_TIMEOUT: 30
+  
+  # Cache settings (production optimization)
+  TRADINGAGENTS_CACHE_TYPE: "redis"
+  CACHE_DEFAULT_TIMEOUT: 7200  # 2 hours
+  CACHE_MAX_SIZE: 2000
+  
+  # AI Model settings (production)
+  MULTI_MODEL_ENABLED: true
+  ROUTING_STRATEGY: "intelligent"
+  DEFAULT_COLLABORATION_MODE: "parallel"
+  MAX_COST_PER_SESSION: 10.0
+  ENABLE_PERFORMANCE_MONITORING: true
+  COST_OPTIMIZATION_ENABLED: true
+  
+  # Security settings (strict)
+  ALLOWED_ORIGINS: 
+    - "https://tradingagents.yourdomain.com"
+    - "https://api.tradingagents.yourdomain.com"
+  CORS_ALLOW_ALL_ORIGINS: false
+  CSRF_TRUSTED_ORIGINS: 
+    - "https://tradingagents.yourdomain.com"
+  
+  # SSL/TLS (mandatory)
+  USE_TLS: true
+  FORCE_HTTPS: true
+  SECURE_PROXY_SSL_HEADER: true
+  SSL_REDIRECT: true
+  
+  # Session security
+  SESSION_COOKIE_SECURE: true
+  SESSION_COOKIE_HTTPONLY: true
+  SESSION_COOKIE_SAMESITE: "Strict"
+  SESSION_COOKIE_AGE: 28800  # 8 hours
+  
+  # Security headers
+  SECURE_CONTENT_TYPE_NOSNIFF: true
+  SECURE_BROWSER_XSS_FILTER: true
+  SECURE_HSTS_SECONDS: 31536000  # 1 year
+  SECURE_HSTS_INCLUDE_SUBDOMAINS: true
+  SECURE_HSTS_PRELOAD: true
+  
+  # Logging configuration (production)
+  TRADINGAGENTS_LOG_LEVEL: "INFO"
+  TRADINGAGENTS_LOG_DIR: "/app/logs"
+  TRADINGAGENTS_LOG_MAX_SIZE: "200MB"
+  TRADINGAGENTS_LOG_BACKUP_COUNT: 10
+  STRUCTURED_LOGGING: true
+  LOG_RETENTION_DAYS: 30
+  
+  # Monitoring and metrics (comprehensive)
+  ENABLE_METRICS: true
+  METRICS_PORT: 9090
+  HEALTH_CHECK_ENABLED: true
+  PROMETHEUS_ENABLED: true
+  GRAFANA_ENABLED: true
+  APM_ENABLED: true
+  
+  # Backup configuration (robust)
+  BACKUP_ENABLED: true
+  BACKUP_SCHEDULE: "0 1 * * *"  # Daily at 1 AM
+  BACKUP_RETENTION_DAYS: 90
+  BACKUP_COMPRESSION: true
+  BACKUP_ENCRYPTION: true
+  
+  # Performance settings (high-performance)
+  CELERY_WORKER_CONCURRENCY: 8
+  CELERY_MAX_TASKS_PER_CHILD: 200
+  CELERY_TASK_TIME_LIMIT: 3600
+  CELERY_TASK_SOFT_TIME_LIMIT: 3000
+  
+  # Email configuration (production SMTP)
+  EMAIL_USE_TLS: true
+  EMAIL_PORT: 587
+  EMAIL_TIMEOUT: 30
+  
+  # Production feature flags
+  FEATURE_FLAGS:
+    ADVANCED_ANALYTICS: true
+    REAL_TIME_DATA: true
+    PREMIUM_FEATURES: true
+    ENTERPRISE_REPORTING: true
+    API_RATE_LIMITING: true
+  
+  # Rate limiting (strict)
+  RATE_LIMIT_ENABLED: true
+  RATE_LIMIT_PER_MINUTE: 120
+  RATE_LIMIT_PER_HOUR: 1000
+  RATE_LIMIT_PER_DAY: 10000
+  
+  # Resource limits (production)
+  MAX_UPLOAD_SIZE: "100MB"
+  MAX_REQUEST_SIZE: "200MB"
+  REQUEST_TIMEOUT: 600  # 10 minutes
+  
+  # Auto-scaling configuration
+  AUTO_SCALING_ENABLED: true
+  MIN_REPLICAS: 3
+  MAX_REPLICAS: 20
+  CPU_THRESHOLD: 70
+  MEMORY_THRESHOLD: 80
+  
+  # CDN and static files
+  CDN_ENABLED: true
+  STATIC_FILES_CDN: true
+  MEDIA_CDN: true
+  GZIP_COMPRESSION: true
+  
+  # Database optimizations
+  DB_CONNECTION_POOLING: true
+  DB_QUERY_OPTIMIZATION: true
+  DB_INDEX_OPTIMIZATION: true
+  
+  # Alert configuration
+  ALERT_EMAIL_ENABLED: true
+  ALERT_SLACK_ENABLED: true
+  CRITICAL_ERROR_THRESHOLD: 5
+  RESPONSE_TIME_THRESHOLD: 2000  # 2 seconds
+  
+  # Maintenance mode
+  MAINTENANCE_MODE_ENABLED: false
+  MAINTENANCE_MESSAGE: "System maintenance in progress. Please try again later."
+
+overrides:
+  # Production-specific overrides
+  STREAMLIT_SERVER_ENABLE_CORS: false
+  STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION: true
+  STREAMLIT_BROWSER_GATHER_USAGE_STATS: false
+  USE_MOCK_DATA: false
+  MOCK_API_RESPONSES: false
+
+validation:
+  - type: "required"
+    field: "ENVIRONMENT"
+  - type: "enum"
+    field: "ENVIRONMENT"
+    values: ["production"]
+  - type: "required"
+    field: "MONGODB_HOST"
+  - type: "required"
+    field: "REDIS_HOST"
+  - type: "required"
+    field: "USE_TLS"
+  - type: "format"
+    field: "ALLOWED_ORIGINS"
+    format: "url_list"
+  - type: "range"
+    field: "API_WORKERS"
+    min: 4
+    max: 32
+  - type: "range"
+    field: "MAX_COST_PER_SESSION"
+    min: 5.0
+    max: 50.0
+  - type: "required"
+    field: "BACKUP_ENABLED"
+  - type: "required"
+    field: "ENABLE_METRICS"

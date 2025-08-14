@@ -1,0 +1,90 @@
+{
+  "description": "Base template for TradingAgents-CN environments",
+  "config": {
+    "ENVIRONMENT": "{{ environment_name }}",
+    "TZ": "Asia/Shanghai",
+    "DEBUG": "{{ debug_mode | default(false) }}",
+    "LOG_LEVEL": "{{ log_level | default('INFO') }}",
+    
+    "API_HOST": "{{ api_host | default('0.0.0.0') }}",
+    "API_PORT": "{{ api_port | default(8000) }}",
+    "API_WORKERS": "{{ api_workers | default(4) }}",
+    
+    "WEB_HOST": "{{ web_host | default('0.0.0.0') }}",
+    "WEB_PORT": "{{ web_port | default(8501) }}",
+    
+    "MONGODB_HOST": "{{ mongodb_host | default('mongodb-service') }}",
+    "MONGODB_PORT": "{{ mongodb_port | default(27017) }}",
+    "MONGODB_DATABASE": "{{ mongodb_database | default('tradingagents') }}",
+    
+    "REDIS_HOST": "{{ redis_host | default('redis-service') }}",
+    "REDIS_PORT": "{{ redis_port | default(6379) }}",
+    "REDIS_DATABASE": "{{ redis_database | default(0) }}",
+    
+    "TRADINGAGENTS_CACHE_TYPE": "redis",
+    "CACHE_DEFAULT_TIMEOUT": "{{ cache_timeout | default(3600) }}",
+    
+    "MULTI_MODEL_ENABLED": "{{ multi_model_enabled | default(true) }}",
+    "ROUTING_STRATEGY": "{{ routing_strategy | default('intelligent') }}",
+    "MAX_COST_PER_SESSION": "{{ max_cost | default(5.0) }}",
+    
+    "TRADINGAGENTS_LOG_LEVEL": "{{ log_level | default('INFO') }}",
+    "TRADINGAGENTS_LOG_DIR": "{{ log_dir | default('/app/logs') }}",
+    
+    "BACKUP_ENABLED": "{{ backup_enabled | default(true) }}",
+    "ENABLE_METRICS": "{{ metrics_enabled | default(true) }}"
+  },
+  
+  "secrets_template": {
+    "MONGODB_USERNAME": "{{ mongodb_username | default('admin') }}",
+    "MONGODB_PASSWORD": "{{ mongodb_password | generate_password(32) }}",
+    "REDIS_PASSWORD": "{{ redis_password | generate_password(32) }}",
+    
+    "OPENAI_API_KEY": "{{ openai_api_key | prompt('OpenAI API Key') }}",
+    "GEMINI_API_KEY": "{{ gemini_api_key | prompt('Gemini API Key') }}",
+    "DEEPSEEK_API_KEY": "{{ deepseek_api_key | prompt('DeepSeek API Key') }}",
+    "SILICONFLOW_API_KEY": "{{ siliconflow_api_key | prompt('SiliconFlow API Key') }}",
+    
+    "TUSHARE_TOKEN": "{{ tushare_token | prompt('Tushare Token') }}",
+    "FINNHUB_API_KEY": "{{ finnhub_api_key | prompt('Finnhub API Key') }}",
+    "ALPHA_VANTAGE_API_KEY": "{{ alpha_vantage_api_key | prompt('Alpha Vantage API Key') }}",
+    
+    "SMTP_HOST": "{{ smtp_host | default('smtp.gmail.com') }}",
+    "SMTP_PORT": "{{ smtp_port | default(587) }}",
+    "SMTP_USERNAME": "{{ smtp_username | prompt('SMTP Username') }}",
+    "SMTP_PASSWORD": "{{ smtp_password | prompt('SMTP Password') }}",
+    
+    "JWT_SECRET_KEY": "{{ jwt_secret | generate_password(64) }}",
+    
+    "AWS_ACCESS_KEY_ID": "{{ aws_access_key | prompt('AWS Access Key (optional)') }}",
+    "AWS_SECRET_ACCESS_KEY": "{{ aws_secret_key | prompt('AWS Secret Key (optional)') }}",
+    "AWS_DEFAULT_REGION": "{{ aws_region | default('us-west-2') }}"
+  },
+  
+  "validation_rules": [
+    {
+      "type": "required",
+      "field": "ENVIRONMENT"
+    },
+    {
+      "type": "required",
+      "field": "MONGODB_HOST"
+    },
+    {
+      "type": "required",
+      "field": "REDIS_HOST"
+    },
+    {
+      "type": "range",
+      "field": "API_PORT",
+      "min": 1024,
+      "max": 65535
+    },
+    {
+      "type": "range",
+      "field": "WEB_PORT",
+      "min": 1024,
+      "max": 65535
+    }
+  ]
+}

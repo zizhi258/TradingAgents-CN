@@ -1,0 +1,296 @@
+# Claude AI 相关文件
+.claude/
+
+# Python 相关
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# 环境变量和配置文件
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# IDE 相关文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统相关
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 日志文件
+*.log
+logs/
+log/
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+*.temp
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# 密钥和证书
+*.key
+*.pem
+*.crt
+*.p12
+secrets/
+.secrets/
+# 但保留配置模板
+!secrets/vault/init/
+
+# 备份文件
+*.bak
+*.backup
+*.old
+
+# 压缩文件
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Node.js (如果项目中有前端部分)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker 相关
+.dockerignore
+
+# Kubernetes 密钥
+*.kubeconfig
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# 监控和报告
+reports/
+monitoring/logs/
+*.report
+
+# 缓存文件
+.cache/
+cache/
+
+# 上传文件
+uploads/
+attachments/
+
+# 数据文件 (根据需要调整)
+data/exports/
+data/cache/
+data/temp/
+# 但保留必要的配置和示例数据
+!data/market_configs/
+!data/scripts/
+
+# 编译文件
+*.o
+*.a
+*.lib
+*.dll
+*.exe
+
+# 其他常见的忽略项
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+
+# ========================================
+# 重要：保留部署必需的文件
+# ========================================
+# 配置模板文件（其他用户需要这些来配置环境）
+!.env.example
+!.env.production.template
+
+# 项目依赖文件（部署必需）
+!requirements.txt
+!pyproject.toml
+!setup.py
+!uv.lock
+
+# Docker部署文件（容器化部署必需）
+!docker-compose*.yml
+!Dockerfile*
+!.dockerignore
+
+# 脚本文件（启动和部署脚本）
+!scripts/
+!start_web.*
+!deploy-pipeline.sh
+!setup_*.sh
+
+# 配置文件（系统配置必需）
+!config/
+!pytest.ini
+!VERSION
+!LICENSE
+!README.md
+!AGENTS.md
+
+# 示例和文档（用户学习必需）
+!examples/
+!docs/
+
+# Web界面文件（前端必需）
+!web/
+!.streamlit/
+
+# 核心代码包（主要功能）
+!tradingagents/
+!cli/
+!utils/
+
+# 部署相关目录结构（但忽略其中的运行时文件）
+!k8s/
+!terraform/
+!docker/
+!monitoring/

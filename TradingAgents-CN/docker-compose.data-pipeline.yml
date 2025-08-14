@@ -1,0 +1,913 @@
+# =============================================================================
+# Enhanced Production Docker Compose for TradingAgents-CN Data Pipeline
+# Comprehensive production setup with data pipeline services
+# =============================================================================
+
+version: '3.8'
+
+x-common-variables: &common-variables
+  TZ: Asia/Shanghai
+  PYTHONUNBUFFERED: 1
+  PYTHONDONTWRITEBYTECODE: 1
+  # Database connections
+  TRADINGAGENTS_MONGODB_URL: mongodb://admin:${MONGODB_PASSWORD:-tradingagents123}@mongodb:27017/tradingagents?authSource=admin
+  TRADINGAGENTS_REDIS_URL: redis://:${REDIS_PASSWORD:-tradingagents123}@redis:6379
+  # TimescaleDB for time-series data
+  TIMESCALEDB_URL: postgresql://postgres:${POSTGRES_PASSWORD:-tradingagents123}@timescaledb:5432/tradingagents
+  # Kafka configuration
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  # Cache configuration
+  TRADINGAGENTS_CACHE_TYPE: redis
+  # Logging configuration
+  TRADINGAGENTS_LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  TRADINGAGENTS_LOG_DIR: /app/logs
+  # Data pipeline configuration
+  DATA_PIPELINE_ENABLED: "true"
+  STREAMING_PIPELINE_ENABLED: "true"
+  BATCH_PROCESSING_ENABLED: "true"
+  DATA_QUALITY_MONITORING: "true"
+  # Multi-model configuration
+  MULTI_MODEL_ENABLED: "true"
+  ROUTING_STRATEGY: ${ROUTING_STRATEGY:-intelligent}
+  DEFAULT_COLLABORATION_MODE: ${DEFAULT_COLLABORATION_MODE:-sequential}
+  MAX_COST_PER_SESSION: ${MAX_COST_PER_SESSION:-1.0}
+  # ChartingArtist configuration
+  CHARTING_ARTIST_ENABLED: ${CHARTING_ARTIST_ENABLED:-true}
+  CHARTING_ARTIST_API_URL: ${CHARTING_ARTIST_API_URL:-http://charting-service:8002/api}
+  # Airflow configuration
+  AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+  AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:${AIRFLOW_DB_PASSWORD:-airflow123}@airflow-postgres:5432/airflow
+  AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:${AIRFLOW_DB_PASSWORD:-airflow123}@airflow-postgres:5432/airflow
+  AIRFLOW__CELERY__BROKER_URL: redis://:${REDIS_PASSWORD:-tradingagents123}@redis:6379/1
+  # Security
+  DOCKER_CONTAINER: "true"
+
+x-common-logging: &common-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "100m"
+      max-file: "5"
+      labels: "com.tradingagents.service,com.tradingagents.version"
+
+x-restart-policy: &restart-policy
+  restart: unless-stopped
+
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 60s
+
+services:
+  # =============================================================================
+  # Core Application Services
+  # =============================================================================
+  
+  # Main Web Application
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      target: runtime
+      args:
+        BUILD_DATE: ${BUILD_DATE:-unknown}
+        VCS_REF: ${VCS_REF:-unknown}
+        VERSION: ${VERSION:-1.0.0}
+    image: ${REGISTRY:-local}/tradingagents-cn-web:${TAG:-latest}
+    container_name: tradingagents-web-${ENVIRONMENT:-prod}
+    ports:
+      - "${WEB_PORT:-8501}:8501"
+    volumes:
+      - type: bind
+        source: ./.env
+        target: /app/.env
+        read_only: true
+      - app_data:/app/data
+      - app_logs:/app/logs
+      - app_reports:/app/reports
+      - app_config:/app/config
+      - pipeline_data:/app/data/pipeline
+    environment:
+      <<: *common-variables
+      STREAMLIT_SERVER_PORT: 8501
+      STREAMLIT_SERVER_ADDRESS: 0.0.0.0
+      STREAMLIT_SERVER_ENABLE_CORS: false
+      STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION: true
+      STREAMLIT_BROWSER_GATHER_USAGE_STATS: false
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+      - data-pipeline
+    <<: *restart-policy
+    <<: *common-logging
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:8501/health"]
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    labels:
+      - "com.tradingagents.service=web"
+      - "com.tradingagents.version=${VERSION:-1.0.0}"
+
+  # API Service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      args:
+        BUILD_DATE: ${BUILD_DATE:-unknown}
+        VCS_REF: ${VCS_REF:-unknown}
+        VERSION: ${VERSION:-1.0.0}
+    image: ${REGISTRY:-local}/tradingagents-cn-api:${TAG:-latest}
+    container_name: tradingagents-api-${ENVIRONMENT:-prod}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - type: bind
+        source: ./.env
+        target: /app/.env
+        read_only: true
+      - app_data:/app/data
+      - app_logs:/app/logs
+      - app_reports:/app/reports
+      - pipeline_data:/app/data/pipeline
+    environment:
+      <<: *common-variables
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      API_WORKERS: ${API_WORKERS:-4}
+      ENABLE_PERFORMANCE_MONITORING: "true"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+    networks:
+      - backend
+      - data-pipeline
+    <<: *restart-policy
+    <<: *common-logging
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+          cpus: '2.0'
+        reservations:
+          memory: 1.5G
+          cpus: '1.0'
+      replicas: ${API_REPLICAS:-2}
+    labels:
+      - "com.tradingagents.service=api"
+
+  # =============================================================================
+  # Data Pipeline Services
+  # =============================================================================
+
+  # Streaming Data Pipeline Service
+  streaming-pipeline:
+    image: ${REGISTRY:-local}/tradingagents-cn-api:${TAG:-latest}
+    container_name: tradingagents-streaming-${ENVIRONMENT:-prod}
+    volumes:
+      - type: bind
+        source: ./.env
+        target: /app/.env
+        read_only: true
+      - app_logs:/app/logs
+      - pipeline_data:/app/data/pipeline
+    environment:
+      <<: *common-variables
+      SERVICE_TYPE: "streaming_pipeline"
+      STREAMING_WORKER_CONCURRENCY: ${STREAMING_CONCURRENCY:-4}
+      WEBSOCKET_CONNECTIONS_MAX: ${WEBSOCKET_MAX:-50}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - data-pipeline
+      - monitoring
+    <<: *restart-policy
+    <<: *common-logging
+    command: ["python", "-m", "tradingagents.dataflows.streaming_pipeline_service"]
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8003/health')"]
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.5'
+        reservations:
+          memory: 1G
+          cpus: '0.75'
+    labels:
+      - "com.tradingagents.service=streaming-pipeline"
+
+  # Data Quality Monitor
+  data-quality-monitor:
+    image: ${REGISTRY:-local}/tradingagents-cn-api:${TAG:-latest}
+    container_name: tradingagents-dq-monitor-${ENVIRONMENT:-prod}
+    volumes:
+      - type: bind
+        source: ./.env
+        target: /app/.env
+        read_only: true
+      - app_logs:/app/logs
+      - pipeline_data:/app/data/pipeline
+      - quality_reports:/app/reports/quality
+    environment:
+      <<: *common-variables
+      SERVICE_TYPE: "data_quality_monitor"
+      DQ_CHECK_INTERVAL: ${DQ_CHECK_INTERVAL:-300}
+      DQ_ANOMALY_THRESHOLD: ${DQ_ANOMALY_THRESHOLD:-0.05}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - data-pipeline
+      - monitoring
+    <<: *restart-policy
+    <<: *common-logging
+    command: ["python", "-m", "tradingagents.dataflows.data_quality_service"]
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "python", "-c", "import os; assert os.path.exists('/tmp/dq_monitor_health')"]
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    labels:
+      - "com.tradingagents.service=data-quality-monitor"
+
+  # =============================================================================
+  # Data Storage Services
+  # =============================================================================
+
+  # MongoDB Database
+  mongodb:
+    image: mongo:6.0-jammy
+    container_name: tradingagents-mongodb-${ENVIRONMENT:-prod}
+    ports:
+      - "${MONGODB_PORT:-27017}:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD:-tradingagents123}
+      MONGO_INITDB_DATABASE: tradingagents
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_logs:/var/log/mongodb
+      - mongodb_config:/data/configdb
+      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - ./docker/mongodb-production.conf:/etc/mongod.conf:ro
+    networks:
+      - backend
+      - data-pipeline
+    <<: *restart-policy
+    <<: *common-logging
+    command: ["mongod", "--config", "/etc/mongod.conf"]
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+    labels:
+      - "com.tradingagents.service=mongodb"
+
+  # TimescaleDB for Time-series Data
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: tradingagents-timescaledb-${ENVIRONMENT:-prod}
+    ports:
+      - "${TIMESCALEDB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: tradingagents
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tradingagents123}
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+      - ./docker/timescaledb-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - data-pipeline
+    <<: *restart-policy
+    <<: *common-logging
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tradingagents"]
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+          cpus: '1.5'
+        reservations:
+          memory: 1.5G
+          cpus: '0.75'
+    labels:
+      - "com.tradingagents.service=timescaledb"
+
+  # Redis Cache & Message Broker
+  redis:
+    image: redis:7-alpine
+    container_name: tradingagents-redis-${ENVIRONMENT:-prod}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+      - ./docker/redis-production.conf:/etc/redis/redis.conf:ro
+    networks:
+      - backend
+      - data-pipeline
+    <<: *restart-policy
+    <<: *common-logging
+    command: ["redis-server", "/etc/redis/redis.conf", "--requirepass", "${REDIS_PASSWORD:-tradingagents123}"]
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    labels:
+      - "com.tradingagents.service=redis"
+
+  # =============================================================================
+  # Message Queue & Streaming Services
+  # =============================================================================
+
+  # Zookeeper for Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: tradingagents-zookeeper-${ENVIRONMENT:-prod}
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+    networks:
+      - data-pipeline
+    <<: *restart-policy
+    <<: *common-logging
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "bash", "-c", "echo 'ruok' | nc localhost 2181 | grep imok"]
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+  # Kafka Message Broker
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: tradingagents-kafka-${ENVIRONMENT:-prod}
+    depends_on:
+      - zookeeper
+    ports:
+      - "${KAFKA_PORT:-9092}:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - data-pipeline
+    <<: *restart-policy
+    <<: *common-logging
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  # =============================================================================
+  # Airflow Services for Batch Processing
+  # =============================================================================
+
+  # Airflow Postgres Database
+  airflow-postgres:
+    image: postgres:13
+    container_name: tradingagents-airflow-db-${ENVIRONMENT:-prod}
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: ${AIRFLOW_DB_PASSWORD:-airflow123}
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow_postgres_data:/var/lib/postgresql/data
+    networks:
+      - data-pipeline
+    <<: *restart-policy
+    <<: *common-logging
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+
+  # Airflow Init
+  airflow-init: &airflow-common
+    image: apache/airflow:2.7.0-python3.9
+    container_name: tradingagents-airflow-init-${ENVIRONMENT:-prod}
+    user: "${AIRFLOW_UID:-50000}:0"
+    environment:
+      <<: *common-variables
+      _AIRFLOW_DB_UPGRADE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+    volumes:
+      - airflow_dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+      - airflow_plugins:/opt/airflow/plugins
+      - pipeline_data:/opt/airflow/data
+      - ./tradingagents/dataflows/airflow_dags.py:/opt/airflow/dags/trading_pipeline_dags.py
+    depends_on:
+      - airflow-postgres
+      - redis
+    networks:
+      - data-pipeline
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        function ver() {
+          printf "%04d%04d%04d%04d" $${1//./ }
+        }
+        airflow_version=$$(AIRFLOW__LOGGING__LOGGING_LEVEL=INFO && gosu airflow airflow version)
+        airflow_version_comparable=$$(ver $${airflow_version})
+        min_airflow_version=2.2.0
+        min_airflow_version_comparable=$$(ver $${min_airflow_version})
+        if (( airflow_version_comparable < min_airflow_version_comparable )); then
+          echo
+          echo -e "\033[1;31mERROR!!!: Too old Airflow version $${airflow_version}!\e[0m"
+          echo "The minimum Airflow version supported: $${min_airflow_version}. Only use this or higher!"
+          echo
+          exit 1
+        fi
+        if [[ -z "${AIRFLOW_UID}" ]]; then
+          echo
+          echo -e "\033[1;33mWARNING!!!: AIRFLOW_UID not set!\e[0m"
+          echo "If you are on Linux, you SHOULD follow the instructions below to set "
+          echo "AIRFLOW_UID environment variable, otherwise files will be owned by root."
+          echo "For other operating systems you can get rid of the warning with manually created .env file:"
+          echo "    See: https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#setting-the-right-airflow-user"
+          echo
+        fi
+        one_meg=1048576
+        mem_available=$$(($$(getconf _PHYS_PAGES) * $$(getconf PAGE_SIZE) / one_meg))
+        cpus_available=$$(grep -cE 'cpu[0-9]+' /proc/stat)
+        disk_available=$$(df / | tail -1 | awk '{print $$4}')
+        warning_resources="false"
+        if (( mem_available < 4000 )) ; then
+          echo
+          echo -e "\033[1;33mWARNING!!!: Not enough memory available for Docker.\e[0m"
+          echo "At least 4GB of memory required. You have $$(numfmt --to iec $$((mem_available * one_meg)))"
+          echo
+          warning_resources="true"
+        fi
+        if (( cpus_available < 2 )); then
+          echo
+          echo -e "\033[1;33mWARNING!!!: Not enough CPUS available for Docker.\e[0m"
+          echo "At least 2 CPUs recommended. You have $${cpus_available}"
+          echo
+          warning_resources="true"
+        fi
+        if (( disk_available < one_meg * 10 )); then
+          echo
+          echo -e "\033[1;33mWARNING!!!: Not enough Disk space available for Docker.\e[0m"
+          echo "At least 10 GBs recommended. You have $$(numfmt --to iec $$((disk_available * 1024 )))"
+          echo
+          warning_resources="true"
+        fi
+        if [[ $${warning_resources} == "true" ]]; then
+          echo
+          echo -e "\033[1;33mWARNING!!!: You have not enough resources to run Airflow (see above)!\e[0m"
+          echo "Please follow the instructions to increase amount of resources available:"
+          echo "   https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#before-you-begin"
+          echo
+        fi
+        mkdir -p /sources/logs /sources/dags /sources/plugins
+        chown -R "${AIRFLOW_UID}:0" /sources/{logs,dags,plugins}
+        exec /entrypoint airflow version
+    profiles:
+      - airflow
+
+  # Airflow Webserver
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: tradingagents-airflow-web-${ENVIRONMENT:-prod}
+    command: webserver
+    ports:
+      - "${AIRFLOW_WEB_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    profiles:
+      - airflow
+    depends_on:
+      - airflow-postgres
+      - redis
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  # Airflow Scheduler
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: tradingagents-airflow-scheduler-${ENVIRONMENT:-prod}
+    command: scheduler
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    profiles:
+      - airflow
+    depends_on:
+      - airflow-postgres
+      - redis
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  # Airflow Worker
+  airflow-worker:
+    <<: *airflow-common
+    container_name: tradingagents-airflow-worker-${ENVIRONMENT:-prod}
+    command: celery worker
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - 'celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    profiles:
+      - airflow
+    depends_on:
+      - airflow-postgres
+      - redis
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+          cpus: '2.0'
+        reservations:
+          memory: 1.5G
+          cpus: '1.0'
+      replicas: ${AIRFLOW_WORKER_REPLICAS:-2}
+
+  # =============================================================================
+  # Monitoring & Management Services
+  # =============================================================================
+
+  # Prometheus Metrics
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: tradingagents-prometheus-${ENVIRONMENT:-prod}
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./docker/prometheus-production.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/alerts-production.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+      - '--log.level=info'
+    networks:
+      - monitoring
+      - data-pipeline
+    <<: *restart-policy
+    <<: *common-logging
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+    profiles:
+      - monitoring
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: tradingagents-grafana-${ENVIRONMENT:-prod}
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./docker/grafana/production-dashboard.json:/var/lib/grafana/dashboards/production.json:ro
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USERNAME:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-tradingagents123}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel,grafana-worldmap-panel
+      GF_FEATURE_TOGGLES_ENABLE: publicDashboards
+    networks:
+      - monitoring
+    <<: *restart-policy
+    <<: *common-logging
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+    profiles:
+      - monitoring
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+  # MinIO Object Storage
+  minio:
+    image: minio/minio:latest
+    container_name: tradingagents-minio-${ENVIRONMENT:-prod}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-tradingagents}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-tradingagents123}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - data-pipeline
+    <<: *restart-policy
+    <<: *common-logging
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+    profiles:
+      - storage
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+  # =============================================================================
+  # Backup & Maintenance Services
+  # =============================================================================
+
+  # Database Backup Service
+  backup-service:
+    image: ${REGISTRY:-local}/tradingagents-cn-api:${TAG:-latest}
+    container_name: tradingagents-backup-${ENVIRONMENT:-prod}
+    volumes:
+      - type: bind
+        source: ./.env
+        target: /app/.env
+        read_only: true
+      - backup_data:/app/backups
+      - app_logs:/app/logs
+    environment:
+      <<: *common-variables
+      SERVICE_TYPE: "backup_service"
+      BACKUP_SCHEDULE: "0 2 * * *"  # Daily at 2 AM
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+      BACKUP_COMPRESSION: "true"
+    depends_on:
+      - mongodb
+      - timescaledb
+      - redis
+    networks:
+      - data-pipeline
+    <<: *restart-policy
+    <<: *common-logging
+    command: ["python", "-m", "tradingagents.services.backup_service"]
+    profiles:
+      - maintenance
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+# =============================================================================
+# Network Configuration
+# =============================================================================
+
+networks:
+  frontend:
+    driver: bridge
+    name: tradingagents-frontend-${ENVIRONMENT:-prod}
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+
+  backend:
+    driver: bridge
+    name: tradingagents-backend-${ENVIRONMENT:-prod}
+    internal: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.0.0/16
+
+  data-pipeline:
+    driver: bridge
+    name: tradingagents-data-pipeline-${ENVIRONMENT:-prod}
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.23.0.0/16
+
+  monitoring:
+    driver: bridge
+    name: tradingagents-monitoring-${ENVIRONMENT:-prod}
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.22.0.0/16
+
+# =============================================================================
+# Volume Configuration
+# =============================================================================
+
+volumes:
+  # Application volumes
+  app_data:
+    driver: local
+    name: tradingagents_app_data_${ENVIRONMENT:-prod}
+  
+  app_logs:
+    driver: local
+    name: tradingagents_app_logs_${ENVIRONMENT:-prod}
+  
+  app_reports:
+    driver: local
+    name: tradingagents_app_reports_${ENVIRONMENT:-prod}
+  
+  app_config:
+    driver: local
+    name: tradingagents_app_config_${ENVIRONMENT:-prod}
+
+  # Pipeline-specific volumes
+  pipeline_data:
+    driver: local
+    name: tradingagents_pipeline_data_${ENVIRONMENT:-prod}
+  
+  quality_reports:
+    driver: local
+    name: tradingagents_quality_reports_${ENVIRONMENT:-prod}
+
+  # Database volumes
+  mongodb_data:
+    driver: local
+    name: tradingagents_mongodb_data_${ENVIRONMENT:-prod}
+  
+  mongodb_logs:
+    driver: local
+    name: tradingagents_mongodb_logs_${ENVIRONMENT:-prod}
+  
+  mongodb_config:
+    driver: local
+    name: tradingagents_mongodb_config_${ENVIRONMENT:-prod}
+
+  # TimescaleDB volumes
+  timescaledb_data:
+    driver: local
+    name: tradingagents_timescaledb_data_${ENVIRONMENT:-prod}
+
+  # Redis volumes
+  redis_data:
+    driver: local
+    name: tradingagents_redis_data_${ENVIRONMENT:-prod}
+
+  # Kafka & Zookeeper volumes
+  kafka_data:
+    driver: local
+    name: tradingagents_kafka_data_${ENVIRONMENT:-prod}
+  
+  zookeeper_data:
+    driver: local
+    name: tradingagents_zookeeper_data_${ENVIRONMENT:-prod}
+  
+  zookeeper_logs:
+    driver: local
+    name: tradingagents_zookeeper_logs_${ENVIRONMENT:-prod}
+
+  # Airflow volumes
+  airflow_dags:
+    driver: local
+    name: tradingagents_airflow_dags_${ENVIRONMENT:-prod}
+  
+  airflow_logs:
+    driver: local
+    name: tradingagents_airflow_logs_${ENVIRONMENT:-prod}
+  
+  airflow_plugins:
+    driver: local
+    name: tradingagents_airflow_plugins_${ENVIRONMENT:-prod}
+  
+  airflow_postgres_data:
+    driver: local
+    name: tradingagents_airflow_postgres_data_${ENVIRONMENT:-prod}
+
+  # Monitoring volumes
+  prometheus_data:
+    driver: local
+    name: tradingagents_prometheus_data_${ENVIRONMENT:-prod}
+  
+  grafana_data:
+    driver: local
+    name: tradingagents_grafana_data_${ENVIRONMENT:-prod}
+
+  # Storage volumes
+  minio_data:
+    driver: local
+    name: tradingagents_minio_data_${ENVIRONMENT:-prod}
+
+  # Backup volumes
+  backup_data:
+    driver: local
+    name: tradingagents_backup_data_${ENVIRONMENT:-prod}
