@@ -1,0 +1,175 @@
+# Model Roles Configuration
+# 模型角色配置 - 定义不同智能体角色使用的最佳模型选择
+# Configuration for optimal model selection based on agent roles and task types
+
+model_roles:
+  # 新闻猎手 - 快速获取和分析实时新闻
+  news_hunter:
+    primary_model: "gemini-2.5-flash"
+    fallback_models:
+      - "deepseek-chat"
+      - "GLM-4.5-Flash"
+    task_type: "news_analysis"
+    priority: "speed"
+    max_cost: 0.05
+    
+  # 基本面专家 - 深度财务分析
+  fundamental_expert:
+    primary_model: "deepseek-reasoner"
+    fallback_models:
+      - "gemini-2.5-pro"
+      - "GLM-4.5-Air"
+    task_type: "fundamental_analysis"
+    priority: "accuracy"
+    max_cost: 0.20
+    
+  # 技术分析师 - 图表和技术指标分析
+  technical_analyst:
+    primary_model: "deepseek-chat"
+    fallback_models:
+      - "gemini-2.0-flash"
+      - "GLM-4.5-Flash"
+    task_type: "technical_analysis"
+    priority: "precision"
+    max_cost: 0.15
+    
+  # 情绪分析师 - 社交媒体和市场情绪
+  sentiment_analyst:
+    primary_model: "Step-3-Instruct"
+    fallback_models:
+      - "gemini-2.5-flash"
+      - "GLM-4.5-Flash"
+    task_type: "sentiment_analysis"
+    priority: "speed"
+    max_cost: 0.08
+    
+  # 政策研究员 - 政策影响分析
+  policy_researcher:
+    primary_model: "gemini-2.5-pro"
+    fallback_models:
+      - "deepseek-reasoner"
+      - "GLM-4.5-Air"
+    task_type: "policy_analysis"
+    priority: "comprehension"
+    max_cost: 0.18
+    
+  # 工具工程师 - 数据获取和工具使用
+  tool_engineer:
+    primary_model: "deepseek-chat"
+    fallback_models:
+      - "gemini-2.0-flash"
+      - "GLM-4.5-Flash"
+    task_type: "tool_development"
+    priority: "functionality"
+    max_cost: 0.12
+    
+  # 风控经理 - 风险评估和管理
+  risk_manager:
+    primary_model: "GLM-4.5-Air"
+    fallback_models:
+      - "deepseek-reasoner"
+      - "gemini-2.5-pro"
+    task_type: "risk_assessment"
+    priority: "accuracy"
+    max_cost: 0.15
+    
+  # 合规专员 - 合规性检查
+  compliance_officer:
+    primary_model: "GLM-4.5-Flash"
+    fallback_models:
+      - "gemini-2.5-flash"
+      - "deepseek-chat"
+    task_type: "compliance_check"
+    priority: "thoroughness"
+    max_cost: 0.10
+    
+  # 首席决策官 - 最终决策制定
+  chief_decision_officer:
+    primary_model: "deepseek-reasoner"
+    fallback_models:
+      - "gemini-2.5-pro"
+      - "GLM-4.5-Air"
+    task_type: "decision_making"
+    priority: "wisdom"
+    max_cost: 0.25
+
+  # 主笔人 - 长文合成（强制Gemini-2.5-Pro）
+  chief_writer:
+    primary_model: "gemini-2.5-pro"
+    fallback_models:
+      - "gemini-1.5-pro"
+      - "gemini-2.0-flash"
+    task_type: "article_composition"
+    priority: "quality"
+    max_cost: 0.30
+
+  # 绘图师 - 数据可视化和图表生成
+  charting_artist:
+    primary_model: "gemini-2.0-flash"  # 快速响应，适合图表生成
+    fallback_models:
+      - "deepseek-chat"
+      - "gemini-1.5-pro"
+    task_type: "data_visualization"
+    priority: "functionality"
+    max_cost: 0.06
+    temperature: 0.3
+    max_retries: 2
+
+# 任务复杂度映射
+task_complexity:
+  low:
+    max_tokens: 32768
+    temperature: 0.3
+    models: ["gemini-2.5-flash", "GLM-4.5-Flash", "deepseek-chat"]
+  
+  medium:
+    max_tokens: 65536
+    temperature: 0.5
+    models: ["deepseek-chat", "gemini-2.0-flash", "GLM-4.5-Air"]
+  
+  high:
+    max_tokens: 131072
+    temperature: 0.7
+    models: ["deepseek-reasoner", "gemini-2.5-pro", "GLM-4.5-Air"]
+
+# 成本控制策略
+cost_control:
+  session_limit: 1.00  # 每次会话最大成本（美元）
+  daily_limit: 10.00   # 每日最大成本
+  model_timeout: 60    # 模型响应超时时间（秒）
+  
+  # 成本优先级策略
+  cost_strategies:
+    cost_first:
+      weight_cost: 0.7
+      weight_performance: 0.3
+    balanced:
+      weight_cost: 0.5
+      weight_performance: 0.5
+    quality_first:
+      weight_cost: 0.2
+      weight_performance: 0.8
+
+# 时间策略配置
+time_strategies:
+  # 交易时间内使用高性能模型
+  market_hours:
+    - start: "09:30"
+      end: "16:00"
+      timezone: "America/New_York"
+      strategy: "quality_first"
+  
+  # 非交易时间使用成本优化
+  off_hours:
+    strategy: "cost_first"
+  
+  # 中国市场时间
+  china_market_hours:
+    - start: "09:30"
+      end: "11:30"
+      timezone: "Asia/Shanghai"
+      strategy: "quality_first"
+    - start: "13:00"
+      end: "15:00"
+      timezone: "Asia/Shanghai"
+      strategy: "quality_first"

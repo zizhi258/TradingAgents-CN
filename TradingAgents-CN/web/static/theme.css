@@ -1,0 +1,691 @@
+/*
+  TradingAgents-CN Enhanced Theme (Light)
+  现代 · 精致 · 高级感 · 用户体验优先
+*/
+
+:root{
+  --zen-bg: #FAFBFC;           /* 更现代的背景 */
+  --zen-surface: #FFFFFF;      /* 纯白卡片 */
+  --zen-surface-hover: #F8FAFC; /* 悬停状态 */
+  --zen-text: #1A202C;         /* 更深的主文本 */
+  --zen-text-secondary: #4A5568; /* 次级文本 */
+  --zen-muted: #718096;        /* 次级文本 */
+  --zen-border: #E2E8F0;       /* 细边框 */
+  --zen-border-light: #F1F5F9; /* 更淡的边框 */
+  --zen-accent: #0EA5A4;       /* 静谧青绿 */
+  --zen-accent-600: #0B8B8A;   /* 深一档 */
+  --zen-accent-light: #E6FFFA; /* 浅色强调 */
+  --zen-success: #22C55E;      /* 成功色 */
+  --zen-warning: #F59E0B;      /* 警告色 */
+  --zen-error: #EF4444;        /* 错误色 */
+  --zen-info: #3B82F6;         /* 信息色 */
+  
+  /* 阴影变量 */
+  --zen-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --zen-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --zen-shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --zen-shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --zen-shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  
+  /* 渐变 */
+  --zen-gradient-primary: linear-gradient(135deg, #0EA5A4 0%, #0B8B8A 100%);
+  --zen-gradient-surface: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+}
+
+/* 深色主题变量（根据 body.dark 应用） */
+body.dark, .stApp.dark{
+  --zen-bg: #0F172A;           /* 石板深蓝 */
+  --zen-surface: #1E293B;      /* 深灰卡片 */
+  --zen-surface-hover: #334155; /* 深色悬停 */
+  --zen-text: #F1F5F9;         /* 文字 */
+  --zen-text-secondary: #CBD5E1; /* 次级文字 */
+  --zen-muted: #94A3B8;        /* 次级文字 */
+  --zen-border: #334155;       /* 边框 */
+  --zen-border-light: #475569; /* 更亮的边框 */
+  --zen-accent: #22D3EE;       /* 青色强调 */
+  --zen-accent-600: #06B6D4;   /* 深一档 */
+  --zen-accent-light: #164E63; /* 深色强调背景 */
+  
+  /* 深色模式阴影 */
+  --zen-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+  --zen-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.25), 0 2px 4px -1px rgba(0, 0, 0, 0.15);
+  --zen-shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.25), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
+  --zen-shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.35), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+  --zen-shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+html, body, .stApp{
+  background: var(--zen-bg) !important;
+  color: var(--zen-text) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji" !important;
+  line-height: 1.6 !important;
+  font-size: 14px !important;
+}
+
+/* 全局平滑滚动 */
+html {
+  scroll-behavior: smooth;
+}
+
+/* 选择文本颜色 */
+::selection {
+  background-color: var(--zen-accent-light);
+  color: var(--zen-accent-600);
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--zen-border-light);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--zen-muted);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--zen-text-secondary);
+}
+
+/* 容器留白与可读性 */
+.main .block-container{
+  padding-top: 12px !important;
+  max-width: 1400px !important;
+  margin: 0 auto !important;
+}
+
+/* 现代化卡片系统 */
+.ta-card, .ta-section, [data-testid="stExpander"] {
+  background: var(--zen-gradient-surface) !important;
+  border: 1px solid var(--zen-border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--zen-shadow-sm) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  overflow: hidden !important;
+}
+
+.ta-card:hover, .ta-section:hover {
+  box-shadow: var(--zen-shadow-md) !important;
+  transform: translateY(-2px) !important;
+  border-color: var(--zen-accent) !important;
+}
+
+/* 毛玻璃效果 */
+.ta-glass {
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(10px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(150%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+body.dark .ta-glass {
+  background: rgba(30, 41, 59, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 顶部标题区：现代化 */
+.ta-hero{
+  background: var(--zen-gradient-surface);
+  border: 1px solid var(--zen-border);
+  border-radius: 20px;
+  padding: 24px 20px;
+  box-shadow: var(--zen-shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.ta-hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--zen-gradient-primary);
+}
+
+.ta-hero h1{ 
+  margin: 0 0 8px 0; 
+  font-size: 1.75rem; 
+  font-weight: 700; 
+  letter-spacing: -0.025em; 
+  background: var(--zen-gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.ta-hero p{ 
+  margin: 0; 
+  color: var(--zen-text-secondary); 
+  font-size: 1rem; 
+  font-weight: 400;
+}
+
+/* 顶栏导航容器（留白区） */
+.ta-topbar{ height: 12px; }
+
+/* 现代化浏览器标签导航 */
+div[role="radiogroup"]{ 
+  display: flex; 
+  flex-wrap: wrap; 
+  gap: 8px; 
+  padding: 16px 0;
+  background: var(--zen-surface);
+  border-radius: 16px;
+  box-shadow: var(--zen-shadow-sm);
+  margin-bottom: 16px;
+}
+
+div[role="radiogroup"] label{ margin: 0 !important; }
+div[role="radiogroup"] > div{ padding: 0 !important; }
+div[role="radiogroup"] [data-baseweb="tag"]{ display: none; }
+
+/* 隐藏默认radio样式 */
+div[role="radiogroup"] input[type="radio"]{ display: none; }
+div[role="radiogroup"] .stRadio>div{ display: flex; gap: 8px; }
+
+/* 彻底移除 BaseWeb 单选圆点与占位容器 */
+div[role="radiogroup"] [data-baseweb="radio"] > *:not(:last-child){
+  display: none !important;
+}
+.stRadio [role="radio"] > div:first-child,
+.stRadio [role="radio"] svg,
+.stRadio [role="radio"] span{
+  display: none !important;
+}
+.stRadio [role="radio"]{ margin: 0 !important; }
+
+/* 现代化标签外观 */
+.stRadio label > div{ 
+  background: var(--zen-surface); 
+  border: 2px solid var(--zen-border);
+  border-radius: 12px; 
+  padding: 12px 20px; 
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.stRadio label > div::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--zen-gradient-primary);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.stRadio label p{ 
+  margin: 0; 
+  color: var(--zen-text-secondary); 
+  font-weight: 500; 
+  font-size: 0.9rem;
+  position: relative;
+  z-index: 1;
+  transition: color 0.3s ease;
+}
+
+/* 悬停效果 */
+.stRadio label:hover > div {
+  transform: translateY(-2px);
+  box-shadow: var(--zen-shadow-md);
+  border-color: var(--zen-accent);
+}
+
+/* 选中状态 */
+.stRadio [aria-checked="true"] > div{ 
+  background: var(--zen-accent);
+  border-color: var(--zen-accent);
+  box-shadow: var(--zen-shadow-md);
+  transform: translateY(-1px);
+}
+
+.stRadio [aria-checked="true"] > div::before {
+  opacity: 1;
+}
+
+.stRadio [aria-checked="true"] p{ 
+  color: white !important; 
+  font-weight: 600; 
+}
+
+/* 顶部标签吸顶与更协调的间距 */
+.ta-tabbar-sticky{ position: sticky; top: 4px; z-index: 10; }
+.stRadio label > div{ transition: box-shadow .15s ease, transform .12s ease; }
+.stRadio label:hover > div{ box-shadow: 0 4px 10px rgba(0,0,0,.06); transform: translateY(-1px); }
+
+/* 徽章（尽量收敛视觉） */
+.ta-badges{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.ta-badge{
+  background: #F3F4F6;
+  color: #374151;
+  border:1px solid var(--zen-border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: .8rem;
+}
+
+/* 可选信息卡（更素雅） */
+.ta-grid{ display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:10px; margin-top: 8px; }
+@media (max-width: 1200px){ .ta-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 768px){ .ta-grid{ grid-template-columns: 1fr; } }
+
+.ta-card{
+  background: var(--zen-surface);
+  border: 1px solid var(--zen-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.ta-card h4{ margin: 0 0 6px 0; font-size: .95rem; font-weight: 600; }
+.ta-card p{ margin: 0; color: var(--zen-muted); font-size: .86rem; }
+
+/* 现代化按钮系统 */
+.ta-btn, button[kind="primary"], button[kind="secondary"], .stButton > button { 
+  appearance: none !important; 
+  border: none !important; 
+  cursor: pointer !important; 
+  padding: 12px 24px !important; 
+  border-radius: 12px !important; 
+  font-weight: 600 !important; 
+  font-size: 0.9rem !important; 
+  display: inline-flex !important; 
+  align-items: center !important; 
+  justify-content: center !important;
+  gap: 8px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  min-height: 44px !important;
+}
+
+/* 主要按钮 */
+.ta-btn.primary, button[kind="primary"] { 
+  background: var(--zen-gradient-primary) !important; 
+  color: white !important;
+  box-shadow: var(--zen-shadow) !important;
+}
+
+.ta-btn.primary:hover, button[kind="primary"]:hover { 
+  transform: translateY(-2px) !important;
+  box-shadow: var(--zen-shadow-lg) !important;
+}
+
+.ta-btn.primary:active, button[kind="primary"]:active {
+  transform: translateY(0) !important;
+  box-shadow: var(--zen-shadow) !important;
+}
+
+/* 次要按钮 */
+.ta-btn.secondary, button[kind="secondary"], .stButton > button { 
+  background: var(--zen-surface) !important; 
+  color: var(--zen-text) !important; 
+  border: 2px solid var(--zen-border) !important;
+  box-shadow: var(--zen-shadow-sm) !important;
+}
+
+.ta-btn.secondary:hover, button[kind="secondary"]:hover, .stButton > button:hover { 
+  background: var(--zen-surface-hover) !important;
+  border-color: var(--zen-accent) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--zen-shadow) !important;
+}
+
+/* 危险按钮 */
+.ta-btn.danger {
+  background: var(--zen-error) !important;
+  color: white !important;
+  box-shadow: var(--zen-shadow) !important;
+}
+
+.ta-btn.danger:hover {
+  background: #DC2626 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: var(--zen-shadow-lg) !important;
+}
+
+/* 按钮内的图标 */
+.ta-btn svg, button svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+/* 折叠面板与内容区 */
+[data-testid="stExpander"]{ border:1px solid var(--zen-border) !important; border-radius: 10px !important; background: var(--zen-surface) !important; }
+[data-testid="stExpander"] [data-testid="stMarkdownContainer"]{ color: var(--zen-text) !important; }
+
+/* 结果模块 */
+.ta-section{ background: var(--zen-surface); border:1px solid var(--zen-border); border-radius:10px; padding:12px 14px; margin:10px 0; }
+.ta-section h3{ margin-top:0; }
+
+/* 小工具类 */
+.ta-muted{ color: var(--zen-muted) !important; }
+
+/* 现代化标签页 */
+.stTabs [role="tab"] { 
+  color: var(--zen-text-secondary) !important; 
+  font-weight: 500 !important;
+  padding: 12px 20px !important;
+  border-radius: 8px 8px 0 0 !important;
+  background: transparent !important;
+  border: 2px solid transparent !important;
+  transition: all 0.3s ease !important;
+}
+
+.stTabs [role="tab"]:hover {
+  background: var(--zen-surface-hover) !important;
+  color: var(--zen-text) !important;
+}
+
+.stTabs [role="tab"][aria-selected="true"] { 
+  color: var(--zen-accent) !important; 
+  border-bottom: 3px solid var(--zen-accent) !important;
+  background: var(--zen-surface) !important;
+  font-weight: 600 !important;
+}
+
+/* 现代化数据表格 */
+div[data-testid="stDataFrame"], .stDataFrame {
+  border: 1px solid var(--zen-border) !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  box-shadow: var(--zen-shadow-sm) !important;
+}
+
+div[data-testid="stDataFrame"] table {
+  background: var(--zen-surface) !important;
+}
+
+div[data-testid="stDataFrame"] th {
+  background: var(--zen-surface-hover) !important;
+  color: var(--zen-text) !important;
+  font-weight: 600 !important;
+  padding: 12px !important;
+  border-bottom: 2px solid var(--zen-border) !important;
+}
+
+div[data-testid="stDataFrame"] td {
+  padding: 10px 12px !important;
+  border-bottom: 1px solid var(--zen-border-light) !important;
+}
+
+div[data-testid="stDataFrame"] tr:hover {
+  background: var(--zen-surface-hover) !important;
+}
+
+/* 改进的布局和间距 */
+div[data-testid="stHorizontalBlock"] { 
+  gap: 16px !important; 
+}
+
+div[data-testid="stVerticalBlock"] > div {
+  gap: 12px !important;
+}
+
+/* 现代化进度条 */
+.stProgress > div > div {
+  background: var(--zen-gradient-primary) !important;
+  border-radius: 8px !important;
+}
+
+.stProgress > div {
+  background: var(--zen-border-light) !important;
+  border-radius: 8px !important;
+  height: 8px !important;
+}
+
+/* 现代化警告和信息框 */
+.stAlert {
+  border-radius: 12px !important;
+  border: none !important;
+  padding: 16px !important;
+  box-shadow: var(--zen-shadow-sm) !important;
+}
+
+.stAlert[data-baseweb="notification"][kind="info"] {
+  background: rgba(59, 130, 246, 0.1) !important;
+  color: var(--zen-info) !important;
+}
+
+.stAlert[data-baseweb="notification"][kind="success"] {
+  background: rgba(34, 197, 94, 0.1) !important;
+  color: var(--zen-success) !important;
+}
+
+.stAlert[data-baseweb="notification"][kind="warning"] {
+  background: rgba(245, 158, 11, 0.1) !important;
+  color: var(--zen-warning) !important;
+}
+
+.stAlert[data-baseweb="notification"][kind="error"] {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: var(--zen-error) !important;
+}
+
+/* 现代化表单输入 */
+input, textarea, select, .stSelectbox > div > div, .stTextInput > div > div, .stTextArea > div > div {
+  border-radius: 12px !important;
+  border: 2px solid var(--zen-border) !important;
+  background: var(--zen-surface) !important;
+  color: var(--zen-text) !important;
+  font-size: 14px !important;
+  padding: 12px 16px !important;
+  transition: all 0.3s ease !important;
+  box-shadow: var(--zen-shadow-sm) !important;
+}
+
+input:focus, textarea:focus, select:focus, .stSelectbox > div > div:focus-within, .stTextInput > div > div:focus-within {
+  outline: none !important;
+  border-color: var(--zen-accent) !important;
+  box-shadow: 0 0 0 3px rgba(14, 165, 164, 0.1) !important;
+}
+
+/* 选择框样式 */
+.stSelectbox > div > div {
+  min-height: 44px !important;
+}
+
+/* 多选框样式 */
+.stMultiSelect > div > div {
+  border-radius: 12px !important;
+  border: 2px solid var(--zen-border) !important;
+  min-height: 44px !important;
+}
+
+/* 数字输入框 */
+.stNumberInput > div > div {
+  border-radius: 12px !important;
+  border: 2px solid var(--zen-border) !important;
+}
+
+/* 日期输入框 */
+.stDateInput > div > div {
+  border-radius: 12px !important;
+  border: 2px solid var(--zen-border) !important;
+}
+
+/* 滑块样式 */
+.stSlider > div > div > div {
+  background: var(--zen-accent) !important;
+}
+
+/* 复选框样式 */
+.stCheckbox > label > div > div {
+  border-radius: 4px !important;
+  border: 2px solid var(--zen-border) !important;
+}
+
+.stCheckbox > label > div > div[data-checked="true"] {
+  background: var(--zen-accent) !important;
+  border-color: var(--zen-accent) !important;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .ta-grid { 
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important; 
+  }
+  
+  .main .block-container {
+    max-width: 100% !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .ta-grid { 
+    grid-template-columns: 1fr !important; 
+  }
+  
+  .stRadio label > div {
+    padding: 8px 12px !important;
+    font-size: 0.8rem !important;
+  }
+  
+  .ta-hero h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  div[role="radiogroup"] {
+    gap: 4px !important;
+    padding: 12px 8px !important;
+  }
+  
+  .main .block-container {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+}
+
+/* 现代化加载动画 */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 应用动画到元素 */
+.ta-card, .ta-section {
+  animation: slideInUp 0.6s ease-out;
+}
+
+.stAlert {
+  animation: slideInUp 0.4s ease-out;
+}
+
+/* 现代化阴影层级 */
+.ta-elevation-1 {
+  box-shadow: var(--zen-shadow-sm) !important;
+}
+
+.ta-elevation-2 {
+  box-shadow: var(--zen-shadow) !important;
+}
+
+.ta-elevation-3 {
+  box-shadow: var(--zen-shadow-md) !important;
+}
+
+.ta-elevation-4 {
+  box-shadow: var(--zen-shadow-lg) !important;
+}
+
+.ta-elevation-5 {
+  box-shadow: var(--zen-shadow-xl) !important;
+}
+
+/* 现代化徽章系统 */
+.ta-badges { 
+  display: flex; 
+  gap: 8px; 
+  flex-wrap: wrap; 
+  margin-top: 12px; 
+}
+
+.ta-badge {
+  background: var(--zen-accent-light);
+  color: var(--zen-accent);
+  border: 1px solid var(--zen-accent);
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.ta-badge:hover {
+  background: var(--zen-accent);
+  color: white;
+  transform: scale(1.05);
+}
+
+/* 状态徽章 */
+.ta-badge.success {
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--zen-success);
+  border-color: var(--zen-success);
+}
+
+.ta-badge.warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--zen-warning);
+  border-color: var(--zen-warning);
+}
+
+.ta-badge.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--zen-error);
+  border-color: var(--zen-error);
+}
+
+.ta-badge.info {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--zen-info);
+  border-color: var(--zen-info);
+}
+
+/* 顶部导航容器贴合 */
+.ta-tabbar-sticky { 
+  backdrop-filter: saturate(150%) blur(10px) !important;
+  -webkit-backdrop-filter: saturate(150%) blur(10px) !important;
+  position: sticky !important;
+  top: 4px !important;
+  z-index: 10 !important;
+  border-radius: 16px !important;
+  margin-bottom: 8px !important;
+}

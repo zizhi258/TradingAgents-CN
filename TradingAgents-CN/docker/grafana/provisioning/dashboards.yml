@@ -1,0 +1,50 @@
+# =============================================================================
+# Grafana Dashboard Provisioning Configuration
+# =============================================================================
+
+apiVersion: 1
+
+providers:
+  # TradingAgents-CN Dashboards
+  - name: 'tradingagents-dashboards'
+    orgId: 1
+    folder: 'TradingAgents-CN'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/tradingagents
+
+  # Infrastructure Dashboards
+  - name: 'infrastructure-dashboards'
+    orgId: 1
+    folder: 'Infrastructure'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/infrastructure
+
+  # Application Monitoring
+  - name: 'application-dashboards'
+    orgId: 1
+    folder: 'Applications'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/applications
+
+  # Business Metrics
+  - name: 'business-dashboards'
+    orgId: 1
+    folder: 'Business Metrics'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/business

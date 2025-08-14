@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>【{{ stock_symbol }}】股票分析报告 - {{ analysis_date }}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "微软雅黑", sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .summary-card {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid #e9ecef;
+        }
+        .summary-card h2 {
+            margin-top: 0;
+            color: #495057;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+        }
+        .decision-box {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .metric {
+            text-align: center;
+            flex: 1;
+            min-width: 150px;
+            margin: 10px;
+        }
+        .metric-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .metric-label {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .action-buy { color: #28a745; }
+        .action-hold { color: #ffc107; }
+        .action-sell { color: #dc3545; }
+        .confidence-high { color: #28a745; }
+        .confidence-medium { color: #ffc107; }
+        .confidence-low { color: #dc3545; }
+        .risk-low { color: #28a745; }
+        .risk-medium { color: #ffc107; }
+        .risk-high { color: #dc3545; }
+        .analysis-section {
+            margin: 30px 0;
+        }
+        .analysis-section h3 {
+            color: #495057;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .analysis-content {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-family: Consolas, Monaco, 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 12px;
+            border-top: 1px solid #e9ecef;
+        }
+        .disclaimer {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #856404;
+        }
+        .disclaimer strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+        @media (max-width: 600px) {
+            .header h1 { font-size: 24px; }
+            .metric-value { font-size: 24px; }
+            .content { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 页眉 -->
+        <div class="header">
+            <h1>【{{ stock_symbol }}】股票分析报告</h1>
+            <p>分析日期：{{ analysis_date }} | TradingAgents-CN 智能分析系统</p>
+        </div>
+        
+        <!-- 内容主体 -->
+        <div class="content">
+            <!-- 投资建议摘要 -->
+            <div class="summary-card">
+                <h2>📊 投资决策摘要</h2>
+                <div class="decision-box">
+                    <div class="metric">
+                        <div class="metric-label">推荐操作</div>
+                        <div class="metric-value {% if decision.action == '买入' %}action-buy{% elif decision.action == '持有' %}action-hold{% else %}action-sell{% endif %}">
+                            {{ decision.action }}
+                        </div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">信心指数</div>
+                        <div class="metric-value {% if decision.confidence >= 0.8 %}confidence-high{% elif decision.confidence >= 0.5 %}confidence-medium{% else %}confidence-low{% endif %}">
+                            {{ "%.1f%%"|format(decision.confidence * 100) }}
+                        </div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">风险评分</div>
+                        <div class="metric-value {% if decision.risk_score <= 0.3 %}risk-low{% elif decision.risk_score <= 0.6 %}risk-medium{% else %}risk-high{% endif %}">
+                            {{ "%.1f%%"|format(decision.risk_score * 100) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 核心观点 -->
+            <div class="analysis-section">
+                <h3>💡 核心投资观点</h3>
+                <p>{{ decision.reasoning }}</p>
+            </div>
+            
+            <!-- 详细分析 -->
+            <div class="analysis-section">
+                <h3>📈 详细分析报告</h3>
+                <div class="analysis-content">{{ full_analysis }}</div>
+            </div>
+            
+            <!-- 风险提示 -->
+            <div class="disclaimer">
+                <strong>⚠️ 重要风险提示</strong>
+                本报告由 TradingAgents-CN 智能分析系统自动生成，仅供参考，不构成任何投资建议。股市有风险，投资需谨慎。在做出任何投资决策前，请务必进行独立研究并咨询专业的财务顾问。
+            </div>
+        </div>
+        
+        <!-- 页脚 -->
+        <div class="footer">
+            <p>本邮件由 TradingAgents-CN 自动发送，请勿直接回复</p>
+            <p>如需退订，请登录系统管理您的订阅设置</p>
+            <p>&copy; 2024 TradingAgents-CN. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

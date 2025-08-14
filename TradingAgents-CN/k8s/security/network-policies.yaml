@@ -1,0 +1,782 @@
+# =============================================================================
+# Comprehensive Network Security Policies for TradingAgents-CN
+# Zero-trust network segmentation and traffic controls
+# =============================================================================
+
+# =============================================================================
+# Default Deny All Network Policy
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: tradingagents-cn
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+
+---
+# =============================================================================
+# API Service Network Policy
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-service-network-policy
+  namespace: tradingagents-cn
+spec:
+  podSelector:
+    matchLabels:
+      app: tradingagents-api
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  ingress:
+  # Allow traffic from Istio ingress gateway
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: istio-system
+    - podSelector:
+        matchLabels:
+          app: istio-ingressgateway
+    ports:
+    - protocol: TCP
+      port: 8000
+
+  # Allow traffic from web service
+  - from:
+    - podSelector:
+        matchLabels:
+          app: tradingagents-web
+    ports:
+    - protocol: TCP
+      port: 8000
+
+  # Allow traffic from other API instances (for load balancing)
+  - from:
+    - podSelector:
+        matchLabels:
+          app: tradingagents-api
+    ports:
+    - protocol: TCP
+      port: 8000
+
+  # Allow monitoring traffic
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9090  # Metrics port
+
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+  # Allow HTTPS outbound for external APIs
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+
+  # Allow database connections
+  - to:
+    - podSelector:
+        matchLabels:
+          app: mongodb
+    ports:
+    - protocol: TCP
+      port: 27017
+
+  # Allow cache connections
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+
+  # Allow Vault connections
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: vault
+    ports:
+    - protocol: TCP
+      port: 8200
+
+---
+# =============================================================================
+# Web Service Network Policy
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: web-service-network-policy
+  namespace: tradingagents-cn
+spec:
+  podSelector:
+    matchLabels:
+      app: tradingagents-web
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  ingress:
+  # Allow traffic from Istio ingress gateway
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: istio-system
+    - podSelector:
+        matchLabels:
+          app: istio-ingressgateway
+    ports:
+    - protocol: TCP
+      port: 8501
+
+  # Allow monitoring traffic
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 8501  # Health check endpoint
+
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+  # Allow communication with API service
+  - to:
+    - podSelector:
+        matchLabels:
+          app: tradingagents-api
+    ports:
+    - protocol: TCP
+      port: 8000
+
+  # Allow cache connections
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+
+  # Allow Vault connections
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: vault
+    ports:
+    - protocol: TCP
+      port: 8200
+
+---
+# =============================================================================
+# Worker Service Network Policy
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: worker-service-network-policy
+  namespace: tradingagents-cn
+spec:
+  podSelector:
+    matchLabels:
+      app: tradingagents-worker
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  ingress:
+  # Allow monitoring traffic
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9090  # Metrics port
+
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+  # Allow HTTPS outbound for external APIs
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+
+  # Allow database connections
+  - to:
+    - podSelector:
+        matchLabels:
+          app: mongodb
+    ports:
+    - protocol: TCP
+      port: 27017
+
+  # Allow cache connections
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+
+  # Allow Vault connections
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: vault
+    ports:
+    - protocol: TCP
+      port: 8200
+
+  # Allow SMTP for notifications
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 587
+    - protocol: TCP
+      port: 25
+
+---
+# =============================================================================
+# Database Network Policy
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mongodb-network-policy
+  namespace: tradingagents-cn
+spec:
+  podSelector:
+    matchLabels:
+      app: mongodb
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  ingress:
+  # Allow connections from application services
+  - from:
+    - podSelector:
+        matchLabels:
+          app: tradingagents-api
+    - podSelector:
+        matchLabels:
+          app: tradingagents-worker
+    ports:
+    - protocol: TCP
+      port: 27017
+
+  # Allow connections from backup/maintenance pods
+  - from:
+    - podSelector:
+        matchLabels:
+          role: database-maintenance
+    ports:
+    - protocol: TCP
+      port: 27017
+
+  # Allow monitoring connections
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 27017
+
+  # Allow inter-replica communication
+  - from:
+    - podSelector:
+        matchLabels:
+          app: mongodb
+    ports:
+    - protocol: TCP
+      port: 27017
+
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+
+  # Allow replica set communication
+  - to:
+    - podSelector:
+        matchLabels:
+          app: mongodb
+    ports:
+    - protocol: TCP
+      port: 27017
+
+---
+# =============================================================================
+# Cache Network Policy
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-network-policy
+  namespace: tradingagents-cn
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  ingress:
+  # Allow connections from application services
+  - from:
+    - podSelector:
+        matchLabels:
+          app: tradingagents-api
+    - podSelector:
+        matchLabels:
+          app: tradingagents-web
+    - podSelector:
+        matchLabels:
+          app: tradingagents-worker
+    ports:
+    - protocol: TCP
+      port: 6379
+
+  # Allow monitoring connections
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 6379
+
+  # Allow inter-replica communication
+  - from:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+
+  # Allow replica communication
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+
+---
+# =============================================================================
+# Istio Service Mesh Network Policy
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: istio-sidecar-network-policy
+  namespace: tradingagents-cn
+spec:
+  podSelector:
+    matchExpressions:
+    - key: sidecar.istio.io/inject
+      operator: In
+      values: ["true"]
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  ingress:
+  # Allow Istio control plane communication
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: istio-system
+    ports:
+    - protocol: TCP
+      port: 15090  # Pilot discovery
+    - protocol: TCP
+      port: 15021  # Health check
+
+  # Allow sidecar proxy traffic
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 15001  # Envoy proxy
+
+  egress:
+  # Allow communication to Istio control plane
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: istio-system
+    ports:
+    - protocol: TCP
+      port: 15010  # Pilot
+    - protocol: TCP
+      port: 15011  # Pilot secure
+
+  # Allow sidecar proxy communication
+  - to:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 15001
+
+---
+# =============================================================================
+# Emergency Break-Glass Network Policy
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: emergency-isolation-policy
+  namespace: tradingagents-cn
+  labels:
+    emergency: "true"
+spec:
+  podSelector:
+    matchLabels:
+      app: tradingagents-api
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  # Deny all traffic (break-glass scenario)
+  ingress: []
+  egress: []
+
+---
+# =============================================================================
+# Monitoring and Observability Network Policy
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: monitoring-access-policy
+  namespace: tradingagents-cn
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  
+  ingress:
+  # Allow Prometheus to scrape metrics
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
+    ports:
+    - protocol: TCP
+      port: 9090
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8000
+    - protocol: TCP
+      port: 8501
+
+  # Allow Jaeger to collect traces
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: jaeger
+    ports:
+    - protocol: TCP
+      port: 14268
+    - protocol: TCP
+      port: 6831
+    - protocol: UDP
+      port: 6831
+
+---
+# =============================================================================
+# External Traffic Network Policy
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: external-api-access-policy
+  namespace: tradingagents-cn
+spec:
+  podSelector:
+    matchExpressions:
+    - key: app
+      operator: In
+      values: ["tradingagents-api", "tradingagents-worker"]
+  policyTypes:
+  - Egress
+  
+  egress:
+  # Allow HTTPS to external APIs (OpenAI, Finnhub, etc.)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+
+  # Restrict to specific external services (optional)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    namespaceSelector: {}
+    podSelector: {}
+
+---
+# =============================================================================
+# Development/Testing Network Policy
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: development-access-policy
+  namespace: tradingagents-cn
+  labels:
+    environment: development
+spec:
+  podSelector:
+    matchLabels:
+      environment: development
+  policyTypes:
+  - Ingress
+  
+  ingress:
+  # Allow development access from specific IP ranges
+  - from: []
+    ports:
+    - protocol: TCP
+      port: 8000
+    - protocol: TCP
+      port: 8501
+  
+  # This policy should be removed in production
+
+---
+# =============================================================================
+# Security Policy Validation Job
+# =============================================================================
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: network-policy-validation
+  namespace: tradingagents-cn
+spec:
+  schedule: "0 */6 * * *"  # Every 6 hours
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: network-policy-validator
+          containers:
+          - name: validator
+            image: bitnami/kubectl:latest
+            command:
+            - /bin/bash
+            - -c
+            - |
+              #!/bin/bash
+              set -euo pipefail
+              
+              echo "Starting network policy validation..."
+              
+              # Check that default deny policy exists
+              if kubectl get networkpolicy default-deny-all -n tradingagents-cn >/dev/null 2>&1; then
+                echo "✓ Default deny policy exists"
+              else
+                echo "✗ Default deny policy missing - CRITICAL SECURITY ISSUE"
+                exit 1
+              fi
+              
+              # Validate that all pods have appropriate network policies
+              PODS_WITHOUT_POLICIES=0
+              
+              for pod in $(kubectl get pods -n tradingagents-cn -o jsonpath='{.items[*].metadata.name}'); do
+                APP_LABEL=$(kubectl get pod "$pod" -n tradingagents-cn -o jsonpath='{.metadata.labels.app}')
+                
+                if [[ -n "$APP_LABEL" ]]; then
+                  if kubectl get networkpolicy -n tradingagents-cn -o json | jq -r '.items[].spec.podSelector.matchLabels.app' | grep -q "^$APP_LABEL$"; then
+                    echo "✓ Pod $pod ($APP_LABEL) has network policy"
+                  else
+                    echo "✗ Pod $pod ($APP_LABEL) missing network policy"
+                    PODS_WITHOUT_POLICIES=$((PODS_WITHOUT_POLICIES + 1))
+                  fi
+                fi
+              done
+              
+              if [[ $PODS_WITHOUT_POLICIES -gt 0 ]]; then
+                echo "Found $PODS_WITHOUT_POLICIES pods without network policies"
+                exit 1
+              fi
+              
+              # Test network connectivity (basic checks)
+              echo "Testing network connectivity..."
+              
+              # Test that API can reach database
+              if kubectl run connectivity-test --image=busybox --rm -i --restart=Never -n tradingagents-cn -- \
+                nc -z mongodb-service 27017; then
+                echo "✓ API to MongoDB connectivity test passed"
+              else
+                echo "✗ API to MongoDB connectivity test failed"
+              fi
+              
+              echo "Network policy validation completed successfully"
+          
+          restartPolicy: OnFailure
+
+---
+# =============================================================================
+# Service Account for Network Policy Validation
+# =============================================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: network-policy-validator
+  namespace: tradingagents-cn
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: network-policy-reader
+  namespace: tradingagents-cn
+rules:
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "create", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: network-policy-validator-binding
+  namespace: tradingagents-cn
+subjects:
+- kind: ServiceAccount
+  name: network-policy-validator
+  namespace: tradingagents-cn
+roleRef:
+  kind: Role
+  name: network-policy-reader
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# =============================================================================
+# Network Policy Monitoring ServiceMonitor
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: networkpolicy-metrics
+  namespace: tradingagents-cn
+  labels:
+    app: network-policy-monitoring
+spec:
+  selector:
+    matchLabels:
+      app: network-policy-exporter
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+
+---
+# =============================================================================
+# AlertManager Rules for Network Policy Violations
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: network-policy-alerts
+  namespace: tradingagents-cn
+  labels:
+    prometheus: tradingagents
+    role: alert-rules
+spec:
+  groups:
+  - name: networkpolicy.rules
+    rules:
+    - alert: NetworkPolicyViolation
+      expr: increase(networkpolicy_violations_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: warning
+        component: network-security
+      annotations:
+        summary: "Network policy violation detected"
+        description: "Network policy violation detected: {{ $labels.source_pod }} attempted to connect to {{ $labels.destination_pod }} but was blocked"
+        runbook_url: "https://runbooks.tradingagents.com/network-policy-violation"
+
+    - alert: DefaultNetworkPolicyMissing
+      expr: absent(kube_networkpolicy_info{networkpolicy="default-deny-all",namespace="tradingagents-cn"})
+      for: 5m
+      labels:
+        severity: critical
+        component: network-security
+      annotations:
+        summary: "Default deny network policy missing"
+        description: "The default deny-all network policy is missing from the tradingagents-cn namespace"
+        runbook_url: "https://runbooks.tradingagents.com/default-network-policy-missing"
+
+    - alert: PodWithoutNetworkPolicy
+      expr: count by (namespace, pod) (kube_pod_info{namespace="tradingagents-cn"}) unless on (namespace, pod) count by (namespace, pod) (kube_networkpolicy_spec_pod_selector_match_labels)
+      for: 15m
+      labels:
+        severity: warning
+        component: network-security
+      annotations:
+        summary: "Pod without network policy"
+        description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} does not have an associated network policy"
+        runbook_url: "https://runbooks.tradingagents.com/pod-without-network-policy"

@@ -1,0 +1,51 @@
+{
+  "A股示例": {
+    "600036": {
+      "name": "招商银行",
+      "market": "A股",
+      "data": {
+        "symbol": "600036",
+        "close": 37.85,
+        "open": 37.2,
+        "high": 38.1,
+        "low": 36.95,
+        "volume": 12450000,
+        "change": 0.65,
+        "change_pct": 1.75,
+        "date": "2025-01-08"
+      }
+    },
+    "000001": {
+      "name": "平安银行",
+      "market": "A股",
+      "data": {
+        "symbol": "000001",
+        "close": 13.24,
+        "open": 13.1,
+        "high": 13.35,
+        "low": 13.05,
+        "volume": 8960000,
+        "change": 0.14,
+        "change_pct": 1.07,
+        "date": "2025-01-08"
+      }
+    }
+  },
+  "美股示例": {
+    "AAPL": {
+      "name": "Apple Inc.",
+      "market": "美股",
+      "data": {
+        "symbol": "AAPL",
+        "close": 182.5,
+        "open": 180.2,
+        "high": 183.75,
+        "low": 179.85,
+        "volume": 45230000,
+        "change": 2.3,
+        "change_pct": 1.28,
+        "date": "2025-01-08"
+      }
+    }
+  }
+}

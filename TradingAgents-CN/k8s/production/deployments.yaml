@@ -1,0 +1,556 @@
+# =============================================================================
+# Production API Deployment - Blue-Green Configuration
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tradingagents-api-COLOR_PLACEHOLDER
+  namespace: tradingagents-cn
+  labels:
+    app: tradingagents-api
+    version: COLOR_PLACEHOLDER
+    component: backend
+    tier: api
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: tradingagents-api
+      version: COLOR_PLACEHOLDER
+  template:
+    metadata:
+      labels:
+        app: tradingagents-api
+        version: COLOR_PLACEHOLDER
+        component: backend
+        tier: api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+        sidecar.istio.io/inject: "true"
+        sidecar.istio.io/proxyCPU: "100m"
+        sidecar.istio.io/proxyMemory: "128Mi"
+    spec:
+      serviceAccountName: tradingagents-service-account
+      priorityClassName: tradingagents-high-priority
+      
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      
+      containers:
+      - name: api
+        image: registry.example.com/tradingagents-cn-api:IMAGE_TAG_PLACEHOLDER
+        imagePullPolicy: Always
+        
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        
+        envFrom:
+        - configMapRef:
+            name: tradingagents-config
+        - secretRef:
+            name: tradingagents-secrets-COLOR_PLACEHOLDER
+        
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+            ephemeral-storage: "1Gi"
+          limits:
+            cpu: "2000m"
+            memory: "4Gi"
+            ephemeral-storage: "5Gi"
+        
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+        
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+          successThreshold: 1
+        
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 12
+          successThreshold: 1
+        
+        volumeMounts:
+        - name: app-data
+          mountPath: /app/data
+        - name: app-logs
+          mountPath: /app/logs
+        - name: app-reports
+          mountPath: /app/reports
+        - name: tmp-volume
+          mountPath: /tmp
+        - name: var-tmp-volume
+          mountPath: /var/tmp
+      
+      volumes:
+      - name: app-data
+        persistentVolumeClaim:
+          claimName: tradingagents-data-pvc
+      - name: app-logs
+        persistentVolumeClaim:
+          claimName: tradingagents-logs-pvc
+      - name: app-reports
+        persistentVolumeClaim:
+          claimName: tradingagents-reports-pvc
+      - name: tmp-volume
+        emptyDir: {}
+      - name: var-tmp-volume
+        emptyDir: {}
+      
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - tradingagents-api
+              topologyKey: kubernetes.io/hostname
+      
+      tolerations:
+      - key: "node.kubernetes.io/not-ready"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 300
+      - key: "node.kubernetes.io/unreachable"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 300
+      
+      terminationGracePeriodSeconds: 60
+      
+      imagePullSecrets:
+      - name: registry-credentials
+---
+# =============================================================================
+# Production Web Deployment - Blue-Green Configuration
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tradingagents-web-COLOR_PLACEHOLDER
+  namespace: tradingagents-cn
+  labels:
+    app: tradingagents-web
+    version: COLOR_PLACEHOLDER
+    component: frontend
+    tier: web
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: tradingagents-web
+      version: COLOR_PLACEHOLDER
+  template:
+    metadata:
+      labels:
+        app: tradingagents-web
+        version: COLOR_PLACEHOLDER
+        component: frontend
+        tier: web
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8501"
+        prometheus.io/path: "/metrics"
+        sidecar.istio.io/inject: "true"
+        sidecar.istio.io/proxyCPU: "50m"
+        sidecar.istio.io/proxyMemory: "64Mi"
+    spec:
+      serviceAccountName: tradingagents-service-account
+      priorityClassName: tradingagents-medium-priority
+      
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      
+      containers:
+      - name: web
+        image: registry.example.com/tradingagents-cn-web:IMAGE_TAG_PLACEHOLDER
+        imagePullPolicy: Always
+        
+        ports:
+        - name: http
+          containerPort: 8501
+          protocol: TCP
+        
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        
+        envFrom:
+        - configMapRef:
+            name: tradingagents-config
+        - secretRef:
+            name: tradingagents-secrets-COLOR_PLACEHOLDER
+        
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "512Mi"
+            ephemeral-storage: "500Mi"
+          limits:
+            cpu: "1000m"
+            memory: "2Gi"
+            ephemeral-storage: "2Gi"
+        
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+        
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+          successThreshold: 1
+        
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 18
+          successThreshold: 1
+        
+        volumeMounts:
+        - name: app-data
+          mountPath: /app/data
+        - name: app-logs
+          mountPath: /app/logs
+        - name: app-reports
+          mountPath: /app/reports
+        - name: tmp-volume
+          mountPath: /tmp
+        - name: var-tmp-volume
+          mountPath: /var/tmp
+        - name: streamlit-cache
+          mountPath: /app/.streamlit
+      
+      volumes:
+      - name: app-data
+        persistentVolumeClaim:
+          claimName: tradingagents-data-pvc
+      - name: app-logs
+        persistentVolumeClaim:
+          claimName: tradingagents-logs-pvc
+      - name: app-reports
+        persistentVolumeClaim:
+          claimName: tradingagents-reports-pvc
+      - name: tmp-volume
+        emptyDir: {}
+      - name: var-tmp-volume
+        emptyDir: {}
+      - name: streamlit-cache
+        emptyDir: {}
+      
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - tradingagents-web
+              topologyKey: kubernetes.io/hostname
+      
+      tolerations:
+      - key: "node.kubernetes.io/not-ready"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 300
+      - key: "node.kubernetes.io/unreachable"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 300
+      
+      terminationGracePeriodSeconds: 30
+      
+      imagePullSecrets:
+      - name: registry-credentials
+---
+# =============================================================================
+# Production Worker Deployment
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tradingagents-worker-COLOR_PLACEHOLDER
+  namespace: tradingagents-cn
+  labels:
+    app: tradingagents-worker
+    version: COLOR_PLACEHOLDER
+    component: worker
+    tier: background
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: tradingagents-worker
+      version: COLOR_PLACEHOLDER
+  template:
+    metadata:
+      labels:
+        app: tradingagents-worker
+        version: COLOR_PLACEHOLDER
+        component: worker
+        tier: background
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+        sidecar.istio.io/inject: "false"  # Workers don't need service mesh
+    spec:
+      serviceAccountName: tradingagents-service-account
+      priorityClassName: tradingagents-medium-priority
+      
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      
+      containers:
+      - name: worker
+        image: registry.example.com/tradingagents-cn-api:IMAGE_TAG_PLACEHOLDER
+        imagePullPolicy: Always
+        
+        command: ["/usr/local/bin/api-entrypoint.sh", "worker"]
+        
+        ports:
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: CELERY_WORKER_CONCURRENCY
+          value: "4"
+        - name: CELERY_MAX_TASKS_PER_CHILD
+          value: "100"
+        - name: CELERY_TASK_TIME_LIMIT
+          value: "3600"
+        - name: CELERY_TASK_SOFT_TIME_LIMIT
+          value: "3000"
+        
+        envFrom:
+        - configMapRef:
+            name: tradingagents-config
+        - secretRef:
+            name: tradingagents-secrets-COLOR_PLACEHOLDER
+        
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "2Gi"
+            ephemeral-storage: "1Gi"
+          limits:
+            cpu: "2000m"
+            memory: "8Gi"
+            ephemeral-storage: "5Gi"
+        
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+        
+        livenessProbe:
+          exec:
+            command:
+            - celery
+            - -A
+            - tradingagents.services.worker
+            - inspect
+            - ping
+          initialDelaySeconds: 60
+          periodSeconds: 60
+          timeoutSeconds: 30
+          failureThreshold: 3
+        
+        readinessProbe:
+          exec:
+            command:
+            - celery
+            - -A
+            - tradingagents.services.worker
+            - inspect
+            - active
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 15
+          failureThreshold: 3
+        
+        volumeMounts:
+        - name: app-data
+          mountPath: /app/data
+        - name: app-logs
+          mountPath: /app/logs
+        - name: app-reports
+          mountPath: /app/reports
+        - name: tmp-volume
+          mountPath: /tmp
+        - name: var-tmp-volume
+          mountPath: /var/tmp
+      
+      volumes:
+      - name: app-data
+        persistentVolumeClaim:
+          claimName: tradingagents-data-pvc
+      - name: app-logs
+        persistentVolumeClaim:
+          claimName: tradingagents-logs-pvc
+      - name: app-reports
+        persistentVolumeClaim:
+          claimName: tradingagents-reports-pvc
+      - name: tmp-volume
+        emptyDir: {}
+      - name: var-tmp-volume
+        emptyDir: {}
+      
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: workload
+                operator: In
+                values:
+                - compute
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - tradingagents-worker
+              topologyKey: kubernetes.io/hostname
+      
+      tolerations:
+      - key: "workload"
+        operator: "Equal"
+        value: "compute"
+        effect: "NoSchedule"
+      
+      terminationGracePeriodSeconds: 300
+      
+      imagePullSecrets:
+      - name: registry-credentials

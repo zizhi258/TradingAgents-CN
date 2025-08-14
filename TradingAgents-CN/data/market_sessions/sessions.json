@@ -1,0 +1,393 @@
+[
+  {
+    "scan_id": "mock_scan_1883b316_20250809_004900",
+    "config": {
+      "market_type": "A股",
+      "preset_type": "大盘蓝筹",
+      "scan_depth": 3,
+      "budget_limit": 10.0,
+      "stock_limit": 100,
+      "time_range": "1月",
+      "custom_filters": {},
+      "analysis_focus": {
+        "technical": true,
+        "fundamental": true,
+        "valuation": true,
+        "news": false,
+        "sentiment": false,
+        "risk": true
+      },
+      "advanced_options": {
+        "enable_monitoring": true,
+        "enable_notification": false,
+        "save_intermediate": false
+      },
+      "submitted": true,
+      "estimate_requested": false,
+      "save_requested": false
+    },
+    "status": "error",
+    "created_at": "2025-08-09T00:49:00.841435",
+    "updated_at": "2025-08-09T01:00:53.111778",
+    "progress": 0,
+    "error_message": null,
+    "results_available": false,
+    "results_summary": null
+  },
+  {
+    "scan_id": "mock_scan_9168c9ec_20250809_010055",
+    "config": {
+      "market_type": "A股",
+      "preset_type": "沪深300",
+      "scan_depth": 3,
+      "budget_limit": 10.0,
+      "stock_limit": 100,
+      "time_range": "1月",
+      "custom_filters": {},
+      "analysis_focus": {
+        "technical": true,
+        "fundamental": true,
+        "valuation": true,
+        "news": false,
+        "sentiment": false,
+        "risk": true
+      },
+      "advanced_options": {
+        "enable_monitoring": true,
+        "enable_notification": false,
+        "save_intermediate": false
+      },
+      "submitted": true,
+      "estimate_requested": false,
+      "save_requested": false
+    },
+    "status": "error",
+    "created_at": "2025-08-09T01:00:55.966662",
+    "updated_at": "2025-08-09T01:18:37.904619",
+    "progress": 0,
+    "error_message": null,
+    "results_available": false,
+    "results_summary": null
+  },
+  {
+    "scan_id": "mock_scan_385ce337_20250809_011838",
+    "config": {
+      "market_type": "A股",
+      "preset_type": "大盘蓝筹",
+      "scan_depth": 3,
+      "budget_limit": 10.0,
+      "stock_limit": 100,
+      "time_range": "1月",
+      "custom_filters": {},
+      "analysis_focus": {
+        "technical": true,
+        "fundamental": true,
+        "valuation": true,
+        "news": true,
+        "sentiment": true,
+        "risk": true
+      },
+      "advanced_options": {
+        "enable_monitoring": true,
+        "enable_notification": true,
+        "save_intermediate": true
+      },
+      "submitted": true,
+      "estimate_requested": false,
+      "save_requested": false
+    },
+    "status": "error",
+    "created_at": "2025-08-09T01:18:38.442997",
+    "updated_at": "2025-08-09T03:29:20.763530",
+    "progress": 0,
+    "error_message": null,
+    "results_available": false,
+    "results_summary": null
+  },
+  {
+    "scan_id": "mock_scan_1ebd1064_20250809_032922",
+    "config": {
+      "market_type": "A股",
+      "preset_type": "沪深300",
+      "scan_depth": 3,
+      "budget_limit": 10.0,
+      "stock_limit": 100,
+      "time_range": "1月",
+      "custom_filters": {},
+      "analysis_focus": {
+        "technical": true,
+        "fundamental": true,
+        "valuation": true,
+        "news": false,
+        "sentiment": false,
+        "social": false,
+        "risk": true,
+        "liquidity": false,
+        "macro": false
+      },
+      "ai_model_config": {
+        "model": "siliconflow",
+        "use_ensemble": true,
+        "temperature": 0.3,
+        "max_tokens": 4000
+      },
+      "advanced_options": {
+        "enable_monitoring": true,
+        "enable_notification": false,
+        "save_intermediate": false,
+        "parallel_processing": true,
+        "auto_retry": true,
+        "cache_results": true
+      },
+      "submitted": true,
+      "estimate_requested": false,
+      "save_requested": false,
+      "validate_requested": false
+    },
+    "status": "error",
+    "created_at": "2025-08-09T03:29:22.434532",
+    "updated_at": "2025-08-09T15:29:11.322607",
+    "progress": 0,
+    "error_message": null,
+    "results_available": false,
+    "results_summary": null
+  },
+  {
+    "scan_id": "mock_scan_ccb23744_20250809_152913",
+    "config": {
+      "market_type": "A股",
+      "preset_type": "沪深300",
+      "scan_depth": 3,
+      "budget_limit": 10.0,
+      "stock_limit": 100,
+      "time_range": "1月",
+      "custom_filters": {},
+      "analysis_focus": {
+        "technical": true,
+        "fundamental": true,
+        "valuation": true,
+        "news": false,
+        "sentiment": false,
+        "social": false,
+        "risk": true,
+        "liquidity": false,
+        "macro": false
+      },
+      "ai_model_config": {
+        "model": "gemini-2.5-pro",
+        "use_ensemble": true,
+        "temperature": 0.3,
+        "max_tokens": 4000
+      },
+      "advanced_options": {
+        "enable_monitoring": true,
+        "enable_notification": false,
+        "save_intermediate": false,
+        "parallel_processing": true,
+        "auto_retry": true,
+        "cache_results": true
+      },
+      "submitted": true,
+      "estimate_requested": false,
+      "save_requested": false,
+      "validate_requested": false
+    },
+    "status": "error",
+    "created_at": "2025-08-09T15:29:13.352462",
+    "updated_at": "2025-08-09T16:29:19.884253",
+    "progress": 0,
+    "error_message": null,
+    "results_available": false,
+    "results_summary": null
+  },
+  {
+    "scan_id": "local_scan_a0bfcfdb_20250812_174807",
+    "config": {
+      "market_type": "A股",
+      "preset_type": "沪深300",
+      "scan_depth": 3,
+      "budget_limit": 10.0,
+      "stock_limit": 100,
+      "time_range": "1月",
+      "custom_filters": {},
+      "analysis_focus": {
+        "technical": true,
+        "fundamental": true,
+        "valuation": true,
+        "news": false,
+        "sentiment": false,
+        "social": false,
+        "risk": true,
+        "liquidity": false,
+        "macro": false
+      },
+      "ai_model_config": {
+        "model": "gemini-2.0-flash",
+        "use_ensemble": false,
+        "temperature": 0.3,
+        "max_tokens": 4000,
+        "config_override": {
+          "llm_provider": "google",
+          "quick_think_llm": "gemini-2.0-flash",
+          "deep_think_llm": "gemini-2.0-flash",
+          "online_tools": true,
+          "max_debate_rounds": 1
+        }
+      },
+      "advanced_options": {
+        "enable_monitoring": true,
+        "enable_notification": false,
+        "save_intermediate": false,
+        "parallel_processing": true,
+        "auto_retry": true,
+        "cache_results": true
+      },
+      "submitted": true,
+      "estimate_requested": false,
+      "save_requested": false,
+      "validate_requested": false
+    },
+    "status": "completed",
+    "created_at": "2025-08-12T17:48:07.035082",
+    "updated_at": "2025-08-12T17:51:50.631195",
+    "progress": 100,
+    "error_message": null,
+    "results_available": true,
+    "results_summary": {
+      "key_insights": [
+        "A股扫描完成：共评估10只股票，买入建议5只",
+        "市场广度上行占比70.0%",
+        "强势板块：金融, 制造, 科技"
+      ],
+      "investment_recommendations": {
+        "buy": [
+          {
+            "symbol": "000001",
+            "reason": "综合评分较高"
+          },
+          {
+            "symbol": "002594",
+            "reason": "综合评分较高"
+          },
+          {
+            "symbol": "600030",
+            "reason": "综合评分较高"
+          },
+          {
+            "symbol": "601988",
+            "reason": "综合评分较高"
+          },
+          {
+            "symbol": "601888",
+            "reason": "综合评分较高"
+          }
+        ],
+        "watch": []
+      },
+      "risk_factors": [
+        "个股波动与流动性风险需关注",
+        "模型数据受离线模式限制，建议结合实盘数据验证"
+      ],
+      "market_outlook": "短期或维持结构性机会，控制仓位、分散风险",
+      "scan_statistics": {
+        "completion_rate": 100,
+        "confidence_level": 80
+      }
+    }
+  },
+  {
+    "scan_id": "local_scan_c29f5b93_20250812_175735",
+    "config": {
+      "market_type": "A股",
+      "preset_type": "沪深300",
+      "scan_depth": 3,
+      "budget_limit": 10.0,
+      "stock_limit": 100,
+      "time_range": "1月",
+      "custom_filters": {},
+      "analysis_focus": {
+        "technical": true,
+        "fundamental": true,
+        "valuation": true,
+        "news": false,
+        "sentiment": false,
+        "social": false,
+        "risk": true,
+        "liquidity": false,
+        "macro": false
+      },
+      "ai_model_config": {
+        "model": "gemini-2.0-flash",
+        "use_ensemble": false,
+        "temperature": 0.3,
+        "max_tokens": 4000,
+        "config_override": {
+          "llm_provider": "google",
+          "quick_think_llm": "gemini-2.0-flash",
+          "deep_think_llm": "gemini-2.0-flash",
+          "online_tools": true,
+          "max_debate_rounds": 1
+        }
+      },
+      "advanced_options": {
+        "enable_monitoring": true,
+        "enable_notification": false,
+        "save_intermediate": false,
+        "parallel_processing": true,
+        "auto_retry": true,
+        "cache_results": true
+      },
+      "submitted": true,
+      "estimate_requested": false,
+      "save_requested": false,
+      "validate_requested": false
+    },
+    "status": "completed",
+    "created_at": "2025-08-12T17:57:35.169050",
+    "updated_at": "2025-08-12T18:02:09.096188",
+    "progress": 100,
+    "error_message": null,
+    "results_available": true,
+    "results_summary": {
+      "key_insights": [
+        "A股扫描完成：共评估10只股票，买入建议5只",
+        "市场广度上行占比70.0%",
+        "强势板块：科技, 制造, 医药"
+      ],
+      "investment_recommendations": {
+        "buy": [
+          {
+            "symbol": "600030",
+            "reason": "综合评分较高"
+          },
+          {
+            "symbol": "300750",
+            "reason": "综合评分较高"
+          },
+          {
+            "symbol": "002594",
+            "reason": "综合评分较高"
+          },
+          {
+            "symbol": "601012",
+            "reason": "综合评分较高"
+          },
+          {
+            "symbol": "601988",
+            "reason": "综合评分较高"
+          }
+        ],
+        "watch": []
+      },
+      "risk_factors": [
+        "个股波动与流动性风险需关注",
+        "模型数据受离线模式限制，建议结合实盘数据验证"
+      ],
+      "market_outlook": "短期或维持结构性机会，控制仓位、分散风险",
+      "scan_statistics": {
+        "completion_rate": 100,
+        "confidence_level": 80
+      }
+    }
+  }
+]

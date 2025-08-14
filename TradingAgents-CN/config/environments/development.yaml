@@ -1,0 +1,92 @@
+# =============================================================================
+# Development Environment Configuration
+# Local development with minimal resource requirements
+# =============================================================================
+
+description: "Local development environment with debug features enabled"
+
+config:
+  # Environment identification
+  ENVIRONMENT: "development"
+  DEBUG: true
+  LOG_LEVEL: "DEBUG"
+  
+  # Application settings
+  TZ: "Asia/Shanghai"
+  PYTHONUNBUFFERED: true
+  PYTHONDONTWRITEBYTECODE: true
+  
+  # Service endpoints (local development)
+  API_HOST: "localhost"
+  API_PORT: 8000
+  WEB_HOST: "localhost"
+  WEB_PORT: 8501
+  
+  # Database configuration (local)
+  MONGODB_HOST: "localhost"
+  MONGODB_PORT: 27017
+  MONGODB_DATABASE: "tradingagents_dev"
+  REDIS_HOST: "localhost"
+  REDIS_PORT: 6379
+  REDIS_DATABASE: 0
+  
+  # Cache settings
+  TRADINGAGENTS_CACHE_TYPE: "redis"
+  CACHE_DEFAULT_TIMEOUT: 1800  # 30 minutes
+  CACHE_MAX_SIZE: 100
+  
+  # AI Model settings (development limits)
+  MULTI_MODEL_ENABLED: true
+  ROUTING_STRATEGY: "cost_optimized"
+  DEFAULT_COLLABORATION_MODE: "sequential"
+  MAX_COST_PER_SESSION: 2.0
+  ENABLE_PERFORMANCE_MONITORING: true
+  
+  # Development features
+  ENABLE_DEBUG_TOOLBAR: true
+  ENABLE_PROFILING: true
+  ENABLE_HOT_RELOAD: true
+  STREAMLIT_BROWSER_GATHER_USAGE_STATS: false
+  
+  # Security (relaxed for development)
+  ALLOWED_ORIGINS: ["http://localhost:3000", "http://localhost:8501", "http://127.0.0.1:8501"]
+  CORS_ALLOW_ALL_ORIGINS: true
+  CSRF_TRUSTED_ORIGINS: ["http://localhost:8501"]
+  
+  # Logging configuration
+  TRADINGAGENTS_LOG_LEVEL: "DEBUG"
+  TRADINGAGENTS_LOG_DIR: "./logs"
+  TRADINGAGENTS_LOG_MAX_SIZE: "50MB"
+  TRADINGAGENTS_LOG_BACKUP_COUNT: 3
+  
+  # Development data sources
+  USE_MOCK_DATA: true
+  MOCK_API_RESPONSES: true
+  
+  # Performance settings (lightweight)
+  API_WORKERS: 2
+  CELERY_WORKER_CONCURRENCY: 2
+  
+  # Email configuration (development - console backend)
+  EMAIL_BACKEND: "console"
+  EMAIL_USE_TLS: false
+
+overrides:
+  # Override any base config values for development
+  
+validation:
+  - type: "required"
+    field: "ENVIRONMENT"
+  - type: "enum"
+    field: "ENVIRONMENT"
+    values: ["development"]
+  - type: "required"
+    field: "DEBUG"
+  - type: "range"
+    field: "API_PORT"
+    min: 1024
+    max: 65535
+  - type: "range"
+    field: "WEB_PORT"
+    min: 1024
+    max: 65535

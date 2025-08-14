@@ -1,0 +1,80 @@
+{
+  "analysis_id": "multi_model_8ec57c28_20250807_193936",
+  "status": "completed",
+  "results": {
+    "status": "success",
+    "collaboration_mode": "debate",
+    "agents_used": [
+      "news_hunter",
+      "fundamental_expert",
+      "technical_analyst",
+      "sentiment_analyst",
+      "risk_manager",
+      "chief_decision_officer"
+    ],
+    "analysis_data": {
+      "stock_symbol": "600519",
+      "market_type": "A股",
+      "analysis_date": "2025-08-07",
+      "research_depth": 5,
+      "custom_requirements": ""
+    },
+    "results": {
+      "independent_analyses": {
+        "news_hunter": {
+          "agent_type": "news_hunter",
+          "analysis": "news_hunter 对 600519 的初始观点（模拟）",
+          "stance": "bullish",
+          "confidence": 0.75,
+          "timestamp": "2025-08-07T19:39:43.209146"
+        },
+        "fundamental_expert": {
+          "agent_type": "fundamental_expert",
+          "analysis": "fundamental_expert 对 600519 的初始观点（模拟）",
+          "stance": "bullish",
+          "confidence": 0.75,
+          "timestamp": "2025-08-07T19:39:43.210243"
+        },
+        "technical_analyst": {
+          "agent_type": "technical_analyst",
+          "analysis": "technical_analyst 对 600519 的初始观点（模拟）",
+          "stance": "bearish",
+          "confidence": 0.75,
+          "timestamp": "2025-08-07T19:39:43.211292"
+        },
+        "sentiment_analyst": {
+          "agent_type": "sentiment_analyst",
+          "analysis": "sentiment_analyst 对 600519 的初始观点（模拟）",
+          "stance": "bearish",
+          "confidence": 0.75,
+          "timestamp": "2025-08-07T19:39:43.212525"
+        },
+        "risk_manager": {
+          "agent_type": "risk_manager",
+          "analysis": "risk_manager 对 600519 的初始观点（模拟）",
+          "stance": "bearish",
+          "confidence": 0.75,
+          "timestamp": "2025-08-07T19:39:43.214196"
+        },
+        "chief_decision_officer": {
+          "agent_type": "chief_decision_officer",
+          "analysis": "chief_decision_officer 对 600519 的初始观点（模拟）",
+          "stance": "bearish",
+          "confidence": 0.75,
+          "timestamp": "2025-08-07T19:39:43.215941"
+        }
+      },
+      "consensus": {
+        "consensus_method": "debate_resolution",
+        "final_recommendation": "经过多轮辩论，对 600519 的最终共识（模拟）",
+        "agreement_level": 0.78,
+        "dissenting_opinions": [
+          "部分智能体持保留意见"
+        ],
+        "timestamp": "2025-08-07T19:39:43.215952"
+      }
+    },
+    "timestamp": "2025-08-07T19:39:43.219250"
+  },
+  "timestamp": "2025-08-07T19:39:43.222386"
+}

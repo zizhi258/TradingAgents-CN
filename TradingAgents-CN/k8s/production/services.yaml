@@ -1,0 +1,267 @@
+# =============================================================================
+# Production Services Configuration
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: tradingagents-api-service
+  namespace: tradingagents-cn
+  labels:
+    app: tradingagents-api
+    component: backend
+    tier: api
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+    protocol: TCP
+  selector:
+    app: tradingagents-api
+    version: blue  # Updated by CI/CD pipeline
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tradingagents-web-service
+  namespace: tradingagents-cn
+  labels:
+    app: tradingagents-web
+    component: frontend
+    tier: web
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8501
+    targetPort: 8501
+    protocol: TCP
+  selector:
+    app: tradingagents-web
+    version: blue  # Updated by CI/CD pipeline
+---
+# =============================================================================
+# Individual Color Services for Blue-Green Deployment
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: tradingagents-api-service-blue
+  namespace: tradingagents-cn
+  labels:
+    app: tradingagents-api
+    version: blue
+    component: backend
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+    protocol: TCP
+  selector:
+    app: tradingagents-api
+    version: blue
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tradingagents-api-service-green
+  namespace: tradingagents-cn
+  labels:
+    app: tradingagents-api
+    version: green
+    component: backend
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+    protocol: TCP
+  selector:
+    app: tradingagents-api
+    version: green
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tradingagents-web-service-blue
+  namespace: tradingagents-cn
+  labels:
+    app: tradingagents-web
+    version: blue
+    component: frontend
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8501
+    targetPort: 8501
+    protocol: TCP
+  selector:
+    app: tradingagents-web
+    version: blue
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tradingagents-web-service-green
+  namespace: tradingagents-cn
+  labels:
+    app: tradingagents-web
+    version: green
+    component: frontend
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8501
+    targetPort: 8501
+    protocol: TCP
+  selector:
+    app: tradingagents-web
+    version: green
+---
+# =============================================================================
+# Database Services
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-service
+  namespace: tradingagents-cn
+  labels:
+    app: mongodb
+    component: database
+spec:
+  type: ClusterIP
+  ports:
+  - name: mongodb
+    port: 27017
+    targetPort: 27017
+    protocol: TCP
+  selector:
+    app: mongodb
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: tradingagents-cn
+  labels:
+    app: redis
+    component: cache
+spec:
+  type: ClusterIP
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+    protocol: TCP
+  selector:
+    app: redis
+---
+# =============================================================================
+# Headless Services for StatefulSets
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-headless
+  namespace: tradingagents-cn
+  labels:
+    app: mongodb
+    component: database
+spec:
+  clusterIP: None
+  ports:
+  - name: mongodb
+    port: 27017
+    targetPort: 27017
+    protocol: TCP
+  selector:
+    app: mongodb
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-headless
+  namespace: tradingagents-cn
+  labels:
+    app: redis
+    component: cache
+spec:
+  clusterIP: None
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+    protocol: TCP
+  selector:
+    app: redis
+---
+# =============================================================================
+# Monitoring Services
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: tradingagents-monitoring-service
+  namespace: tradingagents-cn
+  labels:
+    app: tradingagents
+    component: monitoring
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - name: api-metrics
+    port: 9090
+    targetPort: 9090
+    protocol: TCP
+  - name: web-metrics
+    port: 8501
+    targetPort: 8501
+    protocol: TCP
+  selector:
+    app: tradingagents-api
+---
+# =============================================================================
+# External Service for Outbound API Calls
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-apis
+  namespace: tradingagents-cn
+  labels:
+    app: external-apis
+    component: external
+spec:
+  type: ExternalName
+  externalName: api.external-provider.com
+  ports:
+  - name: https
+    port: 443
+    targetPort: 443
+    protocol: TCP

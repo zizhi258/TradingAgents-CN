@@ -1,0 +1,309 @@
+# =============================================================================
+# Kubernetes Namespace with Security Policies
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tradingagents-cn
+  labels:
+    name: tradingagents-cn
+    environment: production
+    app.kubernetes.io/part-of: tradingagents-platform
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    # Network policies enforcement
+    net.beta.kubernetes.io/network-policy: "true"
+    # Resource quotas
+    scheduler.alpha.kubernetes.io/preferred-zone: "us-west-2a,us-west-2b,us-west-2c"
+---
+# =============================================================================
+# Resource Quotas
+# =============================================================================
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tradingagents-resource-quota
+  namespace: tradingagents-cn
+spec:
+  hard:
+    # Compute resources
+    requests.cpu: "20"
+    requests.memory: 40Gi
+    limits.cpu: "50"
+    limits.memory: 100Gi
+    
+    # Storage resources
+    requests.storage: 500Gi
+    persistentvolumeclaims: "20"
+    
+    # Object counts
+    count/deployments.apps: "20"
+    count/services: "20"
+    count/secrets: "30"
+    count/configmaps: "30"
+    count/persistentvolumeclaims: "20"
+    
+    # Pod counts
+    count/pods: "100"
+    count/replicasets.apps: "30"
+---
+# =============================================================================
+# Limit Ranges
+# =============================================================================
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: tradingagents-limit-range
+  namespace: tradingagents-cn
+spec:
+  limits:
+  # Default limits for containers
+  - type: Container
+    default:
+      cpu: "1000m"
+      memory: "2Gi"
+      ephemeral-storage: "2Gi"
+    defaultRequest:
+      cpu: "100m"
+      memory: "128Mi"
+      ephemeral-storage: "1Gi"
+    max:
+      cpu: "4000m"
+      memory: "8Gi"
+      ephemeral-storage: "10Gi"
+    min:
+      cpu: "50m"
+      memory: "64Mi"
+      ephemeral-storage: "1Gi"
+  
+  # Default limits for pods
+  - type: Pod
+    max:
+      cpu: "6000m"
+      memory: "12Gi"
+      ephemeral-storage: "20Gi"
+    min:
+      cpu: "50m"
+      memory: "64Mi"
+      ephemeral-storage: "1Gi"
+  
+  # Default limits for PVCs
+  - type: PersistentVolumeClaim
+    max:
+      storage: 200Gi
+    min:
+      storage: 1Gi
+---
+# =============================================================================
+# Network Policies
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tradingagents-network-policy
+  namespace: tradingagents-cn
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  ingress:
+  # Allow traffic from load balancer
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 8501  # Web service
+    - protocol: TCP
+      port: 8000  # API service
+  
+  # Allow internal communication between app components
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: tradingagents-cn
+    ports:
+    - protocol: TCP
+      port: 8000   # API
+    - protocol: TCP
+      port: 8501   # Web
+    - protocol: TCP
+      port: 27017  # MongoDB
+    - protocol: TCP
+      port: 6379   # Redis
+    - protocol: TCP
+      port: 5555   # Flower
+  
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  
+  # Allow HTTPS outbound for external APIs
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+  
+  # Allow database connections
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/component: database
+    ports:
+    - protocol: TCP
+      port: 27017
+    - protocol: TCP
+      port: 6379
+---
+# =============================================================================
+# Service Account for Application
+# =============================================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tradingagents-service-account
+  namespace: tradingagents-cn
+  labels:
+    app.kubernetes.io/part-of: tradingagents-platform
+  annotations:
+    # AWS IAM role for service account (IRSA)
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/tradingagents-irsa-role
+automountServiceAccountToken: true
+---
+# =============================================================================
+# Priority Classes
+# =============================================================================
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: tradingagents-high-priority
+value: 1000
+globalDefault: false
+description: "High priority class for critical TradingAgents services"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: tradingagents-medium-priority
+value: 500
+globalDefault: false
+description: "Medium priority class for TradingAgents services"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: tradingagents-low-priority
+value: 100
+globalDefault: false
+description: "Low priority class for background TradingAgents services"
+---
+# =============================================================================
+# ConfigMap for Application Configuration
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tradingagents-config
+  namespace: tradingagents-cn
+  labels:
+    app.kubernetes.io/name: tradingagents-cn
+    app.kubernetes.io/component: config
+data:
+  # Application settings
+  ENVIRONMENT: "production"
+  TZ: "Asia/Shanghai"
+  PYTHONUNBUFFERED: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+  
+  # Logging configuration
+  TRADINGAGENTS_LOG_LEVEL: "INFO"
+  TRADINGAGENTS_LOG_DIR: "/app/logs"
+  
+  # Multi-model configuration
+  MULTI_MODEL_ENABLED: "true"
+  ROUTING_STRATEGY: "intelligent"
+  DEFAULT_COLLABORATION_MODE: "sequential"
+  MAX_COST_PER_SESSION: "5.0"
+  ENABLE_PERFORMANCE_MONITORING: "true"
+  
+  # Cache configuration
+  TRADINGAGENTS_CACHE_TYPE: "redis"
+  
+  # Service discovery
+  MONGODB_HOST: "mongodb-service"
+  MONGODB_PORT: "27017"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  
+  # API configuration
+  API_HOST: "0.0.0.0"
+  API_PORT: "8000"
+  API_WORKERS: "4"
+  
+  # Streamlit configuration
+  STREAMLIT_SERVER_PORT: "8501"
+  STREAMLIT_SERVER_ADDRESS: "0.0.0.0"
+  STREAMLIT_SERVER_ENABLE_CORS: "false"
+  STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION: "true"
+  STREAMLIT_BROWSER_GATHER_USAGE_STATS: "false"
+  
+  # Security settings
+  DOCKER_CONTAINER: "true"
+---
+# =============================================================================
+# Secret for Sensitive Configuration
+# =============================================================================
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tradingagents-secrets
+  namespace: tradingagents-cn
+  labels:
+    app.kubernetes.io/name: tradingagents-cn
+    app.kubernetes.io/component: secrets
+type: Opaque
+stringData:
+  # Database credentials
+  MONGODB_USERNAME: "admin"
+  MONGODB_PASSWORD: "your-secure-mongodb-password"
+  MONGODB_DATABASE: "tradingagents"
+  REDIS_PASSWORD: "your-secure-redis-password"
+  
+  # MongoDB connection string
+  TRADINGAGENTS_MONGODB_URL: "mongodb://admin:your-secure-mongodb-password@mongodb-service:27017/tradingagents?authSource=admin"
+  TRADINGAGENTS_REDIS_URL: "redis://:your-secure-redis-password@redis-service:6379"
+  
+  # AI Model API Keys
+  OPENAI_API_KEY: "your-openai-api-key"
+  GEMINI_API_KEY: "your-gemini-api-key"
+  DEEPSEEK_API_KEY: "your-deepseek-api-key"
+  SILICONFLOW_API_KEY: "your-siliconflow-api-key"
+  
+  # Data Provider API Keys
+  TUSHARE_TOKEN: "your-tushare-token"
+  FINNHUB_API_KEY: "your-finnhub-api-key"
+  ALPHA_VANTAGE_API_KEY: "your-alpha-vantage-api-key"
+  
+  # Email configuration
+  SMTP_HOST: "smtp.gmail.com"
+  SMTP_PORT: "587"
+  SMTP_USERNAME: "your-email@gmail.com"
+  SMTP_PASSWORD: "your-email-password"
+  SMTP_USE_TLS: "true"
+  
+  # JWT configuration
+  JWT_SECRET_KEY: "your-very-secure-jwt-secret-key-at-least-32-characters"
+  JWT_ALGORITHM: "HS256"
+  JWT_EXPIRATION_HOURS: "24"

@@ -1,0 +1,278 @@
+# =============================================================================
+# ELK Stack Configuration for Centralized Logging
+# =============================================================================
+version: '3.8'
+
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "100m"
+      max-file: "5"
+
+services:
+  # =============================================================================
+  # Elasticsearch Cluster
+  # =============================================================================
+  elasticsearch-master:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    container_name: elasticsearch-master
+    environment:
+      - node.name=es-master
+      - cluster.name=tradingagents-logs
+      - discovery.seed_hosts=elasticsearch-data1,elasticsearch-data2
+      - cluster.initial_master_nodes=es-master
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+      - xpack.security.enabled=true
+      - xpack.security.authc.api_key.enabled=true
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-tradingagents123}
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - xpack.security.transport.ssl.client_authentication=required
+      - xpack.security.transport.ssl.keystore.path=elastic-certificates.p12
+      - xpack.security.transport.ssl.truststore.path=elastic-certificates.p12
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.keystore.path=elastic-certificates.p12
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_master_data:/usr/share/elasticsearch/data
+      - ./monitoring/elk/certs:/usr/share/elasticsearch/config/certs:ro
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - elk-network
+    <<: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+  elasticsearch-data1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    container_name: elasticsearch-data1
+    environment:
+      - node.name=es-data1
+      - node.roles=data,ingest
+      - cluster.name=tradingagents-logs
+      - discovery.seed_hosts=elasticsearch-master,elasticsearch-data2
+      - cluster.initial_master_nodes=es-master
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-tradingagents123}
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - xpack.security.transport.ssl.client_authentication=required
+      - xpack.security.transport.ssl.keystore.path=elastic-certificates.p12
+      - xpack.security.transport.ssl.truststore.path=elastic-certificates.p12
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_data1:/usr/share/elasticsearch/data
+      - ./monitoring/elk/certs:/usr/share/elasticsearch/config/certs:ro
+    networks:
+      - elk-network
+    <<: *default-logging
+    depends_on:
+      - elasticsearch-master
+
+  elasticsearch-data2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    container_name: elasticsearch-data2
+    environment:
+      - node.name=es-data2
+      - node.roles=data,ingest
+      - cluster.name=tradingagents-logs
+      - discovery.seed_hosts=elasticsearch-master,elasticsearch-data1
+      - cluster.initial_master_nodes=es-master
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-tradingagents123}
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - xpack.security.transport.ssl.client_authentication=required
+      - xpack.security.transport.ssl.keystore.path=elastic-certificates.p12
+      - xpack.security.transport.ssl.truststore.path=elastic-certificates.p12
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_data2:/usr/share/elasticsearch/data
+      - ./monitoring/elk/certs:/usr/share/elasticsearch/config/certs:ro
+    networks:
+      - elk-network
+    <<: *default-logging
+    depends_on:
+      - elasticsearch-master
+
+  # =============================================================================
+  # Logstash for Log Processing
+  # =============================================================================
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.1
+    container_name: logstash
+    volumes:
+      - ./monitoring/elk/logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ./monitoring/elk/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./monitoring/elk/certs:/usr/share/logstash/config/certs:ro
+    ports:
+      - "5044:5044"
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
+      - "9600:9600"
+    environment:
+      LS_JAVA_OPTS: "-Xmx2g -Xms2g"
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-tradingagents123}
+    networks:
+      - elk-network
+    depends_on:
+      - elasticsearch-master
+    <<: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+        reservations:
+          memory: 2G
+
+  # =============================================================================
+  # Kibana for Log Visualization
+  # =============================================================================
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.1
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    environment:
+      SERVERNAME: kibana
+      ELASTICSEARCH_HOSTS: https://elasticsearch-master:9200
+      ELASTICSEARCH_USERNAME: elastic
+      ELASTICSEARCH_PASSWORD: ${ELASTIC_PASSWORD:-tradingagents123}
+      ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES: config/certs/ca/ca.crt
+      SERVER_SSL_ENABLED: true
+      SERVER_SSL_CERTIFICATE: config/certs/kibana/kibana.crt
+      SERVER_SSL_KEY: config/certs/kibana/kibana.key
+      XPACK_SECURITY_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY:-a7a6311933d3503b89bc2dce4b24b56c}
+      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY:-a7a6311933d3503b89bc2dce4b24b56c}
+      XPACK_REPORTING_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY:-a7a6311933d3503b89bc2dce4b24b56c}
+    volumes:
+      - ./monitoring/elk/certs:/usr/share/kibana/config/certs:ro
+      - ./monitoring/elk/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+    networks:
+      - elk-network
+    depends_on:
+      - elasticsearch-master
+    <<: *default-logging
+
+  # =============================================================================
+  # Filebeat for Log Collection
+  # =============================================================================
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.1
+    container_name: filebeat
+    user: root
+    volumes:
+      - ./monitoring/elk/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./monitoring/elk/certs:/usr/share/filebeat/config/certs:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - filebeat_data:/usr/share/filebeat/data
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-tradingagents123}
+    networks:
+      - elk-network
+    depends_on:
+      - elasticsearch-master
+    <<: *default-logging
+
+  # =============================================================================
+  # Metricbeat for Infrastructure Metrics
+  # =============================================================================
+  metricbeat:
+    image: docker.elastic.co/beats/metricbeat:8.11.1
+    container_name: metricbeat
+    user: root
+    volumes:
+      - ./monitoring/elk/metricbeat/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro
+      - ./monitoring/elk/certs:/usr/share/metricbeat/config/certs:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc:/hostfs/proc:ro
+      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      - /:/hostfs:ro
+      - metricbeat_data:/usr/share/metricbeat/data
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-tradingagents123}
+    networks:
+      - elk-network
+    depends_on:
+      - elasticsearch-master
+    <<: *default-logging
+
+  # =============================================================================
+  # APM Server for Application Performance Monitoring
+  # =============================================================================
+  apm-server:
+    image: docker.elastic.co/apm/apm-server:8.11.1
+    container_name: apm-server
+    depends_on:
+      - elasticsearch-master
+      - kibana
+    cap_add: ["CHOWN", "DAC_OVERRIDE", "SETGID", "SETUID"]
+    cap_drop: ["ALL"]
+    ports:
+    - "8200:8200"
+    networks:
+      - elk-network
+    command: >
+       apm-server -e
+         -E apm-server.rum.enabled=true
+         -E setup.kibana.host=kibana:5601
+         -E setup.template.settings.index.number_of_replicas=0
+         -E apm-server.kibana.enabled=true
+         -E apm-server.kibana.host=kibana:5601
+         -E output.elasticsearch.hosts=["elasticsearch-master:9200"]
+         -E output.elasticsearch.username=elastic
+         -E output.elasticsearch.password=${ELASTIC_PASSWORD:-tradingagents123}
+         -E apm-server.ssl.enabled=true
+         -E apm-server.ssl.certificate=config/certs/apm-server/apm-server.crt
+         -E apm-server.ssl.key=config/certs/apm-server/apm-server.key
+    volumes:
+      - ./monitoring/elk/certs:/usr/share/apm-server/config/certs:ro
+    <<: *default-logging
+    healthcheck:
+      interval: 10s
+      retries: 12
+      test: curl --write-out 'HTTP %{http_code}' --fail --silent --output /dev/null https://localhost:8200/
+
+networks:
+  elk-network:
+    driver: bridge
+    name: elk-network
+
+volumes:
+  elasticsearch_master_data:
+    driver: local
+    name: elasticsearch_master_data
+  elasticsearch_data1:
+    driver: local
+    name: elasticsearch_data1
+  elasticsearch_data2:
+    driver: local
+    name: elasticsearch_data2
+  filebeat_data:
+    driver: local
+    name: filebeat_data
+  metricbeat_data:
+    driver: local
+    name: metricbeat_data

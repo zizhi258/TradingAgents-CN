@@ -1,0 +1,346 @@
+# =============================================================================
+# Istio Service Mesh Configuration for TradingAgents-CN
+# =============================================================================
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  name: tradingagents-istio
+  namespace: istio-system
+spec:
+  components:
+    pilot:
+      k8s:
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+    
+    ingressGateways:
+    - name: istio-ingressgateway
+      enabled: true
+      k8s:
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        service:
+          type: LoadBalancer
+          ports:
+          - port: 80
+            targetPort: 8080
+            name: http2
+          - port: 443
+            targetPort: 8443
+            name: https
+          - port: 15021
+            targetPort: 15021
+            name: status-port
+    
+    egressGateways:
+    - name: istio-egressgateway
+      enabled: true
+      k8s:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+  
+  values:
+    global:
+      proxy:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+    
+    pilot:
+      traceSampling: 1.0
+      env:
+        EXTERNAL_ISTIOD: false
+    
+    gateways:
+      istio-ingressgateway:
+        autoscaleEnabled: true
+        autoscaleMin: 2
+        autoscaleMax: 5
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+# =============================================================================
+# Gateway Configuration
+# =============================================================================
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: tradingagents-gateway
+  namespace: tradingagents-cn
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "tradingagents.example.com"
+    - "api.tradingagents.example.com"
+    tls:
+      httpsRedirect: true
+  
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    hosts:
+    - "tradingagents.example.com"
+    - "api.tradingagents.example.com"
+    tls:
+      mode: SIMPLE
+      credentialName: tradingagents-tls-secret
+---
+# =============================================================================
+# Virtual Service for Traffic Routing
+# =============================================================================
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: tradingagents-vs
+  namespace: tradingagents-cn
+spec:
+  hosts:
+  - "tradingagents.example.com"
+  - "api.tradingagents.example.com"
+  gateways:
+  - tradingagents-gateway
+  http:
+  # API Routes
+  - match:
+    - headers:
+        host:
+          exact: "api.tradingagents.example.com"
+      uri:
+        prefix: "/"
+    route:
+    - destination:
+        host: tradingagents-api-service
+        port:
+          number: 8000
+    timeout: 60s
+    retries:
+      attempts: 3
+      perTryTimeout: 20s
+  
+  # Web Application Routes
+  - match:
+    - headers:
+        host:
+          exact: "tradingagents.example.com"
+      uri:
+        prefix: "/"
+    route:
+    - destination:
+        host: tradingagents-web-service
+        port:
+          number: 8501
+    timeout: 30s
+    retries:
+      attempts: 2
+      perTryTimeout: 15s
+  
+  # Health Check Routes (bypass auth)
+  - match:
+    - uri:
+        prefix: "/health"
+    - uri:
+        prefix: "/api/health"
+    route:
+    - destination:
+        host: tradingagents-api-service
+        port:
+          number: 8000
+---
+# =============================================================================
+# Destination Rules for Load Balancing and Circuit Breaking
+# =============================================================================
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: tradingagents-api-dr
+  namespace: tradingagents-cn
+spec:
+  host: tradingagents-api-service
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_CONN
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        http1MaxPendingRequests: 50
+        maxRequestsPerConnection: 10
+        maxRetries: 3
+        consecutiveGatewayErrors: 5
+        h2UpgradePolicy: UPGRADE
+    circuitBreaker:
+      consecutiveGatewayErrors: 5
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 50
+    outlierDetection:
+      consecutive5xxErrors: 5
+      consecutiveGatewayErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+  subsets:
+  - name: blue
+    labels:
+      version: blue
+  - name: green
+    labels:
+      version: green
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: tradingagents-web-dr
+  namespace: tradingagents-cn
+spec:
+  host: tradingagents-web-service
+  trafficPolicy:
+    loadBalancer:
+      simple: ROUND_ROBIN
+    connectionPool:
+      tcp:
+        maxConnections: 50
+      http:
+        http1MaxPendingRequests: 25
+        maxRequestsPerConnection: 5
+        maxRetries: 2
+    circuitBreaker:
+      consecutiveGatewayErrors: 3
+      consecutive5xxErrors: 3
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 30
+  subsets:
+  - name: blue
+    labels:
+      version: blue
+  - name: green
+    labels:
+      version: green
+---
+# =============================================================================
+# Service Mesh Security Policies
+# =============================================================================
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: tradingagents-peer-auth
+  namespace: tradingagents-cn
+spec:
+  mtls:
+    mode: STRICT
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: tradingagents-authz
+  namespace: tradingagents-cn
+spec:
+  rules:
+  # Allow health checks from load balancer
+  - from:
+    - source:
+        namespaces: ["istio-system"]
+    to:
+    - operation:
+        paths: ["/health", "/api/health"]
+  
+  # Allow internal service communication
+  - from:
+    - source:
+        principals: ["cluster.local/ns/tradingagents-cn/sa/tradingagents-service-account"]
+    to:
+    - operation:
+        methods: ["GET", "POST", "PUT", "DELETE"]
+  
+  # Allow monitoring access
+  - from:
+    - source:
+        namespaces: ["monitoring"]
+    to:
+    - operation:
+        paths: ["/metrics", "/health"]
+---
+# =============================================================================
+# Telemetry Configuration
+# =============================================================================
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: tradingagents-metrics
+  namespace: tradingagents-cn
+spec:
+  metrics:
+  - providers:
+    - name: prometheus
+  - overrides:
+    - match:
+        metric: ALL_METRICS
+        mode: CLIENT
+      disabled: false
+    - match:
+        metric: ALL_METRICS
+        mode: SERVER
+      disabled: false
+---
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: tradingagents-tracing
+  namespace: tradingagents-cn
+spec:
+  tracing:
+  - providers:
+    - name: jaeger
+---
+# =============================================================================
+# Service Monitor for Prometheus
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: tradingagents-istio-proxy
+  namespace: tradingagents-cn
+  labels:
+    app: istio-proxy
+spec:
+  selector:
+    matchLabels:
+      app: istio-proxy
+  endpoints:
+  - port: http-monitoring
+    interval: 15s
+    path: /stats/prometheus

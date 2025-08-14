@@ -1,0 +1,181 @@
+# =============================================================================
+# Production Multi-Stage Dockerfile for TradingAgents-CN Market Analysis
+# Optimized for security, performance, and minimal attack surface
+# =============================================================================
+
+# Stage 1: Base builder with system dependencies
+FROM python:3.11-slim-bookworm AS base-builder
+
+# Security: Create non-root user early
+RUN groupadd --gid 1001 tradinguser && \
+    useradd --uid 1001 --gid 1001 --create-home --shell /bin/bash tradinguser
+
+# Install system dependencies and security updates
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        git \
+        ca-certificates \
+        gnupg \
+        lsb-release && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
+
+# Install UV package manager for faster dependency resolution
+RUN pip install --no-cache-dir uv==0.1.45
+
+# Stage 2: Dependencies installer
+FROM base-builder AS deps-installer
+
+WORKDIR /tmp/build
+
+# Copy dependency files
+COPY pyproject.toml uv.lock* ./
+
+# Install Python dependencies with UV
+RUN uv pip install --system --no-cache-dir \
+    --requirement pyproject.toml && \
+    pip install --no-cache-dir \
+        google-genai>=1.29.0 \
+        langgraph>=0.4.8 \
+        langchain-google-genai>=2.1.5 \
+        pyyaml>=6.0 \
+        streamlit>=1.32.0 \
+        plotly>=5.17.0 \
+        psutil>=5.9.0 \
+        redis>=5.0.0 \
+        pymongo>=4.6.0 \
+        # ChartingArtist visualization dependencies \
+        kaleido>=0.2.1 \
+        seaborn>=0.12.0 \
+        matplotlib>=3.7.0 \
+        scikit-learn>=1.3.0 \
+        networkx>=3.1 \
+        # Performance optimization dependencies \
+        fastapi>=0.104.0 \
+        uvicorn>=0.24.0 \
+        celery>=5.3.0 \
+        # Monitoring and logging dependencies \
+        prometheus_client>=0.19.0 \
+        structlog>=23.2.0
+
+# Clean up build dependencies
+RUN pip uninstall -y uv && \
+    apt-get purge -y build-essential && \
+    apt-get autoremove -y && \
+    rm -rf /root/.cache/pip/*
+
+# Stage 3: Application runtime with security hardening
+FROM python:3.11-slim-bookworm AS runtime
+
+# Security hardening
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+        wkhtmltopdf \
+        xvfb \
+        fonts-wqy-zenhei \
+        fonts-wqy-microhei \
+        fonts-liberation \
+        pandoc \
+        curl \
+        procps \
+        tini \
+        dumb-init && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
+
+# Create non-root user and app directory
+RUN groupadd --gid 1001 tradinguser && \
+    useradd --uid 1001 --gid 1001 --create-home --shell /bin/bash tradinguser
+
+WORKDIR /app
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/{data,logs,config,reports,static} && \
+    mkdir -p /app/data/{market_sessions,attachments,finnhub_data} && \
+    mkdir -p /app/data/attachments/{charts,temp,uploads} && \
+    mkdir -p /app/data/chart_cache && \
+    mkdir -p /app/logs/charting_artist && \
+    chown -R tradinguser:tradinguser /app
+
+# Copy Python dependencies from deps stage
+COPY --from=deps-installer /usr/local/lib/python3.11/site-packages/ /usr/local/lib/python3.11/site-packages/
+COPY --from=deps-installer /usr/local/bin/ /usr/local/bin/
+
+# Copy application code with proper ownership
+COPY --chown=tradinguser:tradinguser . .
+
+# Create Xvfb startup script
+RUN echo '#!/bin/bash\nXvfb :99 -screen 0 1920x1080x24 -ac +extension GLX &\nexport DISPLAY=:99\nexec "$@"' > /usr/local/bin/start-xvfb.sh && \
+    chmod +x /usr/local/bin/start-xvfb.sh && \
+    chown tradinguser:tradinguser /usr/local/bin/start-xvfb.sh
+
+# Health check script
+COPY --chown=tradinguser:tradinguser docker/healthcheck.sh /usr/local/bin/healthcheck.sh
+RUN chmod +x /usr/local/bin/healthcheck.sh
+
+# Security: Remove unnecessary packages and create minimal environment
+RUN rm -rf /var/cache/apt/* && \
+    rm -rf /tmp/* && \
+    find /usr/local -name "*.pyc" -delete && \
+    find /usr/local -name "__pycache__" -type d -exec rm -rf {} + || true
+
+# Switch to non-root user
+USER tradinguser
+
+# Set secure environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app \
+    PATH="/home/tradinguser/.local/bin:$PATH" \
+    TZ=Asia/Shanghai \
+    DISPLAY=:99 \
+    # Security settings
+    PYTHONHASHSEED=random \
+    # Performance settings
+    MALLOC_ARENA_MAX=2 \
+    # Application settings
+    TRADINGAGENTS_LOG_LEVEL=INFO \
+    TRADINGAGENTS_LOG_DIR=/app/logs \
+    STREAMLIT_SERVER_ENABLE_CORS=false \
+    STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=true \
+    STREAMLIT_BROWSER_GATHER_USAGE_STATS=false \
+    # ChartingArtist settings
+    CHARTING_ARTIST_ENABLED=false \
+    CHARTING_ARTIST_API_URL=http://localhost:8000/api \
+    CHARTING_ARTIST_CACHE_SIZE=100 \
+    CHARTING_ARTIST_MAX_CONCURRENT_JOBS=3 \
+    # Chart storage settings
+    CHART_STORAGE_PATH=/app/data/attachments/charts \
+    CHART_CACHE_PATH=/app/data/chart_cache \
+    CHART_RETENTION_DAYS=30
+
+# Expose only necessary ports
+EXPOSE 8501
+
+# Add labels for container management
+LABEL maintainer="TradingAgents-CN Team" \
+      version="1.0.0" \
+      description="TradingAgents-CN Market Analysis Platform" \
+      org.opencontainers.image.source="https://github.com/your-org/TradingAgents-CN" \
+      org.opencontainers.image.documentation="https://github.com/your-org/TradingAgents-CN/docs" \
+      org.opencontainers.image.vendor="TradingAgents-CN" \
+      security.scan.enabled="true"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD ["/usr/local/bin/healthcheck.sh"]
+
+# Use tini as init system for proper signal handling
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/start-xvfb.sh"]
+
+# Default command
+CMD ["python", "-m", "streamlit", "run", "web/app.py", \
+     "--server.address=0.0.0.0", \
+     "--server.port=8501", \
+     "--server.headless=true", \
+     "--server.enableCORS=false", \
+     "--server.enableXsrfProtection=true"]

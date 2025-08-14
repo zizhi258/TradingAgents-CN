@@ -1,0 +1,622 @@
+[
+  {
+    "timestamp": "2025-08-06T14:29:53.593448",
+    "provider": "google",
+    "model_name": "gemini-2.0-flash",
+    "input_tokens": 16000,
+    "output_tokens": 8000,
+    "cost": 0.0,
+    "session_id": "analysis_e160b1d4_20250806_142715",
+    "analysis_type": "A股_analysis"
+  },
+  {
+    "timestamp": "2025-08-06T16:42:46.426899",
+    "provider": "google",
+    "model_name": "gemini-2.0-flash",
+    "input_tokens": 16000,
+    "output_tokens": 8000,
+    "cost": 0.0,
+    "session_id": "analysis_0319fa6b_20250806_164031",
+    "analysis_type": "A股_analysis"
+  },
+  {
+    "timestamp": "2025-08-06T16:49:58.762791",
+    "provider": "google",
+    "model_name": "gemini-2.5-pro",
+    "input_tokens": 16000,
+    "output_tokens": 8000,
+    "cost": 0.0,
+    "session_id": "analysis_e4ee7838_20250806_164602",
+    "analysis_type": "A股_analysis"
+  },
+  {
+    "timestamp": "2025-08-06T16:55:13.749357",
+    "provider": "google",
+    "model_name": "gemini-2.0-flash",
+    "input_tokens": 16000,
+    "output_tokens": 8000,
+    "cost": 0.0,
+    "session_id": "analysis_5c573ac2_20250806_165253",
+    "analysis_type": "A股_analysis"
+  },
+  {
+    "timestamp": "2025-08-06T18:38:15.446982",
+    "provider": "google",
+    "model_name": "gemini-2.0-flash",
+    "input_tokens": 16000,
+    "output_tokens": 8000,
+    "cost": 0.0,
+    "session_id": "analysis_769f15e7_20250806_183547",
+    "analysis_type": "A股_analysis"
+  },
+  {
+    "timestamp": "2025-08-06T19:43:38.255419",
+    "provider": "google",
+    "model_name": "gemini-2.0-flash",
+    "input_tokens": 16000,
+    "output_tokens": 8000,
+    "cost": 0.0,
+    "session_id": "analysis_fd46c56f_20250806_194026",
+    "analysis_type": "港股_analysis"
+  },
+  {
+    "timestamp": "2025-08-06T20:52:29.290981",
+    "provider": "google",
+    "model_name": "gemini-2.5-pro",
+    "input_tokens": 16000,
+    "output_tokens": 8000,
+    "cost": 0.0,
+    "session_id": "analysis_6ef6884c_20250806_204416",
+    "analysis_type": "美股_analysis"
+  },
+  {
+    "timestamp": "2025-08-06T20:59:30.621734",
+    "provider": "google",
+    "model_name": "gemini-2.0-flash",
+    "input_tokens": 16000,
+    "output_tokens": 8000,
+    "cost": 0.0,
+    "session_id": "analysis_af5bd92d_20250806_205542",
+    "analysis_type": "美股_analysis"
+  },
+  {
+    "timestamp": "2025-08-06T21:48:22.492381",
+    "provider": "google",
+    "model_name": "gemini-2.5-pro",
+    "input_tokens": 8000,
+    "output_tokens": 4000,
+    "cost": 0.3,
+    "session_id": "analysis_965adbf9_20250806_214559",
+    "analysis_type": "A股_analysis"
+  },
+  {
+    "timestamp": "2025-08-10T00:09:31.546623",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-V3",
+    "input_tokens": 63,
+    "output_tokens": 684,
+    "cost": 0.0,
+    "session_id": "web_multi_20250810_000855",
+    "analysis_type": "multi_model_news_analysis"
+  },
+  {
+    "timestamp": "2025-08-10T00:10:10.790309",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-V3",
+    "input_tokens": 180,
+    "output_tokens": 867,
+    "cost": 0.0,
+    "session_id": "web_multi_20250810_000931",
+    "analysis_type": "multi_model_fundamental_analysis"
+  },
+  {
+    "timestamp": "2025-08-10T00:14:44.865571",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-R1",
+    "input_tokens": 201,
+    "output_tokens": 1437,
+    "cost": 0.0,
+    "session_id": "web_multi_20250810_001114",
+    "analysis_type": "multi_model_risk_assessment"
+  },
+  {
+    "timestamp": "2025-08-10T00:24:06.759397",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-V3",
+    "input_tokens": 63,
+    "output_tokens": 633,
+    "cost": 0.0,
+    "session_id": "web_multi_20250810_002332",
+    "analysis_type": "multi_model_news_analysis"
+  },
+  {
+    "timestamp": "2025-08-10T00:24:55.660584",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-V3",
+    "input_tokens": 179,
+    "output_tokens": 933,
+    "cost": 0.0,
+    "session_id": "web_multi_20250810_002406",
+    "analysis_type": "multi_model_fundamental_analysis"
+  },
+  {
+    "timestamp": "2025-08-10T00:26:30.835089",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-R1",
+    "input_tokens": 294,
+    "output_tokens": 1615,
+    "cost": 0.0,
+    "session_id": "web_multi_20250810_002455",
+    "analysis_type": "multi_model_risk_assessment"
+  },
+  {
+    "timestamp": "2025-08-10T00:44:30.879520",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-V3",
+    "input_tokens": 63,
+    "output_tokens": 673,
+    "cost": 0.0,
+    "session_id": "web_multi_20250810_004358",
+    "analysis_type": "multi_model_news_analysis"
+  },
+  {
+    "timestamp": "2025-08-10T00:45:14.118596",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-V3",
+    "input_tokens": 180,
+    "output_tokens": 922,
+    "cost": 0.0,
+    "session_id": "web_multi_20250810_004430",
+    "analysis_type": "multi_model_fundamental_analysis"
+  },
+  {
+    "timestamp": "2025-08-10T00:46:38.741629",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-R1",
+    "input_tokens": 295,
+    "output_tokens": 1486,
+    "cost": 0.0,
+    "session_id": "web_multi_20250810_004514",
+    "analysis_type": "multi_model_risk_assessment"
+  },
+  {
+    "timestamp": "2025-08-11T15:15:28.776630",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 716,
+    "output_tokens": 46,
+    "cost": 0.001131,
+    "session_id": "deepseek_5070",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:16:38.007409",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 349,
+    "output_tokens": 1348,
+    "cost": 0.004263,
+    "session_id": "deepseek_7659",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:16:44.678739",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 779,
+    "output_tokens": 57,
+    "cost": 0.00125,
+    "session_id": "deepseek_3397",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:17:22.882452",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 1875,
+    "output_tokens": 533,
+    "cost": 0.004117,
+    "session_id": "deepseek_9162",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:18:16.366498",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 1168,
+    "output_tokens": 971,
+    "cost": 0.004354,
+    "session_id": "deepseek_9493",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:18:20.876569",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 791,
+    "output_tokens": 31,
+    "cost": 0.001194,
+    "session_id": "deepseek_8704",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:19:04.290782",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 9173,
+    "output_tokens": 766,
+    "cost": 0.014987,
+    "session_id": "deepseek_9318",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:20:08.044737",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 3368,
+    "output_tokens": 1091,
+    "cost": 0.00777,
+    "session_id": "deepseek_275",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:21:15.344068",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 5560,
+    "output_tokens": 1197,
+    "cost": 0.011136,
+    "session_id": "deepseek_4246",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:22:10.234872",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 5712,
+    "output_tokens": 928,
+    "cost": 0.010595,
+    "session_id": "deepseek_1719",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:22:36.952687",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 1476,
+    "output_tokens": 441,
+    "cost": 0.003301,
+    "session_id": "deepseek_3973",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:32:21.149680",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 3801,
+    "output_tokens": 415,
+    "cost": 0.006483,
+    "session_id": "deepseek_9615",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:32:58.299355",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 4630,
+    "output_tokens": 471,
+    "cost": 0.007801,
+    "session_id": "deepseek_7588",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:46:57.978360",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 716,
+    "output_tokens": 47,
+    "cost": 0.001134,
+    "session_id": "deepseek_3724",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:47:57.686253",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 349,
+    "output_tokens": 1038,
+    "cost": 0.003395,
+    "session_id": "deepseek_8245",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:48:04.539215",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 779,
+    "output_tokens": 57,
+    "cost": 0.00125,
+    "session_id": "deepseek_8977",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:48:44.586862",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 1875,
+    "output_tokens": 512,
+    "cost": 0.004059,
+    "session_id": "deepseek_6831",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:49:53.151631",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 1168,
+    "output_tokens": 1055,
+    "cost": 0.004589,
+    "session_id": "deepseek_2076",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:49:58.438495",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 791,
+    "output_tokens": 31,
+    "cost": 0.001194,
+    "session_id": "deepseek_4902",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:50:45.675383",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 9173,
+    "output_tokens": 758,
+    "cost": 0.014965,
+    "session_id": "deepseek_3011",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:51:59.703508",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 3134,
+    "output_tokens": 1160,
+    "cost": 0.007636,
+    "session_id": "deepseek_1556",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:53:18.474564",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 5464,
+    "output_tokens": 1187,
+    "cost": 0.010973,
+    "session_id": "deepseek_9362",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:54:20.635422",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 5537,
+    "output_tokens": 988,
+    "cost": 0.010518,
+    "session_id": "deepseek_42",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:54:47.849130",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 1536,
+    "output_tokens": 412,
+    "cost": 0.003304,
+    "session_id": "deepseek_7589",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:55:15.733994",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 3538,
+    "output_tokens": 368,
+    "cost": 0.005984,
+    "session_id": "deepseek_23",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:55:48.134140",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 4271,
+    "output_tokens": 450,
+    "cost": 0.007239,
+    "session_id": "deepseek_6006",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:56:18.175288",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 5142,
+    "output_tokens": 409,
+    "cost": 0.008344,
+    "session_id": "deepseek_6145",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:57:31.216560",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 2485,
+    "output_tokens": 1166,
+    "cost": 0.006744,
+    "session_id": "deepseek_3171",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:57:40.009983",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 1423,
+    "output_tokens": 93,
+    "cost": 0.002253,
+    "session_id": "deepseek_3854",
+    "analysis_type": "stock_analysis"
+  },
+  {
+    "timestamp": "2025-08-11T15:57:40.032433",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 12000,
+    "output_tokens": 6000,
+    "cost": 0.0336,
+    "session_id": "analysis_6dd3a7fe_20250811_154641",
+    "analysis_type": "A股_analysis"
+  },
+  {
+    "timestamp": "2025-08-12T15:21:22.882727",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-V3",
+    "input_tokens": 61,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250812_152045",
+    "analysis_type": "multi_model_compliance_check"
+  },
+  {
+    "timestamp": "2025-08-12T15:21:55.868223",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-V3",
+    "input_tokens": 285,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250812_152122",
+    "analysis_type": "multi_model_fundamental_analysis"
+  },
+  {
+    "timestamp": "2025-08-12T15:22:39.093690",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250812_152155",
+    "analysis_type": "multi_model_news_analysis"
+  },
+  {
+    "timestamp": "2025-08-12T15:24:02.907830",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-R1",
+    "input_tokens": 288,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250812_152239",
+    "analysis_type": "multi_model_sentiment_analysis"
+  },
+  {
+    "timestamp": "2025-08-12T15:26:06.471347",
+    "provider": "siliconflow",
+    "model_name": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+    "input_tokens": 330,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250812_152402",
+    "analysis_type": "multi_model_technical_analysis"
+  },
+  {
+    "timestamp": "2025-08-12T15:27:49.004278",
+    "provider": "siliconflow",
+    "model_name": "moonshotai/Kimi-K2-Instruct",
+    "input_tokens": 513,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250812_152606",
+    "analysis_type": "multi_model_policy_analysis"
+  },
+  {
+    "timestamp": "2025-08-12T15:29:30.039649",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-R1",
+    "input_tokens": 522,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250812_152749",
+    "analysis_type": "multi_model_general"
+  },
+  {
+    "timestamp": "2025-08-12T15:30:16.130608",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250812_152930",
+    "analysis_type": "multi_model_risk_assessment"
+  },
+  {
+    "timestamp": "2025-08-12T17:05:08.773425",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-V3",
+    "input_tokens": 131,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250812_170436",
+    "analysis_type": "multi_model_fundamental_analysis"
+  },
+  {
+    "timestamp": "2025-08-12T17:05:33.630078",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-V3",
+    "input_tokens": 84,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250812_170508",
+    "analysis_type": "multi_model_news_analysis"
+  },
+  {
+    "timestamp": "2025-08-12T17:06:16.037288",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250812_170533",
+    "analysis_type": "multi_model_risk_assessment"
+  },
+  {
+    "timestamp": "2025-08-12T17:39:56.871317",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-V3",
+    "input_tokens": 238,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250812_173927",
+    "analysis_type": "multi_model_fundamental_analysis"
+  },
+  {
+    "timestamp": "2025-08-12T17:40:17.686876",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-V3",
+    "input_tokens": 118,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250812_173956",
+    "analysis_type": "multi_model_news_analysis"
+  },
+  {
+    "timestamp": "2025-08-12T17:41:20.637676",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250812_174017",
+    "analysis_type": "multi_model_risk_assessment"
+  }
+]

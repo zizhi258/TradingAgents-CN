@@ -1,0 +1,479 @@
+# Agent Roles Configuration
+# 智能体角色配置 - 定义各个专业智能体的职责和特性
+
+agents:
+  # 新闻猎手 - News Hunter
+  news_hunter:
+    name: "新闻猎手"
+    name_en: "News Hunter"
+    description: "专门收集和分析实时新闻，快速识别市场影响事件"
+    role_type: "information_gatherer"
+    priority: "speed"
+    
+    # 专业领域
+    expertise:
+      - "实时新闻收集"
+      - "突发事件分析" 
+      - "新闻情绪判断"
+      - "消息可信度评估"
+      - "市场影响预测"
+    
+    # 数据源
+    data_sources:
+      - "Google News"
+      - "财经新闻网站"
+      - "社交媒体平台"
+      - "官方公告"
+      - "行业报告"
+    
+    # 输出特点
+    output_style:
+      format: "structured"
+      length: "concise"
+      focus: "actionable_insights"
+      time_sensitivity: "high"
+    
+    # 性能要求
+    performance:
+      response_time: "fast"    # 5-15秒
+      accuracy: "medium"       # 70-80%
+      cost_limit: 0.05
+      
+  # 基本面专家 - Fundamental Expert  
+  fundamental_expert:
+    name: "基本面专家"
+    name_en: "Fundamental Expert"
+    description: "深度分析企业财务数据、业务模式和内在价值"
+    role_type: "analytical"
+    priority: "accuracy"
+    
+    # 专业领域
+    expertise:
+      - "财务报表分析"
+      - "估值模型构建"
+      - "行业对比分析"
+      - "盈利能力评估"
+      - "现金流分析"
+      - "债务风险评估"
+    
+    # 分析方法
+    methodologies:
+      - "DCF估值模型"
+      - "PE/PB倍数分析"
+      - "ROE/ROA分析"
+      - "杜邦分析法"
+      - "现金流折现"
+      - "相对估值法"
+    
+    # 输出特点
+    output_style:
+      format: "detailed_report"
+      length: "comprehensive"
+      focus: "quantitative_analysis"
+      time_sensitivity: "medium"
+    
+    # 性能要求  
+    performance:
+      response_time: "medium"  # 15-30秒
+      accuracy: "high"         # 85-95%
+      cost_limit: 0.20
+      
+  # 技术分析师 - Technical Analyst
+  technical_analyst:
+    name: "技术分析师" 
+    name_en: "Technical Analyst"
+    description: "专门分析价格走势、技术指标和交易信号"
+    role_type: "pattern_recognition"
+    priority: "precision"
+    
+    # 专业领域
+    expertise:
+      - "K线形态分析"
+      - "技术指标解读"
+      - "支撑阻力识别"
+      - "趋势判断"
+      - "交易信号生成"
+      - "量价关系分析"
+    
+    # 技术指标
+    indicators:
+      - "移动平均线 (MA)"
+      - "相对强弱指标 (RSI)"
+      - "MACD指标"
+      - "布林带 (Bollinger Bands)"
+      - "KDJ指标"
+      - "成交量指标"
+    
+    # 分析周期
+    timeframes:
+      - "日线分析"
+      - "周线分析"
+      - "月线分析"
+      - "分时分析"
+    
+    # 输出特点
+    output_style:
+      format: "chart_analysis"
+      length: "moderate"
+      focus: "trading_signals"
+      time_sensitivity: "high"
+    
+    # 性能要求
+    performance:
+      response_time: "fast"    # 10-20秒  
+      accuracy: "high"         # 80-90%
+      cost_limit: 0.15
+      
+  # 情绪分析师 - Sentiment Analyst
+  sentiment_analyst:
+    name: "情绪分析师"
+    name_en: "Sentiment Analyst"
+    description: "分析市场情绪、投资者心理和社交媒体舆情"
+    role_type: "sentiment_analysis"
+    priority: "insight"
+    
+    # 专业领域
+    expertise:
+      - "社交媒体情绪监测"
+      - "投资者情绪指标"
+      - "市场恐慌/贪婪指数"
+      - "舆情趋势分析"
+      - "情绪转折点识别"
+    
+    # 数据源
+    sentiment_sources:
+      - "微博财经话题"
+      - "股吧讨论"
+      - "雪球社区"
+      - "财经评论区"
+      - "机构研报情绪"
+    
+    # 情绪指标
+    sentiment_metrics:
+      - "情绪极性 (正面/负面)"
+      - "情绪强度"
+      - "讨论热度"
+      - "话题传播速度"
+      - "意见领袖态度"
+    
+    # 输出特点
+    output_style:
+      format: "sentiment_report"
+      length: "concise"
+      focus: "emotion_insights"
+      time_sensitivity: "high"
+    
+    # 性能要求
+    performance:
+      response_time: "fast"    # 8-18秒
+      accuracy: "medium"       # 75-85% 
+      cost_limit: 0.08
+      
+  # 政策研究员 - Policy Researcher
+  policy_researcher:
+    name: "政策研究员"
+    name_en: "Policy Researcher" 
+    description: "研究政策法规变化对企业和行业的影响"
+    role_type: "policy_analysis"
+    priority: "comprehension"
+    
+    # 专业领域
+    expertise:
+      - "政策法规解读"
+      - "行业政策影响分析"
+      - "监管变化跟踪"
+      - "政府态度研判"
+      - "政策风险评估"
+    
+    # 关注领域
+    policy_areas:
+      - "货币政策"
+      - "财政政策"
+      - "产业政策"
+      - "环保政策"
+      - "金融监管"
+      - "国际贸易政策"
+    
+    # 输出特点
+    output_style:
+      format: "policy_brief"
+      length: "detailed"
+      focus: "policy_impact"
+      time_sensitivity: "medium"
+    
+    # 性能要求
+    performance:
+      response_time: "medium"  # 20-35秒
+      accuracy: "high"         # 85-95%
+      cost_limit: 0.18
+      
+  # 工具工程师 - Tool Engineer
+  tool_engineer:
+    name: "工具工程师"
+    name_en: "Tool Engineer"
+    description: "负责数据获取、工具使用和系统优化"
+    role_type: "technical_support"
+    priority: "functionality"
+    
+    # 专业领域
+    expertise:
+      - "数据API集成"
+      - "工具函数开发"
+      - "数据质量检查"
+      - "系统性能优化"
+      - "错误处理机制"
+    
+    # 技术技能
+    technical_skills:
+      - "API调用优化"
+      - "数据清洗处理"
+      - "缓存策略实现"
+      - "并发控制"
+      - "异常处理"
+    
+    # 输出特点
+    output_style:
+      format: "technical_report"
+      length: "moderate"
+      focus: "system_insights" 
+      time_sensitivity: "low"
+    
+    # 性能要求
+    performance:
+      response_time: "medium"  # 15-25秒
+      accuracy: "high"         # 90-98%
+      cost_limit: 0.12
+      
+  # 风控经理 - Risk Manager
+  risk_manager:
+    name: "风控经理"
+    name_en: "Risk Manager"
+    description: "评估投资风险，制定风险管理策略"
+    role_type: "risk_assessment"
+    priority: "safety"
+    
+    # 专业领域
+    expertise:
+      - "系统性风险识别"
+      - "个股风险评估"
+      - "流动性风险分析"
+      - "信用风险评估"
+      - "市场风险测量"
+      - "风险对冲策略"
+    
+    # 风险指标
+    risk_metrics:
+      - "VaR (风险价值)"
+      - "最大回撤"
+      - "夏普比率"
+      - "贝塔系数"
+      - "波动率"
+      - "相关系数"
+    
+    # 输出特点
+    output_style:
+      format: "risk_report"
+      length: "comprehensive"
+      focus: "risk_mitigation"
+      time_sensitivity: "medium"
+    
+    # 性能要求
+    performance:
+      response_time: "medium"  # 18-30秒
+      accuracy: "very_high"    # 90-98%
+      cost_limit: 0.15
+      
+  # 合规专员 - Compliance Officer
+  compliance_officer:
+    name: "合规专员"
+    name_en: "Compliance Officer"
+    description: "确保分析和建议符合监管要求"
+    role_type: "compliance_check"
+    priority: "accuracy"
+    
+    # 专业领域
+    expertise:
+      - "投资合规检查"
+      - "信息披露要求"
+      - "监管规则解读"
+      - "合规风险识别"
+      - "免责声明制定"
+    
+    # 合规框架
+    compliance_frameworks:
+      - "证券法规"
+      - "基金管理规定"
+      - "投资者适当性"
+      - "信息披露规则"
+      - "反洗钱规定"
+    
+    # 输出特点
+    output_style:
+      format: "compliance_check"
+      length: "detailed"
+      focus: "regulatory_adherence"
+      time_sensitivity: "high"
+    
+    # 性能要求
+    performance:
+      response_time: "fast"    # 10-20秒
+      accuracy: "very_high"    # 95-99%
+      cost_limit: 0.10
+      
+  # 首席决策官 - Chief Decision Officer
+  chief_decision_officer:
+    name: "首席决策官"
+  # 主笔人 - Chief Writer
+  chief_writer:
+    name: "主笔人"
+    name_en: "Chief Writer"
+    description: "融合多方专家观点，输出结构化长文"
+    role_type: "article_composition"
+    priority: "quality"
+    expertise:
+      - "多源信息融合"
+      - "结构化长文写作"
+      - "冲突观点对齐"
+      - "投资逻辑表达"
+    output_style:
+      format: "long_form_article"
+      length: "long"
+      focus: "coherent_synthesis"
+      time_sensitivity: "medium"
+    performance:
+      response_time: "medium"
+      accuracy: "very_high"
+      cost_limit: 0.30
+
+  # 绘图师 - ChartingArtist (Optional Role)
+  charting_artist:
+    name: "绘图师"
+    name_en: "Charting Artist"
+    description: "基于分析结果生成专业的可视化图表和技术图形"
+    role_type: "visualization"
+    priority: "clarity"
+    is_optional: true
+    enabled_by_default: false
+    
+    # 专业领域
+    expertise:
+      - "K线图绘制"
+      - "技术指标可视化"
+      - "财务数据图表"
+      - "趋势分析图表"
+      - "风险热力图"
+      - "投资组合饼图"
+      - "时间序列图表"
+      - "相关性矩阵图"
+    
+    # 图表类型
+    chart_types:
+      - "candlestick"      # K线图
+      - "line_chart"       # 折线图
+      - "bar_chart"        # 柱状图
+      - "pie_chart"        # 饼图
+      - "scatter_plot"     # 散点图
+      - "heatmap"          # 热力图
+      - "radar_chart"      # 雷达图
+      - "box_plot"         # 箱线图
+      - "waterfall"        # 瀑布图
+      - "gauge_chart"      # 仪表盘
+    
+    # 技术依赖
+    dependencies:
+      - "plotly"
+      - "pandas"
+      - "numpy"
+    
+    # 输出特点
+    output_style:
+      format: "interactive_charts"
+      length: "visual"
+      focus: "data_storytelling"
+      time_sensitivity: "low"
+      interactive: true
+    
+    # 性能要求
+    performance:
+      response_time: "fast"    # 5-15秒
+      accuracy: "high"         # 85-95%
+      cost_limit: 0.05
+      post_processing: true    # 标识为后处理角色
+    name_en: "Chief Decision Officer"
+    description: "整合各方信息，做出最终投资决策和建议"
+    role_type: "decision_making"
+    priority: "wisdom"
+    
+    # 专业领域
+    expertise:
+      - "信息整合分析"
+      - "决策权衡评估"
+      - "策略制定"
+      - "风险收益平衡"
+      - "时机判断"
+      - "投资组合优化"
+    
+    # 决策框架
+    decision_framework:
+      - "多因子模型"
+      - "情景分析法"
+      - "蒙特卡罗模拟"
+      - "决策树分析"
+      - "期望效用理论"
+    
+    # 输出特点
+    output_style:
+      format: "executive_summary"
+      length: "comprehensive"
+      focus: "actionable_decisions"
+      time_sensitivity: "medium"
+    
+    # 性能要求
+    performance:
+      response_time: "medium"  # 25-40秒
+      accuracy: "very_high"    # 90-98%
+      cost_limit: 0.25
+
+# 协作关系配置
+collaboration_patterns:
+  # 信息流向
+  information_flow:
+    # 第一层：信息收集
+    tier_1:
+      - "news_hunter"
+      - "tool_engineer"
+    
+    # 第二层：专业分析
+    tier_2:
+      - "fundamental_expert"
+      - "technical_analyst"
+      - "sentiment_analyst"
+      - "policy_researcher"
+    
+    # 第三层：风控合规
+    tier_3:
+      - "risk_manager"
+      - "compliance_officer"
+    
+    # 第四层：最终决策与可视化
+    tier_4:
+      - "chief_decision_officer"
+      - "chief_writer"
+    
+    # 第五层：后处理可视化（可选）
+    tier_5:
+      - "charting_artist"
+  
+  # 交互模式
+  interaction_modes:
+    sequential:
+      description: "按层级依次执行"
+      flow: "tier_1 -> tier_2 -> tier_3 -> tier_4"
+      
+    parallel:
+      description: "同层并行执行"
+      flow: "tier_1 || (tier_2 || tier_3) -> tier_4"
+      
+    debate:
+      description: "核心角色辩论"
+      participants: ["fundamental_expert", "technical_analyst", "risk_manager", "chief_decision_officer"]

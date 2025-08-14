@@ -1,0 +1,337 @@
+# =============================================================================
+# Prometheus Alerting Rules for TradingAgents-CN
+# Comprehensive alerting for application and infrastructure monitoring
+# =============================================================================
+
+groups:
+  # =============================================================================
+  # Application Health Alerts
+  # =============================================================================
+  - name: tradingagents_application
+    rules:
+      # Service availability
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} on {{ $labels.instance }} has been down for more than 1 minute."
+          runbook_url: "https://docs.tradingagents.com/runbooks/service-down"
+
+      # High error rate
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          category: errors
+        annotations:
+          summary: "High error rate for {{ $labels.job }}"
+          description: "Error rate for {{ $labels.job }} is {{ $value | humanizePercentage }} over the last 5 minutes."
+
+      # Response time alerts
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High response time for {{ $labels.job }}"
+          description: "95th percentile response time for {{ $labels.job }} is {{ $value }}s over the last 5 minutes."
+
+      # Market analysis specific alerts
+      - alert: MarketScanFailureRate
+        expr: rate(market_scans_failed_total[10m]) / rate(market_scans_total[10m]) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          category: market_analysis
+        annotations:
+          summary: "High market scan failure rate"
+          description: "Market scan failure rate is {{ $value | humanizePercentage }} over the last 10 minutes."
+
+      - alert: MarketScanQueueBacklog
+        expr: market_scan_queue_size > 50
+        for: 5m
+        labels:
+          severity: warning
+          category: market_analysis
+        annotations:
+          summary: "Market scan queue backlog"
+          description: "Market scan queue has {{ $value }} pending scans."
+
+  # =============================================================================
+  # Infrastructure Alerts
+  # =============================================================================
+  - name: tradingagents_infrastructure
+    rules:
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: resources
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: resources
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}"
+
+      # Low disk space
+      - alert: LowDiskSpace
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: resources
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Disk usage is {{ $value }}% on {{ $labels.instance }} ({{ $labels.mountpoint }})"
+
+      # Critical disk space
+      - alert: CriticalDiskSpace
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 95
+        for: 1m
+        labels:
+          severity: critical
+          category: resources
+        annotations:
+          summary: "Critical disk space on {{ $labels.instance }}"
+          description: "Disk usage is {{ $value }}% on {{ $labels.instance }} ({{ $labels.mountpoint }})"
+
+  # =============================================================================
+  # Database Alerts
+  # =============================================================================
+  - name: tradingagents_database
+    rules:
+      # MongoDB connection issues
+      - alert: MongoDBDown
+        expr: mongodb_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "MongoDB is down"
+          description: "MongoDB instance {{ $labels.instance }} is down"
+
+      # High MongoDB connections
+      - alert: MongoDBHighConnections
+        expr: mongodb_connections{state="current"} > 800
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "MongoDB has high number of connections"
+          description: "MongoDB has {{ $value }} current connections"
+
+      # MongoDB replication lag
+      - alert: MongoDBReplicationLag
+        expr: mongodb_replset_member_replication_lag > 30
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "MongoDB replication lag is high"
+          description: "MongoDB replication lag is {{ $value }} seconds for member {{ $labels.member_name }}"
+
+      # Redis connection issues
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: cache
+        annotations:
+          summary: "Redis is down"
+          description: "Redis instance {{ $labels.instance }} is down"
+
+      # Redis high memory usage
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          category: cache
+        annotations:
+          summary: "Redis memory usage is high"
+          description: "Redis memory usage is {{ $value | humanizePercentage }}"
+
+      # Redis connection spike
+      - alert: RedisConnectionSpike
+        expr: increase(redis_connected_clients[5m]) > 50
+        for: 5m
+        labels:
+          severity: warning
+          category: cache
+        annotations:
+          summary: "Redis connection spike detected"
+          description: "Redis connections increased by {{ $value }} in the last 5 minutes"
+
+  # =============================================================================
+  # Security Alerts
+  # =============================================================================
+  - name: tradingagents_security
+    rules:
+      # Suspicious login attempts
+      - alert: HighFailedLoginAttempts
+        expr: rate(login_attempts_failed_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "High number of failed login attempts"
+          description: "Failed login attempt rate is {{ $value }} per second"
+
+      # API rate limit exceeded
+      - alert: APIRateLimitExceeded
+        expr: rate(api_rate_limit_exceeded_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "API rate limit exceeded frequently"
+          description: "API rate limit exceeded {{ $value }} times per second"
+
+      # Unusual API usage patterns
+      - alert: UnusualAPIUsage
+        expr: rate(api_requests_total[1h]) > 1000
+        for: 10m
+        labels:
+          severity: info
+          category: security
+        annotations:
+          summary: "Unusual API usage pattern detected"
+          description: "API request rate is {{ $value }} requests per second, which is unusually high"
+
+  # =============================================================================
+  # Business Logic Alerts
+  # =============================================================================
+  - name: tradingagents_business
+    rules:
+      # AI model cost alerts
+      - alert: HighAIModelCosts
+        expr: rate(ai_model_cost_total[1h]) > 100
+        for: 10m
+        labels:
+          severity: warning
+          category: costs
+        annotations:
+          summary: "High AI model costs detected"
+          description: "AI model costs are ${{ $value }} per hour"
+
+      # Data freshness alerts
+      - alert: StaleMarketData
+        expr: time() - market_data_last_update_timestamp > 3600
+        for: 5m
+        labels:
+          severity: warning
+          category: data_quality
+        annotations:
+          summary: "Market data is stale"
+          description: "Market data hasn't been updated for {{ $value | humanizeDuration }}"
+
+      # Export failures
+      - alert: ExportFailureRate
+        expr: rate(export_failures_total[10m]) / rate(export_attempts_total[10m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          category: functionality
+        annotations:
+          summary: "High export failure rate"
+          description: "Export failure rate is {{ $value | humanizePercentage }}"
+
+  # =============================================================================
+  # Performance Alerts
+  # =============================================================================
+  - name: tradingagents_performance
+    rules:
+      # Queue processing delays
+      - alert: HighQueueProcessingDelay
+        expr: queue_processing_delay_seconds > 300
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High queue processing delay"
+          description: "Queue processing delay is {{ $value }} seconds"
+
+      # Memory leaks detection
+      - alert: MemoryLeakSuspected
+        expr: increase(process_resident_memory_bytes[1h]) > 100 * 1024 * 1024  # 100MB increase per hour
+        for: 2h
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Potential memory leak detected in {{ $labels.job }}"
+          description: "Memory usage increased by {{ $value | humanizeBytes }} in the last hour"
+
+      # Garbage collection pressure
+      - alert: HighGCPressure
+        expr: rate(python_gc_duration_sum[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High garbage collection pressure in {{ $labels.job }}"
+          description: "GC time is {{ $value }}s per second"
+
+  # =============================================================================
+  # Watchdog Alerts (Meta-monitoring)
+  # =============================================================================
+  - name: tradingagents_watchdog
+    rules:
+      # Prometheus target down
+      - alert: PrometheusTargetDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: warning
+          category: monitoring
+        annotations:
+          summary: "Prometheus target {{ $labels.job }} is down"
+          description: "Prometheus target {{ $labels.job }} on {{ $labels.instance }} has been down for more than 5 minutes"
+
+      # No metrics received
+      - alert: NoMetricsReceived
+        expr: up{job!~"prometheus|alertmanager"} == 0
+        for: 10m
+        labels:
+          severity: critical
+          category: monitoring
+        annotations:
+          summary: "No metrics received from {{ $labels.job }}"
+          description: "Haven't received metrics from {{ $labels.job }} for 10 minutes"
+
+      # Alert manager down
+      - alert: AlertManagerDown
+        expr: up{job="alertmanager"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          category: monitoring
+        annotations:
+          summary: "AlertManager is down"
+          description: "AlertManager has been down for more than 5 minutes"

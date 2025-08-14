@@ -1,0 +1,449 @@
+# =============================================================================
+# SSL/TLS Certificate Management with cert-manager
+# Automated certificate provisioning and renewal for TradingAgents-CN
+# =============================================================================
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-production
+  namespace: cert-manager
+spec:
+  acme:
+    # Let's Encrypt ACME server
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: devops@tradingagents.com
+    privateKeySecretRef:
+      name: letsencrypt-production-private-key
+    
+    # Use HTTP-01 challenge for certificate validation
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+          podTemplate:
+            spec:
+              nodeSelector:
+                kubernetes.io/os: linux
+    
+    # Use DNS-01 challenge for wildcard certificates
+    - dns01:
+        route53:
+          region: us-west-2
+          accessKeyID: AKIAI...  # Should be managed by external-secrets or vault
+          secretAccessKeySecretRef:
+            name: route53-credentials
+            key: secret-access-key
+      selector:
+        dnsNames:
+        - '*.tradingagents.example.com'
+        - 'tradingagents.example.com'
+
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+  namespace: cert-manager
+spec:
+  acme:
+    # Let's Encrypt staging server for testing
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: devops@tradingagents.com
+    privateKeySecretRef:
+      name: letsencrypt-staging-private-key
+    
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+    - dns01:
+        route53:
+          region: us-west-2
+          accessKeyID: AKIAI...
+          secretAccessKeySecretRef:
+            name: route53-credentials
+            key: secret-access-key
+
+---
+# =============================================================================
+# Internal CA Issuer for Service-to-Service Communication
+# =============================================================================
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: tradingagents-internal-ca
+  namespace: cert-manager
+spec:
+  ca:
+    secretName: tradingagents-ca-key-pair
+
+---
+# =============================================================================
+# Vault PKI Issuer for Advanced Certificate Management
+# =============================================================================
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: vault-pki-issuer
+  namespace: cert-manager
+spec:
+  vault:
+    server: https://vault.example.com:8200
+    path: pki/sign/tradingagents-internal
+    auth:
+      kubernetes:
+        mountPath: /v1/auth/kubernetes
+        role: cert-manager
+        secretRef:
+          name: cert-manager-vault-token
+          key: token
+
+---
+# =============================================================================
+# Production TLS Certificate for Main Domain
+# =============================================================================
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tradingagents-tls
+  namespace: tradingagents-cn
+spec:
+  secretName: tradingagents-tls-secret
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+    group: cert-manager.io
+  
+  dnsNames:
+  - tradingagents.example.com
+  - api.tradingagents.example.com
+  - www.tradingagents.example.com
+  
+  # Renewal configuration
+  duration: 2160h    # 90 days
+  renewBefore: 360h  # 15 days before expiry
+  
+  # Key configuration
+  privateKey:
+    algorithm: RSA
+    size: 2048
+    rotationPolicy: Always
+  
+  # Additional settings
+  subject:
+    organizationalUnits:
+    - TradingAgents Engineering
+    organizations:
+    - TradingAgents Ltd
+    countries:
+    - US
+    
+  # Email addresses for certificate
+  emailAddresses:
+  - devops@tradingagents.com
+
+---
+# =============================================================================
+# Wildcard Certificate for Subdomains
+# =============================================================================
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tradingagents-wildcard-tls
+  namespace: tradingagents-cn
+spec:
+  secretName: tradingagents-wildcard-tls-secret
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+    group: cert-manager.io
+  
+  dnsNames:
+  - '*.tradingagents.example.com'
+  - tradingagents.example.com
+  
+  duration: 2160h
+  renewBefore: 360h
+  
+  privateKey:
+    algorithm: RSA
+    size: 2048
+    rotationPolicy: Always
+
+---
+# =============================================================================
+# Internal Service Certificates for mTLS
+# =============================================================================
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: api-service-internal-tls
+  namespace: tradingagents-cn
+spec:
+  secretName: api-service-internal-tls
+  issuerRef:
+    name: tradingagents-internal-ca
+    kind: ClusterIssuer
+    group: cert-manager.io
+  
+  dnsNames:
+  - tradingagents-api-service
+  - tradingagents-api-service.tradingagents-cn.svc
+  - tradingagents-api-service.tradingagents-cn.svc.cluster.local
+  
+  duration: 8760h    # 1 year for internal certificates
+  renewBefore: 2160h # 3 months before expiry
+  
+  privateKey:
+    algorithm: RSA
+    size: 2048
+  
+  usages:
+  - server auth
+  - client auth
+  - digital signature
+  - key encipherment
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: web-service-internal-tls
+  namespace: tradingagents-cn
+spec:
+  secretName: web-service-internal-tls
+  issuerRef:
+    name: tradingagents-internal-ca
+    kind: ClusterIssuer
+    group: cert-manager.io
+  
+  dnsNames:
+  - tradingagents-web-service
+  - tradingagents-web-service.tradingagents-cn.svc
+  - tradingagents-web-service.tradingagents-cn.svc.cluster.local
+  
+  duration: 8760h
+  renewBefore: 2160h
+  
+  privateKey:
+    algorithm: RSA
+    size: 2048
+  
+  usages:
+  - server auth
+  - client auth
+
+---
+# =============================================================================
+# Certificate for Database Connections (RDS SSL)
+# =============================================================================
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: database-client-tls
+  namespace: tradingagents-cn
+spec:
+  secretName: database-client-tls
+  issuerRef:
+    name: vault-pki-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+  
+  commonName: tradingagents-db-client
+  duration: 8760h
+  renewBefore: 2160h
+  
+  privateKey:
+    algorithm: RSA
+    size: 2048
+  
+  usages:
+  - client auth
+  - digital signature
+  
+  keystores:
+    pkcs12:
+      create: true
+      passwordSecretRef:
+        name: database-client-tls
+        key: keystore-password
+
+---
+# =============================================================================
+# Certificate Monitoring and Alerting
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cert-manager-metrics
+  namespace: cert-manager
+  labels:
+    app.kubernetes.io/name: cert-manager
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cert-manager
+      app.kubernetes.io/component: controller
+  endpoints:
+  - port: tcp-prometheus-servicemonitor
+    interval: 60s
+    path: /metrics
+
+---
+# =============================================================================
+# Certificate Expiry Alert Rules
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: certificate-expiry-alerts
+  namespace: tradingagents-cn
+  labels:
+    prometheus: tradingagents
+    role: alert-rules
+spec:
+  groups:
+  - name: certificate.rules
+    rules:
+    - alert: CertificateExpiringIn30Days
+      expr: (certmanager_certificate_expiration_timestamp_seconds - time()) / 86400 < 30
+      for: 1h
+      labels:
+        severity: warning
+        component: certificates
+      annotations:
+        summary: "Certificate expiring soon"
+        description: "Certificate {{ $labels.name }} in namespace {{ $labels.namespace }} expires in {{ $value | humanizeDuration }}"
+        runbook_url: "https://runbooks.tradingagents.com/certificate-renewal"
+
+    - alert: CertificateExpiringIn7Days
+      expr: (certmanager_certificate_expiration_timestamp_seconds - time()) / 86400 < 7
+      for: 0m
+      labels:
+        severity: critical
+        component: certificates
+      annotations:
+        summary: "Certificate expiring very soon"
+        description: "Certificate {{ $labels.name }} in namespace {{ $labels.namespace }} expires in {{ $value | humanizeDuration }}"
+        runbook_url: "https://runbooks.tradingagents.com/certificate-renewal"
+
+    - alert: CertificateRenewalFailed
+      expr: increase(certmanager_certificate_renewal_timestamp_seconds[1h]) == 0 and on(name, namespace) (certmanager_certificate_expiration_timestamp_seconds - time()) / 86400 < 21
+      for: 1h
+      labels:
+        severity: critical
+        component: certificates
+      annotations:
+        summary: "Certificate renewal failed"
+        description: "Certificate {{ $labels.name }} in namespace {{ $labels.namespace }} renewal has failed and expires in {{ $value | humanizeDuration }}"
+        runbook_url: "https://runbooks.tradingagents.com/certificate-renewal-failure"
+
+---
+# =============================================================================
+# Automated Certificate Backup
+# =============================================================================
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: certificate-backup
+  namespace: tradingagents-cn
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: certificate-backup-sa
+          containers:
+          - name: backup
+            image: bitnami/kubectl:latest
+            command:
+            - /bin/bash
+            - -c
+            - |
+              #!/bin/bash
+              set -euo pipefail
+              
+              echo "Starting certificate backup..."
+              BACKUP_DIR="/tmp/cert-backup-$(date +%Y%m%d)"
+              mkdir -p "$BACKUP_DIR"
+              
+              # Backup all TLS secrets
+              for secret in $(kubectl get secrets -n tradingagents-cn -o name | grep tls); do
+                echo "Backing up $secret..."
+                kubectl get "$secret" -n tradingagents-cn -o yaml > "$BACKUP_DIR/${secret#*/}.yaml"
+              done
+              
+              # Create compressed archive
+              tar -czf "/tmp/cert-backup-$(date +%Y%m%d).tar.gz" -C /tmp "cert-backup-$(date +%Y%m%d)"
+              
+              # Upload to S3 (requires AWS credentials)
+              if command -v aws >/dev/null 2>&1; then
+                aws s3 cp "/tmp/cert-backup-$(date +%Y%m%d).tar.gz" s3://tradingagents-backups/certificates/
+                echo "Certificate backup uploaded to S3"
+              else
+                echo "AWS CLI not available, backup stored locally"
+              fi
+              
+              # Cleanup local files
+              rm -rf "$BACKUP_DIR"
+              rm -f "/tmp/cert-backup-$(date +%Y%m%d).tar.gz"
+              
+              echo "Certificate backup completed successfully"
+            
+            env:
+            - name: AWS_DEFAULT_REGION
+              value: us-west-2
+            
+            volumeMounts:
+            - name: aws-credentials
+              mountPath: /root/.aws
+              readOnly: true
+          
+          volumes:
+          - name: aws-credentials
+            secret:
+              secretName: aws-credentials
+          
+          restartPolicy: OnFailure
+
+---
+# =============================================================================
+# Service Account for Certificate Operations
+# =============================================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: certificate-backup-sa
+  namespace: tradingagents-cn
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: certificate-reader
+  namespace: tradingagents-cn
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list"]
+- apiGroups: ["cert-manager.io"]
+  resources: ["certificates"]
+  verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: certificate-backup-binding
+  namespace: tradingagents-cn
+subjects:
+- kind: ServiceAccount
+  name: certificate-backup-sa
+  namespace: tradingagents-cn
+roleRef:
+  kind: Role
+  name: certificate-reader
+  apiGroup: rbac.authorization.k8s.io

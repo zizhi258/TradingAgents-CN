@@ -1,0 +1,9 @@
+{
+  "role_overrides": {
+    "chief_writer": {
+      "model": "deepseek-ai/DeepSeek-R1",
+      "is_locked": true
+    }
+  },
+  "last_modified": "2025-08-12T23:49:23.529255"
+}

@@ -1,0 +1,210 @@
+# =============================================================================
+# Persistent Volume Claims for Application Data
+# =============================================================================
+
+# Application Data PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-data-pvc
+  namespace: tradingagents-cn
+  labels:
+    app.kubernetes.io/name: tradingagents-cn
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: fast-ssd
+  resources:
+    requests:
+      storage: 100Gi
+---
+# Application Logs PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-logs-pvc
+  namespace: tradingagents-cn
+  labels:
+    app.kubernetes.io/name: tradingagents-cn
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 50Gi
+---
+# Application Reports PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-reports-pvc
+  namespace: tradingagents-cn
+  labels:
+    app.kubernetes.io/name: tradingagents-cn
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: fast-ssd
+  resources:
+    requests:
+      storage: 200Gi
+---
+# Application Configuration PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-config-pvc
+  namespace: tradingagents-cn
+  labels:
+    app.kubernetes.io/name: tradingagents-cn
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Beat Schedule PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: beat-schedule-pvc
+  namespace: tradingagents-cn
+  labels:
+    app.kubernetes.io/name: tradingagents-beat
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 1Gi
+---
+# =============================================================================
+# Network Policies for Security
+# =============================================================================
+
+# Default deny all ingress traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: tradingagents-cn
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Allow ingress to web service from ingress controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-web-ingress
+  namespace: tradingagents-cn
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: tradingagents-web
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8501
+---
+# Allow communication between application services
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-app-communication
+  namespace: tradingagents-cn
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: tradingagents-platform
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: tradingagents-platform
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: tradingagents-platform
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+        - podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow external API calls
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
+---
+# Allow MongoDB access
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-mongodb-access
+  namespace: tradingagents-cn
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: mongodb
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: tradingagents-platform
+      ports:
+        - protocol: TCP
+          port: 27017
+---
+# Allow Redis access
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redis-access
+  namespace: tradingagents-cn
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: tradingagents-platform
+      ports:
+        - protocol: TCP
+          port: 6379

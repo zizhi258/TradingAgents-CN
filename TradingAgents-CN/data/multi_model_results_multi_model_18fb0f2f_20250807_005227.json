@@ -1,0 +1,6 @@
+{
+  "analysis_id": "multi_model_18fb0f2f_20250807_005227",
+  "status": "failed",
+  "error": "MultiModelManager.__init__() got an unexpected keyword argument 'routing_strategy'",
+  "timestamp": "2025-08-07T00:52:29.373353"
+}

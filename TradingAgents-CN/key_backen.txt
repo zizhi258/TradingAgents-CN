@@ -1,0 +1,258 @@
+# TradingAgents-CN Multi-Model Environment Configuration
+# 多模型协作系统环境变量配置
+
+# ==============================================
+# 核心功能开关 (Core Feature Switches)
+# ==============================================
+
+# 启用多模型协作功能
+MULTI_MODEL_ENABLED=true
+
+# 市场全景分析后端选择（local=本地编排；http=外部服务）
+MARKET_SCAN_BACKEND=local
+
+# 是否使用模拟API（mock）用于演示/开发；设为false启用真实本地大模型分析编排
+MARKET_SCAN_USE_MOCK=false
+
+# ==============================================
+# 多模型API配置 (Multi-Model API Configuration)
+# ==============================================
+
+# 硅基流动API配置 (SiliconFlow API) - 国产模型统一接入
+SILICONFLOW_API_KEY=your_siliconflow_api_key_here
+SILICONFLOW_BASE_URL=https://api.siliconflow.cn/v1
+SILICONFLOW_DEFAULT_MODEL=Qwen/Qwen3-Coder-480B-A35B-Instruct
+
+# 推荐模型选择：
+# Qwen/Qwen3-Coder-480B-A35B-Instruct - 最强代码和智能体能力，480B参数，响应稳定
+# moonshotai/Kimi-K2-Instruct - 超强Agent能力，1T参数，全面均衡
+# zai-org/GLM-4.5-Air - 轻量级高性能，成本低，适合频繁调用
+# stepfun-ai/step3 - 多模态推理专家，支持视觉语言任务
+# deepseek-ai/DeepSeek-R1 - 顶级推理模型(需要更长等待时间)
+
+# Google AI API配置 (Google AI API) - Gemini模型原生接入 - 新版SDK
+GEMINI_API_KEY=your_gemini_api_key_here  # 新版google-genai SDK推荐
+GOOGLE_AI_API_KEY=your_google_ai_api_key_here  # 向后兼容
+GOOGLE_AI_DEFAULT_MODEL=gemini-2.5-pro
+
+# ==============================================
+# 传统配置兼容 (Traditional Configuration Compatibility)
+# ==============================================
+
+# DeepSeek API配置 (DeepSeek API) - 专业推理模型
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_DEFAULT_MODEL=deepseek-chat
+
+# 为了向后兼容，保留传统配置
+DASHSCOPE_API_KEY=your_dashscope_api_key_here
+GOOGLE_API_KEY=your_google_api_key_here
+
+# 金融数据API
+FINNHUB_API_KEY=your_finnhub_api_key_here
+
+# ==============================================
+# 智能路由配置 (Smart Routing Configuration)
+# ==============================================
+
+# 路由策略 (Routing Strategy)
+ROUTING_STRATEGY=intelligent
+# 可选值: intelligent (智能路由), manual (手动选择), cost_optimized (成本优化)
+
+# 路由决策AI模型 (AI Model for Routing Decisions)
+ROUTING_AI_MODEL=gemini-2.5-pro
+
+# 成本限制 (Cost Limits)
+MAX_COST_PER_SESSION=1.00
+DAILY_COST_LIMIT=10.0
+WEEKLY_COST_LIMIT=50.0
+MONTHLY_COST_LIMIT=200.0
+
+# ==============================================
+# 协作模式配置 (Collaboration Mode Configuration)
+# ==============================================
+
+# 默认协作模式 (Default Collaboration Mode)
+DEFAULT_COLLABORATION_MODE=sequential
+# 可选值: sequential (序列), parallel (并行), debate (辩论)
+
+# 智能体配置 (Agent Configuration)
+MAX_AGENT_ITERATIONS=3
+MAX_CONCURRENT_AGENTS=5
+
+# 实时UI配置 (Real-time UI Configuration)
+ENABLE_REAL_TIME_UI=true
+UI_UPDATE_INTERVAL=5
+
+# ==============================================
+# 性能和监控配置 (Performance & Monitoring)
+# ==============================================
+
+# 性能监控 (Performance Monitoring)
+ENABLE_PERFORMANCE_MONITORING=true
+METRICS_COLLECTION_INTERVAL=60
+LOG_ALL_DECISIONS=true
+
+# 缓存配置 (Cache Configuration)
+ENABLE_ROUTING_CACHE=true
+ROUTING_CACHE_TTL=3600
+ENABLE_MODEL_RESPONSE_CACHE=true
+MODEL_CACHE_TTL=1800
+
+# 自动优化 (Auto Optimization)
+ENABLE_AUTO_OPTIMIZATION=true
+COST_OPTIMIZATION_THRESHOLD=0.9
+
+# ==============================================
+# 数据库配置 (Database Configuration)
+# ==============================================
+
+# 多模型数据库 (Multi-Model Database)
+MULTI_MODEL_DATABASE_PATH=data/multi_model.db
+PERFORMANCE_DATABASE_PATH=data/performance_metrics.db
+
+# 数据保留策略 (Data Retention Policy)
+ROUTING_DECISIONS_RETENTION_DAYS=30
+PERFORMANCE_METRICS_RETENTION_DAYS=90
+SESSION_DATA_RETENTION_DAYS=7
+
+# ==============================================
+# 安全配置 (Security Configuration)
+# ==============================================
+
+# API访问控制 (API Access Control)
+ENABLE_RATE_LIMITING=true
+MAX_REQUESTS_PER_MINUTE=60
+MAX_REQUESTS_PER_HOUR=1000
+
+# 数据隐私 (Data Privacy)
+ENABLE_LOG_SANITIZATION=true
+ENABLE_PII_DETECTION=false
+
+# ==============================================
+# 现有环境变量保持不变 (Keep Existing Environment Variables)
+# ==============================================
+
+# 传统LLM配置 (Traditional LLM Configuration)
+# 这些配置保持不变，用于向后兼容
+LLM_PROVIDER=google
+DEEP_THINK_LLM=gemini-2.5-pro
+QUICK_THINK_LLM=gemini-2.5-flash
+
+# 其他现有配置...
+# (保留所有现有的环境变量配置，确保向后兼容)
+
+# ==============================================
+# 开发和测试配置 (Development & Testing)
+# ==============================================
+
+# 调试模式 (Debug Mode)
+MULTI_MODEL_DEBUG=false
+ENABLE_API_PLAYGROUND=false
+
+# 测试配置 (Testing Configuration)
+ENABLE_TEST_MODE=false
+MOCK_EXPENSIVE_APIS=false
+
+# A/B测试 (A/B Testing)
+ENABLE_AB_TESTING=false
+AB_TEST_PERCENTAGE=10
+
+# ==============================================
+# Docker部署配置 (Docker Deployment Configuration)
+# ==============================================
+
+# 容器资源限制 (Container Resource Limits)
+DOCKER_MEMORY_LIMIT=2GB
+DOCKER_CPU_LIMIT=1.0
+
+# 健康检查 (Health Checks)
+ENABLE_DOCKER_HEALTH_CHECKS=true
+HEALTH_CHECK_INTERVAL=30
+
+# 服务发现 (Service Discovery)
+ENABLE_SERVICE_DISCOVERY=false
+
+# ==============================================
+# 集成配置 (Integration Configuration)
+# ==============================================
+
+# Streamlit配置 (Streamlit Configuration)
+STREAMLIT_ENABLE_REALTIME_UPDATES=true
+STREAMLIT_CHART_REFRESH_INTERVAL=5
+
+# 监控系统集成 (Monitoring System Integration)
+PROMETHEUS_ENABLED=false
+GRAFANA_DASHBOARDS=false
+ALERTING_ENABLED=false
+
+# ==============================================
+# 实验性功能 (Experimental Features)
+# ==============================================
+
+# 自动模型选择优化 (Auto Model Selection Optimization)
+ENABLE_AUTO_MODEL_OPTIMIZATION=true
+MODEL_OPTIMIZATION_LEARNING_RATE=0.01
+
+# 动态定价 (Dynamic Pricing)
+ENABLE_DYNAMIC_PRICING=true
+
+# 预测性加载 (Predictive Loading)
+ENABLE_PREDICTIVE_LOADING=false
+PREDICTION_HORIZON_SECONDS=300
+
+# ==============================================
+# 环境特定覆盖 (Environment Specific Overrides)
+# ==============================================
+
+# 开发环境 (Development Environment)
+# 取消注释以下行用于开发环境
+# MULTI_MODEL_DEBUG=true
+# LOG_LEVEL=DEBUG
+# MOCK_EXPENSIVE_CALLS=true
+
+# 生产环境 (Production Environment)  
+# 取消注释以下行用于生产环境
+# MULTI_MODEL_DEBUG=false
+# LOG_LEVEL=INFO
+# STRICT_COST_LIMITS=true
+# ENABLE_MONITORING=true
+
+# 测试环境 (Testing Environment)
+# 取消注释以下行用于测试环境
+# ENABLE_TEST_MODE=true
+# MOCK_ALL_APIS=true
+# DETERMINISTIC_ROUTING=true
+# FIXED_COSTS=true
+
+# ==============================================
+# 内存功能配置 (Memory Configuration)
+# ==============================================
+
+# 临时禁用内存功能以解决 dashscope 依赖问题
+MEMORY_ENABLED=false
+
+SMTP_HOST=smtp.163.com
+SMTP_PORT=465
+SMTP_USER=your_email@example.com
+SMTP_PASS=your_email_password_or_app_token
+SCHEDULER_ENABLED=true
+SCHEDULER_TIMEZONE=Asia/Shanghai
+
+TUSHARE_TOKEN=your_tushare_token_here
+TUSHARE_ENABLED=true
+DEFAULT_CHINA_DATA_SOURCE=tushare
+
+# ==============================================
+# 本地回放模式配置 (Local Replay Mode Configuration)  
+# ==============================================
+
+# 启用离线模式 - 用于演示和测试，使用缓存或示例数据
+OFFLINE_MODE=false
+
+# 本地回放数据源选择 (cache=缓存数据, demo=演示数据, sample=示例数据)
+LOCAL_REPLAY_SOURCE=demo
+# 绘图师配置 (ChartingArtist Configuration)
+CHARTING_ARTIST_ENABLED=true
+USE_LLM_FOR_CHART_SPEC=false
+CHART_OUTPUT_DIR=./data/exports/plots

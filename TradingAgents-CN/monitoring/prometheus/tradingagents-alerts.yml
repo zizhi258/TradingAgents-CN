@@ -1,0 +1,290 @@
+# =============================================================================
+# TradingAgents-CN Production Alert Rules
+# =============================================================================
+groups:
+  # =============================================================================
+  # Application Health Alerts
+  # =============================================================================
+  - name: tradingagents.application.health
+    rules:
+    - alert: TradingAgentsAPIDown
+      expr: up{job="tradingagents-api"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        component: api
+        team: tradingagents
+      annotations:
+        summary: "TradingAgents API service is down"
+        description: "The TradingAgents API service {{ $labels.instance }} has been down for more than 1 minute."
+        runbook_url: "https://runbooks.tradingagents.com/api-down"
+
+    - alert: TradingAgentsWebDown
+      expr: up{job="tradingagents-web"} == 0
+      for: 2m
+      labels:
+        severity: critical
+        component: web
+        team: tradingagents
+      annotations:
+        summary: "TradingAgents Web service is down"
+        description: "The TradingAgents Web service {{ $labels.instance }} has been down for more than 2 minutes."
+        runbook_url: "https://runbooks.tradingagents.com/web-down"
+
+    - alert: TradingAgentsHighErrorRate
+      expr: (rate(http_requests_total{job="tradingagents-api",status=~"5.."}[5m]) / rate(http_requests_total{job="tradingagents-api"}[5m])) > 0.1
+      for: 5m
+      labels:
+        severity: warning
+        component: api
+        team: tradingagents
+      annotations:
+        summary: "High error rate detected"
+        description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.instance }}"
+        runbook_url: "https://runbooks.tradingagents.com/high-error-rate"
+
+  # =============================================================================
+  # Performance Alerts
+  # =============================================================================
+  - name: tradingagents.performance
+    rules:
+    - alert: TradingAgentsHighLatency
+      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="tradingagents-api"}[5m])) > 2
+      for: 10m
+      labels:
+        severity: warning
+        component: api
+        team: tradingagents
+      annotations:
+        summary: "High API latency detected"
+        description: "95th percentile latency is {{ $value }}s for {{ $labels.instance }}"
+        runbook_url: "https://runbooks.tradingagents.com/high-latency"
+
+    - alert: TradingAgentsHighMemoryUsage
+      expr: (container_memory_usage_bytes{container="api",namespace="tradingagents-cn"} / container_spec_memory_limit_bytes) > 0.9
+      for: 5m
+      labels:
+        severity: warning
+        component: api
+        team: tradingagents
+      annotations:
+        summary: "High memory usage detected"
+        description: "Memory usage is {{ $value | humanizePercentage }} for {{ $labels.pod }}"
+        runbook_url: "https://runbooks.tradingagents.com/high-memory"
+
+    - alert: TradingAgentsHighCPUUsage
+      expr: (rate(container_cpu_usage_seconds_total{container="api",namespace="tradingagents-cn"}[5m]) / container_spec_cpu_quota * 100) > 80
+      for: 15m
+      labels:
+        severity: warning
+        component: api
+        team: tradingagents
+      annotations:
+        summary: "High CPU usage detected"
+        description: "CPU usage is {{ $value }}% for {{ $labels.pod }}"
+        runbook_url: "https://runbooks.tradingagents.com/high-cpu"
+
+  # =============================================================================
+  # Database Alerts
+  # =============================================================================
+  - name: tradingagents.database
+    rules:
+    - alert: MongoDBDown
+      expr: mongodb_up == 0
+      for: 1m
+      labels:
+        severity: critical
+        component: database
+        team: tradingagents
+      annotations:
+        summary: "MongoDB is down"
+        description: "MongoDB instance {{ $labels.instance }} is down"
+        runbook_url: "https://runbooks.tradingagents.com/mongodb-down"
+
+    - alert: MongoDBHighConnections
+      expr: mongodb_connections{type="current"} > 800
+      for: 5m
+      labels:
+        severity: warning
+        component: database
+        team: tradingagents
+      annotations:
+        summary: "MongoDB high connection count"
+        description: "MongoDB has {{ $value }} connections (threshold: 800)"
+        runbook_url: "https://runbooks.tradingagents.com/mongodb-connections"
+
+    - alert: MongoDBReplicationLag
+      expr: mongodb_replset_member_replication_lag > 10
+      for: 5m
+      labels:
+        severity: warning
+        component: database
+        team: tradingagents
+      annotations:
+        summary: "MongoDB replication lag is high"
+        description: "Replication lag is {{ $value }}s for member {{ $labels.member_name }}"
+        runbook_url: "https://runbooks.tradingagents.com/mongodb-replication"
+
+    - alert: RedisDown
+      expr: redis_up == 0
+      for: 1m
+      labels:
+        severity: critical
+        component: cache
+        team: tradingagents
+      annotations:
+        summary: "Redis is down"
+        description: "Redis instance {{ $labels.instance }} is down"
+        runbook_url: "https://runbooks.tradingagents.com/redis-down"
+
+    - alert: RedisHighMemoryUsage
+      expr: (redis_memory_used_bytes / redis_memory_max_bytes) > 0.9
+      for: 5m
+      labels:
+        severity: warning
+        component: cache
+        team: tradingagents
+      annotations:
+        summary: "Redis high memory usage"
+        description: "Redis memory usage is {{ $value | humanizePercentage }}"
+        runbook_url: "https://runbooks.tradingagents.com/redis-memory"
+
+  # =============================================================================
+  # Infrastructure Alerts
+  # =============================================================================
+  - name: tradingagents.infrastructure
+    rules:
+    - alert: KubernetesNodeNotReady
+      expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+      for: 10m
+      labels:
+        severity: warning
+        component: infrastructure
+        team: platform
+      annotations:
+        summary: "Kubernetes node not ready"
+        description: "Node {{ $labels.node }} has been not ready for more than 10 minutes"
+        runbook_url: "https://runbooks.tradingagents.com/node-not-ready"
+
+    - alert: KubernetesPodCrashLooping
+      expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+      for: 5m
+      labels:
+        severity: warning
+        component: infrastructure
+        team: tradingagents
+      annotations:
+        summary: "Pod is crash looping"
+        description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is crash looping"
+        runbook_url: "https://runbooks.tradingagents.com/pod-crash-loop"
+
+    - alert: PersistentVolumeFullInFourHours
+      expr: predict_linear(kubelet_volume_stats_available_bytes[6h], 4*60*60) < 0
+      for: 5m
+      labels:
+        severity: warning
+        component: infrastructure
+        team: platform
+      annotations:
+        summary: "Persistent volume filling up"
+        description: "Volume {{ $labels.persistentvolumeclaim }} in namespace {{ $labels.namespace }} is predicted to be full within 4 hours"
+        runbook_url: "https://runbooks.tradingagents.com/volume-full"
+
+  # =============================================================================
+  # Business Logic Alerts
+  # =============================================================================
+  - name: tradingagents.business
+    rules:
+    - alert: TradingAgentsNoMarketDataUpdates
+      expr: (time() - tradingagents_last_market_data_update_timestamp) > 3600
+      for: 0m
+      labels:
+        severity: critical
+        component: business
+        team: tradingagents
+      annotations:
+        summary: "No market data updates received"
+        description: "No market data updates have been received for over 1 hour"
+        runbook_url: "https://runbooks.tradingagents.com/no-market-data"
+
+    - alert: TradingAgentsHighAnalysisFailureRate
+      expr: (rate(tradingagents_analysis_failed_total[5m]) / rate(tradingagents_analysis_total[5m])) > 0.2
+      for: 5m
+      labels:
+        severity: warning
+        component: business
+        team: tradingagents
+      annotations:
+        summary: "High analysis failure rate"
+        description: "Analysis failure rate is {{ $value | humanizePercentage }}"
+        runbook_url: "https://runbooks.tradingagents.com/analysis-failures"
+
+    - alert: TradingAgentsAPIQuotaExceeded
+      expr: tradingagents_api_quota_usage_ratio > 0.9
+      for: 1m
+      labels:
+        severity: warning
+        component: business
+        team: tradingagents
+      annotations:
+        summary: "API quota nearly exceeded"
+        description: "API quota usage is {{ $value | humanizePercentage }} for provider {{ $labels.provider }}"
+        runbook_url: "https://runbooks.tradingagents.com/api-quota"
+
+  # =============================================================================
+  # Security Alerts
+  # =============================================================================
+  - name: tradingagents.security
+    rules:
+    - alert: TradingAgentsUnusualTrafficPattern
+      expr: rate(http_requests_total{job="tradingagents-api"}[5m]) > 100
+      for: 10m
+      labels:
+        severity: warning
+        component: security
+        team: security
+      annotations:
+        summary: "Unusual traffic pattern detected"
+        description: "Request rate is {{ $value }} req/s, which is above normal threshold"
+        runbook_url: "https://runbooks.tradingagents.com/unusual-traffic"
+
+    - alert: TradingAgentsAuthenticationFailures
+      expr: rate(http_requests_total{job="tradingagents-api",status="401"}[5m]) > 5
+      for: 5m
+      labels:
+        severity: warning
+        component: security
+        team: security
+      annotations:
+        summary: "High authentication failure rate"
+        description: "Authentication failure rate is {{ $value }} failures/s"
+        runbook_url: "https://runbooks.tradingagents.com/auth-failures"
+
+  # =============================================================================
+  # External Dependencies Alerts
+  # =============================================================================
+  - name: tradingagents.external
+    rules:
+    - alert: ExternalAPIDown
+      expr: probe_success{job="external-apis"} == 0
+      for: 5m
+      labels:
+        severity: warning
+        component: external
+        team: tradingagents
+      annotations:
+        summary: "External API is down"
+        description: "External API {{ $labels.instance }} is not responding"
+        runbook_url: "https://runbooks.tradingagents.com/external-api-down"
+
+    - alert: ExternalAPIHighLatency
+      expr: probe_duration_seconds{job="external-apis"} > 5
+      for: 5m
+      labels:
+        severity: warning
+        component: external
+        team: tradingagents
+      annotations:
+        summary: "External API high latency"
+        description: "External API {{ $labels.instance }} latency is {{ $value }}s"
+        runbook_url: "https://runbooks.tradingagents.com/external-api-latency"

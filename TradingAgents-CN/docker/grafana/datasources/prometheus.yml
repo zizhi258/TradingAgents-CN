@@ -1,0 +1,78 @@
+# =============================================================================
+# Grafana Datasources Configuration
+# =============================================================================
+
+apiVersion: 1
+
+datasources:
+  # Prometheus datasource
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      httpMethod: POST
+      manageAlerts: true
+      prometheusType: Prometheus
+      prometheusVersion: 2.45.0
+      cacheLevel: High
+      disableRecordingRules: false
+      incrementalQueryOverlapWindow: 10m
+    secureJsonData: {}
+    version: 1
+    editable: false
+
+  # Loki for logs (if configured)
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        - datasourceUid: prometheus
+          matcherRegex: "trace_id=(\\w+)"
+          name: TraceID
+          url: "$${__value.raw}"
+    version: 1
+    editable: false
+
+  # Jaeger for tracing (if configured)
+  - name: Jaeger
+    type: jaeger
+    access: proxy
+    url: http://jaeger:16686
+    jsonData:
+      tracesToLogs:
+        datasourceUid: loki
+        tags: ['job', 'instance', 'pod', 'namespace']
+        mappedTags: [
+          {
+            key: 'service.name',
+            value: 'service'
+          }
+        ]
+        mapTagNamesEnabled: false
+        spanStartTimeShift: '1h'
+        spanEndTimeShift: '1h'
+        filterByTraceID: false
+        filterBySpanID: false
+      nodeGraph:
+        enabled: true
+    version: 1
+    editable: false
+
+  # Test Data (for development)
+  - name: TestData DB
+    type: testdata
+    access: proxy
+    url: ""
+    version: 1
+    editable: false
+    jsonData: {}
+
+# Delete datasources that are not defined
+deleteDatasources:
+  - name: InfluxDB
+  - name: Graphite

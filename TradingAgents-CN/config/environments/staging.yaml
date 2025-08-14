@@ -1,0 +1,136 @@
+# =============================================================================
+# Staging Environment Configuration
+# Pre-production environment for testing and validation
+# =============================================================================
+
+description: "Staging environment for pre-production testing and validation"
+
+config:
+  # Environment identification
+  ENVIRONMENT: "staging"
+  DEBUG: false
+  LOG_LEVEL: "INFO"
+  
+  # Application settings
+  TZ: "Asia/Shanghai"
+  PYTHONUNBUFFERED: true
+  PYTHONDONTWRITEBYTECODE: true
+  
+  # Service configuration
+  API_HOST: "0.0.0.0"
+  API_PORT: 8000
+  API_WORKERS: 3
+  WEB_HOST: "0.0.0.0"
+  WEB_PORT: 8501
+  
+  # Database configuration (staging cluster)
+  MONGODB_HOST: "mongodb-service"
+  MONGODB_PORT: 27017
+  MONGODB_DATABASE: "tradingagents"
+  MONGODB_MAX_POOL_SIZE: 25
+  MONGODB_MIN_POOL_SIZE: 3
+  
+  # Redis configuration
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: 6379
+  REDIS_DATABASE: 0
+  REDIS_MAX_CONNECTIONS: 25
+  
+  # Cache settings
+  TRADINGAGENTS_CACHE_TYPE: "redis"
+  CACHE_DEFAULT_TIMEOUT: 3600  # 1 hour
+  CACHE_MAX_SIZE: 500
+  
+  # AI Model settings (staging limits)
+  MULTI_MODEL_ENABLED: true
+  ROUTING_STRATEGY: "intelligent"
+  DEFAULT_COLLABORATION_MODE: "sequential"
+  MAX_COST_PER_SESSION: 3.0
+  ENABLE_PERFORMANCE_MONITORING: true
+  
+  # Security settings
+  ALLOWED_ORIGINS: 
+    - "https://staging.tradingagents.yourdomain.com"
+    - "https://staging-api.tradingagents.yourdomain.com"
+  CORS_ALLOW_ALL_ORIGINS: false
+  CSRF_TRUSTED_ORIGINS: 
+    - "https://staging.tradingagents.yourdomain.com"
+  
+  # SSL/TLS
+  USE_TLS: true
+  FORCE_HTTPS: true
+  SECURE_PROXY_SSL_HEADER: true
+  
+  # Session configuration
+  SESSION_COOKIE_SECURE: true
+  SESSION_COOKIE_HTTPONLY: true
+  SESSION_COOKIE_AGE: 86400  # 24 hours
+  
+  # Logging configuration
+  TRADINGAGENTS_LOG_LEVEL: "INFO"
+  TRADINGAGENTS_LOG_DIR: "/app/logs"
+  TRADINGAGENTS_LOG_MAX_SIZE: "100MB"
+  TRADINGAGENTS_LOG_BACKUP_COUNT: 5
+  
+  # Monitoring and metrics
+  ENABLE_METRICS: true
+  METRICS_PORT: 9090
+  HEALTH_CHECK_ENABLED: true
+  
+  # Backup configuration
+  BACKUP_ENABLED: true
+  BACKUP_SCHEDULE: "0 2 * * *"  # Daily at 2 AM
+  BACKUP_RETENTION_DAYS: 14
+  
+  # Performance settings
+  CELERY_WORKER_CONCURRENCY: 3
+  CELERY_MAX_TASKS_PER_CHILD: 100
+  CELERY_TASK_TIME_LIMIT: 3600
+  
+  # Email configuration
+  EMAIL_USE_TLS: true
+  EMAIL_PORT: 587
+  
+  # Feature flags for staging testing
+  FEATURE_FLAGS:
+    NEW_MARKET_ANALYSIS_UI: true
+    ADVANCED_CHARTS: true
+    BETA_AI_MODELS: true
+    ENHANCED_REPORTING: true
+  
+  # Rate limiting
+  RATE_LIMIT_ENABLED: true
+  RATE_LIMIT_PER_MINUTE: 60
+  
+  # Resource limits (moderate)
+  MAX_UPLOAD_SIZE: "50MB"
+  MAX_REQUEST_SIZE: "100MB"
+  REQUEST_TIMEOUT: 300  # 5 minutes
+
+overrides:
+  # Staging-specific overrides
+  STREAMLIT_SERVER_ENABLE_CORS: false
+  STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION: true
+  STREAMLIT_BROWSER_GATHER_USAGE_STATS: false
+
+validation:
+  - type: "required"
+    field: "ENVIRONMENT"
+  - type: "enum"
+    field: "ENVIRONMENT"
+    values: ["staging"]
+  - type: "required"
+    field: "MONGODB_HOST"
+  - type: "required"
+    field: "REDIS_HOST"
+  - type: "format"
+    field: "ALLOWED_ORIGINS"
+    format: "url_list"
+  - type: "range"
+    field: "API_WORKERS"
+    min: 2
+    max: 10
+  - type: "range"
+    field: "MAX_COST_PER_SESSION"
+    min: 1.0
+    max: 10.0

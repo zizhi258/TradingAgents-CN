@@ -1,0 +1,65 @@
+{
+  "timestamp": "2025-08-07 21:15:55",
+  "checks": {
+    "docker_services": {
+      "status": "passed",
+      "message": "Docker服务状态检查通过",
+      "details": {
+        "TradingAgents-web": true,
+        "tradingagents-mongodb": true,
+        "tradingagents-redis": true,
+        "tradingagents-redis-commander": true
+      }
+    },
+    "web_interface": {
+      "status": "passed",
+      "message": "Web界面可访问",
+      "details": {
+        "health_check": true,
+        "main_page": true
+      }
+    },
+    "google_genai_sdk": {
+      "status": "passed",
+      "message": "Google GenAI SDK可用",
+      "details": {
+        "stdout": "✅ SDK imported successfully",
+        "stderr": ""
+      }
+    },
+    "multi_model_system": {
+      "status": "failed",
+      "message": "多模型系统检查失败",
+      "details": {
+        "stdout": "",
+        "stderr": "Traceback (most recent call last):\n  File \"/tmp/check_multimodel.py\", line 2, in <module>\n    from tradingagents.core.multi_model_manager import MultiModelManager\nModuleNotFoundError: No module named 'tradingagents'"
+      }
+    },
+    "database_connections": {
+      "status": "passed",
+      "message": "数据库连接正常",
+      "details": {
+        "mongodb": true,
+        "redis": true
+      }
+    },
+    "environment_variables": {
+      "status": "passed",
+      "message": "环境变量配置完整",
+      "details": {
+        "found": {
+          "GOOGLE_AI_API_KEY": "SET",
+          "MULTI_MODEL_ENABLED": "SET",
+          "SILICONFLOW_API_KEY": "SET",
+          "ROUTING_STRATEGY": "SET"
+        },
+        "missing": []
+      }
+    }
+  },
+  "summary": {
+    "total": 6,
+    "passed": 5,
+    "failed": 1
+  }
+}

@@ -1,0 +1,353 @@
+# =============================================================================
+# ChartingArtist Alerting Rules for TradingAgents-CN
+# Comprehensive alerts for visualization service monitoring
+# =============================================================================
+
+groups:
+  # =============================================================================
+  # ChartingArtist Service Health
+  # =============================================================================
+  - name: charting_artist_health
+    interval: 30s
+    rules:
+      # Service availability
+      - alert: ChartingArtistDown
+        expr: up{job="charting-artist"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: charting-artist
+          component: availability
+        annotations:
+          summary: "ChartingArtist service is down"
+          description: "ChartingArtist service has been down for more than 1 minute"
+          runbook_url: "https://docs.tradingagents.com/runbooks/charting-artist-down"
+
+      # API endpoint health check
+      - alert: ChartingArtistAPIUnhealthy
+        expr: charting_health_check_status != 1
+        for: 2m
+        labels:
+          severity: critical
+          service: charting-artist
+          component: api
+        annotations:
+          summary: "ChartingArtist API health check failing"
+          description: "ChartingArtist API health endpoint is returning unhealthy status for {{ $value }} minutes"
+
+      # High memory usage
+      - alert: ChartingArtistHighMemoryUsage
+        expr: (container_memory_usage_bytes{name=~".*charting.*"} / container_spec_memory_limit_bytes{name=~".*charting.*"}) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: charting-artist
+          component: resource
+        annotations:
+          summary: "ChartingArtist high memory usage"
+          description: "ChartingArtist container memory usage is {{ humanizePercentage $value }}"
+
+      # High CPU usage
+      - alert: ChartingArtistHighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total{name=~".*charting.*"}[5m]) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: charting-artist
+          component: resource
+        annotations:
+          summary: "ChartingArtist high CPU usage"
+          description: "ChartingArtist container CPU usage is {{ humanizePercentage $value }}"
+
+  # =============================================================================
+  # Chart Generation Performance
+  # =============================================================================
+  - name: chart_generation_performance
+    interval: 30s
+    rules:
+      # High chart generation failure rate
+      - alert: HighChartGenerationFailureRate
+        expr: (rate(charting_charts_failed_total[5m]) / rate(charting_charts_generated_total[5m])) * 100 > 15
+        for: 3m
+        labels:
+          severity: warning
+          service: charting-artist
+          component: generation
+        annotations:
+          summary: "High chart generation failure rate"
+          description: "Chart generation failure rate is {{ humanizePercentage $value }} over the last 5 minutes"
+
+      # Slow chart generation
+      - alert: SlowChartGeneration
+        expr: histogram_quantile(0.95, rate(charting_generation_time_seconds_bucket[5m])) > 30
+        for: 5m
+        labels:
+          severity: warning
+          service: charting-artist
+          component: performance
+        annotations:
+          summary: "Slow chart generation times"
+          description: "95th percentile chart generation time is {{ humanizeDuration $value }}"
+
+      # Very slow chart generation (critical)
+      - alert: VerySlowChartGeneration
+        expr: histogram_quantile(0.95, rate(charting_generation_time_seconds_bucket[5m])) > 60
+        for: 2m
+        labels:
+          severity: critical
+          service: charting-artist
+          component: performance
+        annotations:
+          summary: "Critical: Very slow chart generation"
+          description: "95th percentile chart generation time is {{ humanizeDuration $value }}, indicating serious performance issues"
+
+      # No charts generated for extended period
+      - alert: NoChartsGenerated
+        expr: increase(charting_charts_generated_total[10m]) == 0
+        for: 10m
+        labels:
+          severity: warning
+          service: charting-artist
+          component: generation
+        annotations:
+          summary: "No charts generated recently"
+          description: "No charts have been generated in the last 10 minutes"
+
+  # =============================================================================
+  # Queue Management
+  # =============================================================================
+  - name: chart_queue_alerts
+    interval: 30s
+    rules:
+      # High queue depth
+      - alert: HighChartQueueDepth
+        expr: charting_queue_pending_tasks > 50
+        for: 5m
+        labels:
+          severity: warning
+          service: charting-artist
+          component: queue
+        annotations:
+          summary: "High chart generation queue depth"
+          description: "Chart generation queue has {{ $value }} pending tasks"
+
+      # Very high queue depth (critical)
+      - alert: VeryHighChartQueueDepth
+        expr: charting_queue_pending_tasks > 100
+        for: 2m
+        labels:
+          severity: critical
+          service: charting-artist
+          component: queue
+        annotations:
+          summary: "Critical: Very high chart generation queue depth"
+          description: "Chart generation queue has {{ $value }} pending tasks, system may be overloaded"
+
+      # Queue processing stalled
+      - alert: ChartQueueStalled
+        expr: rate(charting_queue_processed_total[5m]) == 0 and charting_queue_pending_tasks > 0
+        for: 5m
+        labels:
+          severity: critical
+          service: charting-artist
+          component: queue
+        annotations:
+          summary: "Chart generation queue appears stalled"
+          description: "Queue has pending tasks but no processing activity detected for 5 minutes"
+
+      # Long-running tasks
+      - alert: LongRunningChartTasks
+        expr: charting_queue_longest_running_task_seconds > 300
+        for: 2m
+        labels:
+          severity: warning
+          service: charting-artist
+          component: queue
+        annotations:
+          summary: "Long-running chart generation task detected"
+          description: "A chart generation task has been running for {{ humanizeDuration $value }}"
+
+  # =============================================================================
+  # Storage and Disk Space
+  # =============================================================================
+  - name: chart_storage_alerts
+    interval: 60s
+    rules:
+      # High storage usage
+      - alert: HighChartStorageUsage
+        expr: (charting_storage_used_bytes / charting_storage_total_bytes) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: charting-artist
+          component: storage
+        annotations:
+          summary: "High chart storage usage"
+          description: "Chart storage usage is {{ humanizePercentage $value }}"
+
+      # Critical storage usage
+      - alert: CriticalChartStorageUsage
+        expr: (charting_storage_used_bytes / charting_storage_total_bytes) * 100 > 90
+        for: 1m
+        labels:
+          severity: critical
+          service: charting-artist
+          component: storage
+        annotations:
+          summary: "Critical: Chart storage nearly full"
+          description: "Chart storage usage is {{ humanizePercentage $value }}, immediate cleanup required"
+
+      # Large number of chart files
+      - alert: TooManyChartFiles
+        expr: charting_storage_file_count > 10000
+        for: 10m
+        labels:
+          severity: warning
+          service: charting-artist
+          component: storage
+        annotations:
+          summary: "Large number of chart files"
+          description: "Chart storage contains {{ $value }} files, cleanup may be needed"
+
+      # Cleanup process issues
+      - alert: ChartCleanupFailed
+        expr: increase(charting_cleanup_errors_total[24h]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          service: charting-artist
+          component: cleanup
+        annotations:
+          summary: "Chart cleanup process encountered errors"
+          description: "{{ $value }} chart cleanup errors in the last 24 hours"
+
+  # =============================================================================
+  # API Performance and Errors
+  # =============================================================================
+  - name: charting_api_alerts
+    interval: 30s
+    rules:
+      # High API error rate
+      - alert: HighChartingAPIErrorRate
+        expr: (rate(charting_api_requests_total{status=~"5.."}[5m]) / rate(charting_api_requests_total[5m])) * 100 > 5
+        for: 3m
+        labels:
+          severity: warning
+          service: charting-artist
+          component: api
+        annotations:
+          summary: "High ChartingArtist API error rate"
+          description: "ChartingArtist API error rate is {{ humanizePercentage $value }}"
+
+      # API response time degradation
+      - alert: SlowChartingAPIResponse
+        expr: histogram_quantile(0.95, rate(charting_api_request_duration_seconds_bucket[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: charting-artist
+          component: api
+        annotations:
+          summary: "Slow ChartingArtist API response times"
+          description: "95th percentile API response time is {{ humanizeDuration $value }}"
+
+      # Too many concurrent requests
+      - alert: HighChartingAPIConcurrency
+        expr: charting_api_active_requests > 20
+        for: 5m
+        labels:
+          severity: warning
+          service: charting-artist
+          component: api
+        annotations:
+          summary: "High ChartingArtist API concurrency"
+          description: "{{ $value }} concurrent API requests, system may be overloaded"
+
+  # =============================================================================
+  # Business Logic Alerts
+  # =============================================================================
+  - name: charting_business_logic
+    interval: 60s
+    rules:
+      # Unusual chart type distribution
+      - alert: UnusualChartTypeDistribution
+        expr: |
+          (
+            (rate(charting_charts_by_type_total{chart_type="candlestick"}[1h]) / rate(charting_charts_generated_total[1h])) * 100 < 20
+          ) and on() (
+            rate(charting_charts_generated_total[1h]) > 0
+          )
+        for: 30m
+        labels:
+          severity: info
+          service: charting-artist
+          component: analytics
+        annotations:
+          summary: "Unusual chart type distribution detected"
+          description: "Candlestick charts account for less than 20% of generated charts in the last hour"
+
+      # Low chart generation volume
+      - alert: LowChartGenerationVolume
+        expr: rate(charting_charts_generated_total[1h]) < 0.1
+        for: 30m
+        labels:
+          severity: info
+          service: charting-artist
+          component: analytics
+        annotations:
+          summary: "Low chart generation volume"
+          description: "Chart generation rate is {{ printf \"%.2f\" $value }} per hour, below expected levels"
+
+      # Sudden spike in chart generation
+      - alert: ChartGenerationSpike
+        expr: rate(charting_charts_generated_total[5m]) > (rate(charting_charts_generated_total[1h]) * 5)
+        for: 5m
+        labels:
+          severity: info
+          service: charting-artist
+          component: analytics
+        annotations:
+          summary: "Sudden spike in chart generation requests"
+          description: "Current chart generation rate is {{ printf \"%.2f\" $value }}/min, significantly above normal"
+
+  # =============================================================================
+  # Integration Alerts
+  # =============================================================================
+  - name: charting_integration
+    interval: 30s
+    rules:
+      # Redis connection issues
+      - alert: ChartingRedisConnectionIssue
+        expr: charting_redis_connection_errors_total > 0
+        for: 1m
+        labels:
+          severity: warning
+          service: charting-artist
+          component: redis
+        annotations:
+          summary: "ChartingArtist Redis connection issues"
+          description: "{{ $value }} Redis connection errors detected"
+
+      # MongoDB connection issues
+      - alert: ChartingMongoDBConnectionIssue
+        expr: charting_mongodb_connection_errors_total > 0
+        for: 1m
+        labels:
+          severity: warning
+          service: charting-artist
+          component: mongodb
+        annotations:
+          summary: "ChartingArtist MongoDB connection issues"
+          description: "{{ $value }} MongoDB connection errors detected"
+
+      # API dependency failures
+      - alert: ChartingAPIDependencyFailure
+        expr: rate(charting_external_api_errors_total[5m]) > 0.1
+        for: 3m
+        labels:
+          severity: warning
+          service: charting-artist
+          component: dependencies
+        annotations:
+          summary: "ChartingArtist external API dependency issues"
+          description: "External API error rate: {{ printf \"%.2f\" $value }}/min"

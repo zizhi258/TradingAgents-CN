@@ -1,0 +1,582 @@
+# =============================================================================
+# Comprehensive Security Configurations for TradingAgents-CN
+# Secrets Management, Network Policies, and Security Best Practices
+# =============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: security-config
+  namespace: tradingagents-cn
+  labels:
+    app.kubernetes.io/name: tradingagents-cn
+    app.kubernetes.io/component: security
+data:
+  # Security headers configuration
+  security_headers.conf: |
+    # Security headers for web applications
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' wss:; frame-ancestors 'none';" always;
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), accelerometer=(), gyroscope=();" always;
+
+  # Rate limiting configuration
+  rate_limiting.conf: |
+    # Rate limiting rules
+    limit_req_zone $binary_remote_addr zone=api:10m rate=100r/m;
+    limit_req_zone $binary_remote_addr zone=auth:10m rate=10r/m;
+    limit_req_zone $binary_remote_addr zone=web:10m rate=200r/m;
+    limit_req_status 429;
+
+  # SSL configuration
+  ssl.conf: |
+    # Modern SSL configuration
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-SHA384;
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    ssl_stapling on;
+    ssl_stapling_verify on;
+
+---
+# =============================================================================
+# External Secrets Operator Configuration
+# Manages secrets from external secret management systems
+# =============================================================================
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: aws-secrets-manager
+  namespace: tradingagents-cn
+spec:
+  provider:
+    aws:
+      service: SecretsManager
+      region: us-west-2
+      auth:
+        secretRef:
+          accessKeyID:
+            name: aws-credentials
+            key: access-key-id
+          secretAccessKey:
+            name: aws-credentials
+            key: secret-access-key
+---
+# Database credentials from AWS Secrets Manager
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: database-credentials
+  namespace: tradingagents-cn
+spec:
+  refreshInterval: 15s
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: SecretStore
+  target:
+    name: tradingagents-database-secret
+    creationPolicy: Owner
+    template:
+      type: Opaque
+      data:
+        MONGODB_URL: "mongodb://{{ .mongodb_username }}:{{ .mongodb_password }}@{{ .mongodb_endpoint }}:{{ .mongodb_port }}/{{ .mongodb_database }}?authSource=admin&ssl=true"
+        REDIS_URL: "redis://:{{ .redis_password }}@{{ .redis_endpoint }}:{{ .redis_port }}/0"
+        MONGODB_USERNAME: "{{ .mongodb_username }}"
+        MONGODB_PASSWORD: "{{ .mongodb_password }}"
+        REDIS_PASSWORD: "{{ .redis_password }}"
+  data:
+  - secretKey: mongodb_username
+    remoteRef:
+      key: tradingagents/production/database
+      property: mongodb_username
+  - secretKey: mongodb_password
+    remoteRef:
+      key: tradingagents/production/database
+      property: mongodb_password
+  - secretKey: mongodb_endpoint
+    remoteRef:
+      key: tradingagents/production/database
+      property: mongodb_endpoint
+  - secretKey: mongodb_port
+    remoteRef:
+      key: tradingagents/production/database
+      property: mongodb_port
+  - secretKey: mongodb_database
+    remoteRef:
+      key: tradingagents/production/database
+      property: mongodb_database
+  - secretKey: redis_password
+    remoteRef:
+      key: tradingagents/production/database
+      property: redis_password
+  - secretKey: redis_endpoint
+    remoteRef:
+      key: tradingagents/production/database
+      property: redis_endpoint
+  - secretKey: redis_port
+    remoteRef:
+      key: tradingagents/production/database
+      property: redis_port
+
+---
+# API Keys and External Service Credentials
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: api-credentials
+  namespace: tradingagents-cn
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: SecretStore
+  target:
+    name: tradingagents-api-secret
+    creationPolicy: Owner
+  data:
+  - secretKey: openai_api_key
+    remoteRef:
+      key: tradingagents/production/api-keys
+      property: openai_api_key
+  - secretKey: gemini_api_key
+    remoteRef:
+      key: tradingagents/production/api-keys
+      property: gemini_api_key
+  - secretKey: deepseek_api_key
+    remoteRef:
+      key: tradingagents/production/api-keys
+      property: deepseek_api_key
+  - secretKey: tushare_token
+    remoteRef:
+      key: tradingagents/production/api-keys
+      property: tushare_token
+  - secretKey: finnhub_api_key
+    remoteRef:
+      key: tradingagents/production/api-keys
+      property: finnhub_api_key
+  - secretKey: alpha_vantage_api_key
+    remoteRef:
+      key: tradingagents/production/api-keys
+      property: alpha_vantage_api_key
+
+---
+# JWT and Encryption Keys
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: encryption-keys
+  namespace: tradingagents-cn
+spec:
+  refreshInterval: 24h
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: SecretStore
+  target:
+    name: tradingagents-encryption-secret
+    creationPolicy: Owner
+  data:
+  - secretKey: jwt_secret_key
+    remoteRef:
+      key: tradingagents/production/encryption
+      property: jwt_secret_key
+  - secretKey: encryption_key
+    remoteRef:
+      key: tradingagents/production/encryption
+      property: encryption_key
+  - secretKey: session_secret
+    remoteRef:
+      key: tradingagents/production/encryption
+      property: session_secret
+
+---
+# =============================================================================
+# Network Policies for Micro-segmentation
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: web-tier-network-policy
+  namespace: tradingagents-cn
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: tradingagents-web
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow traffic from ingress controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: nginx-ingress
+    ports:
+    - protocol: TCP
+      port: 8501
+  # Allow traffic from API tier
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: tradingagents-api
+    ports:
+    - protocol: TCP
+      port: 8501
+  egress:
+  # Allow DNS
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow API calls
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: tradingagents-api
+    ports:
+    - protocol: TCP
+      port: 8000
+  # Allow database access
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/component: database
+    ports:
+    - protocol: TCP
+      port: 27017
+    - protocol: TCP
+      port: 6379
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-tier-network-policy
+  namespace: tradingagents-cn
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: tradingagents-api
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow traffic from web tier
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: tradingagents-web
+    ports:
+    - protocol: TCP
+      port: 8000
+  # Allow traffic from workers
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: tradingagents-worker
+    ports:
+    - protocol: TCP
+      port: 8000
+  # Allow ingress traffic for direct API access
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: nginx-ingress
+    ports:
+    - protocol: TCP
+      port: 8000
+  egress:
+  # Allow DNS
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow database access
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/component: database
+    ports:
+    - protocol: TCP
+      port: 27017
+    - protocol: TCP
+      port: 6379
+  # Allow HTTPS for external APIs
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: database-tier-network-policy
+  namespace: tradingagents-cn
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: database
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Only allow from application pods
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/part-of: tradingagents-platform
+    ports:
+    - protocol: TCP
+      port: 27017
+    - protocol: TCP
+      port: 6379
+  # Allow monitoring
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: mongodb-exporter
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: redis-exporter
+    ports:
+    - protocol: TCP
+      port: 27017
+    - protocol: TCP
+      port: 6379
+  egress:
+  # Allow DNS
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+  # Deny all other egress
+  - to: []
+    ports: []
+
+---
+# =============================================================================
+# Pod Security Standards
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pod-security-standards
+  namespace: tradingagents-cn
+data:
+  security-context.yaml: |
+    # Default security context for all pods
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1001
+      runAsGroup: 1001
+      fsGroup: 1001
+      fsGroupChangePolicy: "OnRootMismatch"
+      seccompProfile:
+        type: RuntimeDefault
+    
+    # Container security context
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      runAsUser: 1001
+      runAsGroup: 1001
+      capabilities:
+        drop:
+        - ALL
+      seccompProfile:
+        type: RuntimeDefault
+
+---
+# =============================================================================
+# RBAC Configuration
+# =============================================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tradingagents-monitoring
+  namespace: tradingagents-cn
+  labels:
+    app.kubernetes.io/component: monitoring
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: tradingagents-cn
+  name: tradingagents-monitoring-role
+rules:
+# Allow reading pods, services, endpoints for monitoring
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints", "configmaps"]
+  verbs: ["get", "list", "watch"]
+# Allow reading deployment status
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch"]
+# Allow reading ingress for monitoring
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tradingagents-monitoring-binding
+  namespace: tradingagents-cn
+subjects:
+- kind: ServiceAccount
+  name: tradingagents-monitoring
+  namespace: tradingagents-cn
+roleRef:
+  kind: Role
+  name: tradingagents-monitoring-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# =============================================================================
+# Security Monitoring and Alerting
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: security-alerts
+  namespace: tradingagents-cn
+data:
+  falco_rules.yaml: |
+    # Custom Falco rules for TradingAgents-CN
+    - rule: Unexpected outbound connection from tradingagents
+      desc: Detect unexpected outbound connections
+      condition: >
+        outbound and 
+        k8s_ns_name=tradingagents-cn and
+        not fd.sip in (api_servers, allowed_external_ips)
+      output: >
+        Unexpected outbound connection from tradingagents
+        (command=%proc.cmdline connection=%fd.name user=%user.name)
+      priority: WARNING
+
+    - rule: Sensitive file access in tradingagents
+      desc: Detect access to sensitive files
+      condition: >
+        open_read and
+        k8s_ns_name=tradingagents-cn and
+        (fd.filename in (sensitive_files) or 
+         fd.filename startswith /etc/passwd or
+         fd.filename startswith /etc/shadow)
+      output: >
+        Sensitive file accessed in tradingagents
+        (file=%fd.name command=%proc.cmdline user=%user.name)
+      priority: WARNING
+
+---
+# =============================================================================
+# Certificate Management
+# =============================================================================
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tradingagents-tls
+  namespace: tradingagents-cn
+spec:
+  secretName: tradingagents-tls-secret
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - tradingagents-cn.com
+  - www.tradingagents-cn.com
+  - api.tradingagents-cn.com
+  - grafana.tradingagents-cn.com
+  - prometheus.tradingagents-cn.com
+
+---
+# =============================================================================
+# Security Audit Configuration
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: audit-policy
+  namespace: tradingagents-cn
+data:
+  audit-policy.yaml: |
+    apiVersion: audit.k8s.io/v1
+    kind: Policy
+    rules:
+    # Log security-sensitive operations
+    - level: RequestResponse
+      namespaces: ["tradingagents-cn"]
+      verbs: ["create", "update", "patch", "delete"]
+      resources:
+      - group: ""
+        resources: ["secrets", "configmaps", "serviceaccounts"]
+      - group: "rbac.authorization.k8s.io"
+        resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+    
+    # Log all access to sensitive resources
+    - level: Metadata
+      namespaces: ["tradingagents-cn"]
+      verbs: ["get", "list", "watch"]
+      resources:
+      - group: ""
+        resources: ["secrets"]
+    
+    # Log pod creation/deletion
+    - level: RequestResponse
+      namespaces: ["tradingagents-cn"]
+      verbs: ["create", "delete"]
+      resources:
+      - group: ""
+        resources: ["pods"]
+
+---
+# =============================================================================
+# Image Security Policy
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: image-security-policy
+  namespace: tradingagents-cn
+data:
+  policy.yaml: |
+    # Allowed image registries
+    allowed_registries:
+      - "ghcr.io/yourusername/"
+      - "docker.io/library/"
+      - "gcr.io/distroless/"
+      - "prom/"
+      - "grafana/"
+    
+    # Required image properties
+    image_requirements:
+      - name: "non-root-user"
+        description: "Images must run as non-root user"
+        check: "user_id != 0"
+      
+      - name: "no-latest-tag"
+        description: "Images must not use 'latest' tag in production"
+        check: "tag != 'latest'"
+      
+      - name: "signed-images"
+        description: "Images must be signed"
+        check: "has_signature == true"
+    
+    # Security scanning requirements
+    vulnerability_policy:
+      max_critical: 0
+      max_high: 2
+      max_medium: 10
+      scan_required: true

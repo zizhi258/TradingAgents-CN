@@ -1,0 +1,35 @@
+{
+  "last_saved": {
+    "market_type": "A股",
+    "preset_type": "沪深300",
+    "scan_depth": 3,
+    "budget_limit": 10.0,
+    "stock_limit": 100,
+    "time_range": "1月",
+    "ai_model_config": {
+      "model": "gemini-2.0-flash",
+      "use_ensemble": false,
+      "temperature": 0.3,
+      "max_tokens": 4000
+    },
+    "analysis_focus": {
+      "technical": true,
+      "fundamental": true,
+      "valuation": true,
+      "news": false,
+      "sentiment": false,
+      "social": false,
+      "risk": true,
+      "liquidity": false,
+      "macro": false
+    },
+    "advanced_options": {
+      "enable_monitoring": true,
+      "enable_notification": false,
+      "save_intermediate": false,
+      "parallel_processing": true,
+      "auto_retry": true,
+      "cache_results": true
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "analysis_id": "multi_model_3a9da897_20250808_033028",
+  "status": "completed",
+  "results": {
+    "status": "error",
+    "error": "WebMultiModelCollaborationManager._run_sequential_analysis() takes 2 positional arguments but 3 were given",
+    "timestamp": "2025-08-08T03:30:37.924407"
+  },
+  "timestamp": "2025-08-08T03:30:37.926029"
+}

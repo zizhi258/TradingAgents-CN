@@ -1,0 +1,273 @@
+# =============================================================================
+# Prometheus Configuration for TradingAgents-CN Monitoring
+# Comprehensive monitoring setup with service discovery and alerting
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'tradingagents-cn'
+    environment: '${ENVIRONMENT:-production}'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Load alerting rules
+rule_files:
+  - "alerts.yml"
+  - "recording_rules.yml"
+
+# Scrape configuration
+scrape_configs:
+  # =============================================================================
+  # Prometheus self-monitoring
+  # =============================================================================
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: /metrics
+    scrape_interval: 15s
+
+  # =============================================================================
+  # TradingAgents-CN Application Services
+  # =============================================================================
+  
+  # Web application metrics
+  - job_name: 'tradingagents-web'
+    static_configs:
+      - targets: 
+          - 'web:8501'
+    metrics_path: /_stcore/metrics
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    honor_labels: true
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: web:8501
+
+  # API service metrics
+  - job_name: 'tradingagents-api'
+    static_configs:
+      - targets:
+          - 'api:8000'
+    metrics_path: /metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'api'
+
+  # Background workers metrics
+  - job_name: 'tradingagents-worker'
+    static_configs:
+      - targets:
+          - 'worker:9090'
+    metrics_path: /metrics
+    scrape_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'worker'
+
+  # Scheduler service metrics  
+  - job_name: 'tradingagents-scheduler'
+    static_configs:
+      - targets:
+          - 'scheduler:9090'
+    metrics_path: /metrics
+    scrape_interval: 60s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'scheduler'
+
+  # ChartingArtist service metrics - Primary visualization monitoring
+  - job_name: 'charting-artist'
+    static_configs:
+      - targets:
+          - 'charting-service:8002'
+    metrics_path: /api/charts/metrics
+    scrape_interval: 10s
+    scrape_timeout: 8s
+    honor_labels: true
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'charting-artist'
+      - target_label: component
+        replacement: 'visualization'
+
+  # ChartingArtist performance metrics
+  - job_name: 'charting-performance'
+    static_configs:
+      - targets:
+          - 'charting-service:8002'
+    metrics_path: /api/charts/performance/metrics
+    scrape_interval: 5s
+    scrape_timeout: 5s
+    relabel_configs:
+      - target_label: service
+        replacement: 'charting-artist'
+      - target_label: component
+        replacement: 'performance'
+
+  # Chart generation queue metrics
+  - job_name: 'chart-queue'
+    static_configs:
+      - targets:
+          - 'charting-service:8002'
+    metrics_path: /api/charts/queue/metrics
+    scrape_interval: 15s
+    relabel_configs:
+      - target_label: service
+        replacement: 'charting-artist'
+      - target_label: component
+        replacement: 'queue'
+
+  # =============================================================================
+  # Infrastructure Monitoring
+  # =============================================================================
+
+  # MongoDB metrics
+  - job_name: 'mongodb'
+    static_configs:
+      - targets:
+          - 'mongodb-exporter:9216'
+    scrape_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'mongodb'
+
+  # Redis metrics
+  - job_name: 'redis'
+    static_configs:
+      - targets:
+          - 'redis-exporter:9121'
+    scrape_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'redis'
+
+  # Node exporter for host metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets:
+          - 'node-exporter:9100'
+    scrape_interval: 15s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'host'
+
+  # Container metrics (cAdvisor)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets:
+          - 'cadvisor:8080'
+    scrape_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'containers'
+
+  # =============================================================================
+  # External Services Monitoring
+  # =============================================================================
+
+  # Nginx/Load Balancer metrics
+  - job_name: 'nginx'
+    static_configs:
+      - targets:
+          - 'nginx-exporter:9113'
+    scrape_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'nginx'
+
+  # =============================================================================
+  # Kubernetes Service Discovery (if deployed on K8s)
+  # =============================================================================
+  - job_name: 'kubernetes-apiservers'
+    kubernetes_sd_configs:
+    - role: endpoints
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+      action: keep
+      regex: default;kubernetes;https
+
+  # Kubernetes nodes
+  - job_name: 'kubernetes-nodes'
+    kubernetes_sd_configs:
+    - role: node
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+    - action: labelmap
+      regex: __meta_kubernetes_node_label_(.+)
+    - target_label: __address__
+      replacement: kubernetes.default.svc:443
+    - source_labels: [__meta_kubernetes_node_name]
+      regex: (.+)
+      target_label: __metrics_path__
+      replacement: /api/v1/nodes/${1}/proxy/metrics
+
+  # Kubernetes pods
+  - job_name: 'kubernetes-pods'
+    kubernetes_sd_configs:
+    - role: pod
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+      action: keep
+      regex: true
+    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+      action: replace
+      target_label: __metrics_path__
+      regex: (.+)
+    - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+      action: replace
+      regex: ([^:]+)(?::\d+)?;(\d+)
+      replacement: $1:$2
+      target_label: __address__
+    - action: labelmap
+      regex: __meta_kubernetes_pod_label_(.+)
+    - source_labels: [__meta_kubernetes_namespace]
+      action: replace
+      target_label: kubernetes_namespace
+    - source_labels: [__meta_kubernetes_pod_name]
+      action: replace
+      target_label: kubernetes_pod_name
+
+# Storage configuration
+storage:
+  tsdb:
+    path: /prometheus/data
+    retention.time: 30d
+    retention.size: 10GB
+    wal-compression: true
+
+# Remote write configuration (optional - for long-term storage)
+# remote_write:
+#   - url: "https://your-remote-storage/api/v1/write"
+#     write_relabel_configs:
+#       - source_labels: [__name__]
+#         regex: 'high_cardinality_metric.*'
+#         action: drop
