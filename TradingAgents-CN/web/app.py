@@ -606,270 +606,58 @@ def main():
     except Exception:
         pass
 
-    # 自定义CSS - 调整侧边栏宽度
+    # 优化布局CSS - 简化并移除冲突样式
     st.markdown("""
     <style>
-    /* 完全隐藏侧边栏，转为顶部导航 */
+    /* 隐藏侧边栏 */
     section[data-testid="stSidebar"] {
         display: none !important;
-        visibility: hidden !important;
-        width: 0 !important;
-        min-width: 0 !important;
-        max-width: 0 !important;
     }
 
-    /* 隐藏侧边栏的隐藏按钮 - 更全面的选择器 */
+    /* 隐藏侧边栏控制按钮 */
     button[kind="header"],
     button[data-testid="collapsedControl"],
-    .css-1d391kg,
-    .css-1rs6os,
-    .css-17eq0hr,
-    .css-1lcbmhc,
-    .css-1y4p8pa,
     button[aria-label="Close sidebar"],
     button[aria-label="Open sidebar"],
-    [data-testid="collapsedControl"],
-    .stSidebar button[kind="header"] {
+    [data-testid="collapsedControl"] {
         display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
     }
 
-    /* 隐藏侧边栏顶部区域的特定按钮（更精确的选择器，避免影响表单按钮） */
-    section[data-testid="stSidebar"] > div:first-child > button[kind="header"],
-    section[data-testid="stSidebar"] > div:first-child > div > button[kind="header"],
-    section[data-testid="stSidebar"] .css-1lcbmhc > button[kind="header"],
-    section[data-testid="stSidebar"] .css-1y4p8pa > button[kind="header"] {
-        display: none !important;
-        visibility: hidden !important;
+    /* 优化表单布局 */
+    .stForm {
+        background: var(--zen-surface) !important;
+        border-radius: 16px !important;
+        padding: 1.5rem !important;
+        margin-bottom: 1.5rem !important;
+        box-shadow: var(--zen-shadow-sm) !important;
+        border: 1px solid var(--zen-border) !important;
     }
 
-    /* 调整侧边栏内容的padding */
-    section[data-testid="stSidebar"] > div {
-        padding-top: 0.5rem !important;
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
+    /* 优化标签页布局 */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0.5rem !important;
     }
 
-    /* 调整主内容区域，设置8px边距 - 使用更强的选择器 */
-    .main .block-container,
-    section.main .block-container,
-    div.main .block-container,
-    .stApp .main .block-container {
-        padding-left: 8px !important;
-        padding-right: 8px !important;
-        margin-left: 0px !important;
-        margin-right: 0px !important;
-        max-width: none !important;
-        width: calc(100% - 16px) !important;
-    }
-
-    /* 确保内容不被滚动条遮挡 */
-    .stApp > div {
-        overflow-x: auto !important;
-    }
-
-    /* 调整详细分析报告的右边距 */
-    .element-container {
-        margin-right: 8px !important;
-    }
-
-    /* 优化侧边栏标题和元素间距 */
-    .sidebar .sidebar-content {
-        padding: 0.5rem 0.3rem !important;
-    }
-
-    /* 调整侧边栏内所有元素的间距 */
-    section[data-testid="stSidebar"] .element-container {
-        margin-bottom: 0.5rem !important;
-    }
-
-    /* 调整侧边栏分隔线的间距 */
-    section[data-testid="stSidebar"] hr {
-        margin: 0.8rem 0 !important;
-    }
-
-    /* 确保侧边栏标题不被挤压 */
-    section[data-testid="stSidebar"] h1 {
-        font-size: 1.2rem !important;
-        line-height: 1.3 !important;
-        margin-bottom: 1rem !important;
-        word-wrap: break-word !important;
-        overflow-wrap: break-word !important;
-    }
-
-    /* 简化功能选择区域样式 */
-    section[data-testid="stSidebar"] .stSelectbox > div > div {
-        font-size: 1.1rem !important;
+    .stTabs [data-baseweb="tab"] {
+        padding: 0.75rem 1.5rem !important;
+        border-radius: 12px !important;
         font-weight: 500 !important;
     }
 
-    /* 调整选择框等组件的宽度 */
-    section[data-testid="stSidebar"] .stSelectbox > div > div {
-        min-width: 220px !important;
-        width: 100% !important;
+    /* 优化按钮布局 */
+    .stButton {
+        margin-top: 1rem !important;
     }
 
-    /* 修复右侧内容被遮挡的问题 */
-    .main {
-        padding-right: 8px !important;
-    }
-
-    /* 确保页面内容有足够的右边距 */
-    .stApp {
-        margin-right: 0 !important;
-        padding-right: 8px !important;
-    }
-
-    /* 特别处理展开的分析报告 */
-    .streamlit-expanderContent {
-        padding-right: 8px !important;
-        margin-right: 8px !important;
-    }
-
-    /* 防止水平滚动条出现 */
-    .main .block-container {
-        overflow-x: visible !important;
-    }
-
-    /* 强制设置8px边距给所有可能的容器 */
-    .stApp,
-    .stApp > div,
-    .stApp > div > div,
-    .main,
-    .main > div,
-    .main > div > div,
-    div[data-testid="stAppViewContainer"],
-    div[data-testid="stAppViewContainer"] > div,
-    section[data-testid="stMain"],
-    section[data-testid="stMain"] > div {
-        padding-left: 8px !important;
-        padding-right: 8px !important;
-        margin-left: 0px !important;
-        margin-right: 0px !important;
-    }
-
-    /* 特别处理列容器 */
-    div[data-testid="column"],
-    .css-1d391kg,
-    .css-1r6slb0,
-    .css-12oz5g7,
-    .css-1lcbmhc {
-        padding-left: 8px !important;
-        padding-right: 8px !important;
-        margin-left: 0px !important;
-        margin-right: 0px !important;
-    }
-
-    /* 强制设置容器宽度（无侧边栏） */
-    .main .block-container {
-        width: calc(100vw - 16px) !important;
-        max-width: calc(100vw - 16px) !important;
-    }
-
-    /* 优化使用指南区域的样式 */
-    div[data-testid="column"]:last-child {
-        background-color: #f8f9fa !important;
-        border-radius: 8px !important;
-        padding: 12px !important;
-        margin-left: 8px !important;
-        border: 1px solid #e9ecef !important;
-    }
-
-    /* 使用指南内的展开器样式 */
-    div[data-testid="column"]:last-child .streamlit-expanderHeader {
-        background-color: #ffffff !important;
-        border-radius: 6px !important;
-        border: 1px solid #dee2e6 !important;
-        font-weight: 500 !important;
-    }
-
-    /* 使用指南内的文本样式 */
-    div[data-testid="column"]:last-child .stMarkdown {
-        font-size: 0.9rem !important;
-        line-height: 1.5 !important;
-    }
-
-    /* 使用指南标题样式 */
-    div[data-testid="column"]:last-child h1 {
-        font-size: 1.3rem !important;
-        color: #495057 !important;
-        margin-bottom: 1rem !important;
+    /* 优化指标卡片 */
+    div[data-testid="metric-container"] {
+        background: var(--zen-surface) !important;
+        border: 1px solid var(--zen-border) !important;
+        border-radius: 12px !important;
+        padding: 1rem !important;
+        box-shadow: var(--zen-shadow-sm) !important;
     }
     </style>
-
-    <script>
-    // JavaScript来强制隐藏侧边栏按钮
-    function hideSidebarButtons() {
-        // 隐藏所有可能的侧边栏控制按钮
-        const selectors = [
-            'button[kind="header"]',
-            'button[data-testid="collapsedControl"]',
-            'button[aria-label="Close sidebar"]',
-            'button[aria-label="Open sidebar"]',
-            '[data-testid="collapsedControl"]',
-            '.css-1d391kg',
-            '.css-1rs6os',
-            '.css-17eq0hr',
-            '.css-1lcbmhc button',
-            '.css-1y4p8pa button'
-        ];
-
-        selectors.forEach(selector => {
-            const elements = document.querySelectorAll(selector);
-            elements.forEach(el => {
-                el.style.display = 'none';
-                el.style.visibility = 'hidden';
-                el.style.opacity = '0';
-                el.style.pointerEvents = 'none';
-            });
-        });
-    }
-
-    // 页面加载后执行
-    document.addEventListener('DOMContentLoaded', hideSidebarButtons);
-
-    // 定期检查并隐藏按钮（防止动态生成）
-    setInterval(hideSidebarButtons, 1000);
-
-    // 强制修改页面边距为8px
-    function forceOptimalPadding() {
-        const selectors = [
-            '.main .block-container',
-            '.stApp',
-            '.stApp > div',
-            '.main',
-            '.main > div',
-            'div[data-testid="stAppViewContainer"]',
-            'section[data-testid="stMain"]',
-            'div[data-testid="column"]'
-        ];
-
-        selectors.forEach(selector => {
-            const elements = document.querySelectorAll(selector);
-            elements.forEach(el => {
-                el.style.paddingLeft = '8px';
-                el.style.paddingRight = '8px';
-                el.style.marginLeft = '0px';
-                el.style.marginRight = '0px';
-            });
-        });
-
-        // 特别处理主容器宽度
-        const mainContainer = document.querySelector('.main .block-container');
-        if (mainContainer) {
-            mainContainer.style.width = 'calc(100vw - 16px)';
-            mainContainer.style.maxWidth = 'calc(100vw - 16px)';
-        }
-    }
-
-    // 页面加载后执行
-    document.addEventListener('DOMContentLoaded', forceOptimalPadding);
-
-    // 定期强制应用样式
-    setInterval(forceOptimalPadding, 500);
-    </script>
     """, unsafe_allow_html=True)
 
     # 添加调试按钮（仅在调试模式下显示）
