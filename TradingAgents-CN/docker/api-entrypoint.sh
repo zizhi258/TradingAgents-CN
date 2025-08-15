@@ -32,10 +32,39 @@ wait_for_deps() {
     
     # Wait for Redis
     if [ -n "${TRADINGAGENTS_REDIS_URL:-}" ]; then
-        local redis_host=$(echo "$TRADINGAGENTS_REDIS_URL" | cut -d'@' -f2 | cut -d':' -f1)
-        local redis_port=$(echo "$TRADINGAGENTS_REDIS_URL" | cut -d':' -f3)
-        
-        while ! nc -z "$redis_host" "$redis_port" 2>/dev/null; do
+        # Robustly parse host and port from redis URL with optional userinfo
+        local redis_host
+        local redis_port
+        redis_host=$(echo "$TRADINGAGENTS_REDIS_URL" | sed -E 's|^redis://([^@]*@)?([^:/]+):?([0-9]*)/?(.*)?$|\2|')
+        redis_port=$(echo "$TRADINGAGENTS_REDIS_URL" | sed -E 's|^redis://([^@]*@)?([^:/]+):?([0-9]*)/?(.*)?$|\3|')
+        if [ -z "$redis_host" ]; then redis_host="redis"; fi
+        if [ -z "$redis_port" ]; then redis_port=6379; fi
+
+        # Prefer a real Redis ping via Python client; fallback to nc probe
+        while true; do
+            if python - <<'PY'
+import os
+import sys
+try:
+    import redis
+except Exception:
+    sys.exit(2)
+url = os.environ.get('TRADINGAGENTS_REDIS_URL', '')
+try:
+    r = redis.from_url(url, socket_connect_timeout=3, socket_timeout=3)
+    r.ping()
+    sys.exit(0)
+except Exception:
+    sys.exit(1)
+PY
+            then
+                break
+            fi
+            if command -v nc >/dev/null 2>&1; then
+                if nc -z "$redis_host" "$redis_port" 2>/dev/null; then
+                    break
+                fi
+            fi
             log "Waiting for Redis..."
             sleep 5
         done

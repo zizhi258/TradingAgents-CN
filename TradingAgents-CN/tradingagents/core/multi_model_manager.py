@@ -21,6 +21,7 @@ from .smart_routing_engine import SmartRoutingEngine, RoutingDecision
 from ..api.siliconflow_client import SiliconFlowClient
 from ..api.google_ai_client import GoogleAIClient
 from ..api.deepseek_client import DeepSeekClient
+from ..api.gemini_openai_compat_client import GeminiOpenAICompatClient
 
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
@@ -96,7 +97,19 @@ class MultiModelManager:
         """初始化各个API客户端"""
         successful_clients = []
         failed_clients = []
-        
+
+        # 初始化 Gemini-API 兼容（OpenAI 协议反代）
+        if 'gemini_api' in self.config:
+            gcfg = self.config['gemini_api']
+            if gcfg.get('enabled', True):
+                try:
+                    self.clients['gemini_api'] = GeminiOpenAICompatClient(gcfg)
+                    successful_clients.append('gemini_api')
+                    logger.info("Gemini-API(兼容) 客户端初始化成功")
+                except Exception as e:
+                    failed_clients.append(('gemini_api', str(e)))
+                    logger.warning(f"Gemini-API(兼容) 客户端初始化失败: {e}")
+
         # 初始化SiliconFlow客户端
         if 'siliconflow' in self.config:
             siliconflow_config = self.config['siliconflow']
@@ -416,15 +429,31 @@ class MultiModelManager:
             
             # 选择模型
             if model_override:
-                # 使用指定模型
+                # 使用指定模型（支持别名映射）
                 available_models = self._get_all_available_models()
-                if model_override not in available_models:
+                chosen_name = model_override
+                if chosen_name not in available_models:
+                    # 兼容 gemini-api/<name> → <name>
+                    if isinstance(chosen_name, str) and chosen_name.startswith('gemini-api/'):
+                        alt = chosen_name.split('/', 1)[1]
+                        if alt in available_models:
+                            chosen_name = alt
+                    # 兼容常见别名
+                    alias_map = {
+                        'deepseek-v3': 'deepseek-ai/DeepSeek-V3',
+                        'glm-4.5': 'zai-org/GLM-4.5',
+                        'qwen3-235b': 'Qwen/Qwen3-235B-A22B-Instruct-2507',
+                    }
+                    mapped = alias_map.get(chosen_name.lower())
+                    if mapped and mapped in available_models:
+                        chosen_name = mapped
+                if chosen_name not in available_models:
                     raise ValueError(f"指定的模型不可用: {model_override}")
-                
+
                 model_selection = ModelSelection(
-                    model_spec=available_models[model_override],
+                    model_spec=available_models[chosen_name],
                     confidence_score=1.0,
-                    reasoning=f"用户指定模型: {model_override}",
+                    reasoning=f"用户指定模型: {chosen_name}",
                     estimated_cost=0.01,
                     estimated_time=3000
                 )
@@ -877,14 +906,14 @@ class MultiModelManager:
         if not available_models:
             raise ValueError("没有可用的模型")
         
-        # 定义模型优先级（按稳定性和通用性排序）- gemini-2.5-pro优先
+        # 定义模型优先级（按稳定性和通用性排序）- 使用实际可用的模型名称
         fallback_priorities = [
-            'gemini-2.5-pro',        # Google 最强模型优先
-            'deepseek-v3',           # SiliconFlow 最稳定的模型
-            'qwen3-turbo',           # 通用的快速模型
-            'gemini-2.0-flash',      # Google 快速模型
-            'gemini-1.5-flash',      # Google 轻量模型
-            'moonshot-v1-8k',        # Moonshot 基础模型
+            'gemini-2.5-pro',                     # Google 最强模型优先
+            'deepseek-ai/DeepSeek-V3',            # SiliconFlow 稳定模型
+            'Qwen/Qwen3-235B-A22B-Instruct-2507', # 通用中文强模型
+            'gemini-2.0-flash',                   # Google 快速模型
+            'gemini-1.5-flash',                   # Google 轻量模型
+            'zai-org/GLM-4.5',                    # GLM 通用模型
         ]
         
         # 首先尝试按优先级选择
@@ -1252,10 +1281,10 @@ class MultiModelManager:
             
             # 回退到预定义的备用模型列表
             fallback_models = [
-                'Qwen/Qwen3-Turbo-128K',
+                'Qwen/Qwen3-235B-A22B-Instruct-2507',
                 'gemini-2.5-flash', 
                 'deepseek-ai/DeepSeek-V3',
-                'GLM-4.5-Flash'
+                'zai-org/GLM-4.5'
             ]
             
             # 过滤出可用的模型
@@ -1314,7 +1343,13 @@ class MultiModelManager:
                 return None
                 
             # 2. 使用circuit breaker模式进行多轮回退
-            fallback_candidates = ['gemini-2.5-pro', 'qwen3-turbo', 'gemini-2.0-flash', 'deepseek-v3', 'glm-4.5']
+            fallback_candidates = [
+                'gemini-api/gemini-2.5-pro',
+                'gemini-2.5-pro',
+                'gemini-2.5-flash',
+                'deepseek-ai/DeepSeek-V3',
+                'zai-org/GLM-4.5'
+            ]
             max_attempts = 3
             attempt_delay = 1.0  # 指数退避初始延迟
             

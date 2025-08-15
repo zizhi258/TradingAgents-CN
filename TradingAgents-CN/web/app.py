@@ -23,8 +23,8 @@ if str(project_root) not in sys.path:
 from tradingagents.utils.logging_manager import get_logger
 logger = get_logger('web')
 
-# 加载环境变量
-load_dotenv(project_root / ".env", override=True)
+# 加载环境变量：在 Docker 中优先使用容器环境，避免 .env 覆盖
+load_dotenv(project_root / ".env", override=False)
 
 # 导入自定义组件（Docker 兼容：若新函数缺失则回退）
 import importlib
@@ -286,6 +286,15 @@ def render_multi_model_collaboration_page(config: dict | None = None):
                             'api_key': os.getenv('SILICONFLOW_API_KEY'),
                             'base_url': os.getenv('SILICONFLOW_BASE_URL', 'https://api.siliconflow.cn/v1'),
                             'default_model': os.getenv('SILICONFLOW_DEFAULT_MODEL', 'deepseek-v3')
+                        },
+                        
+                        # Gemini-API 兼容(OpenAI协议反代) - 若已配置则启用
+                        'gemini_api': {
+                            'enabled': (os.getenv('GEMINI_API_COMPAT_ENABLED', 'true').lower() in ['1','true','yes','on']),
+                            'api_key': os.getenv('GEMINI_API_COMPAT_API_KEY') or os.getenv('OPENAI_API_KEY'),
+                            'base_url': os.getenv('GEMINI_API_COMPAT_BASE_URL', 'http://localhost:8080/v1'),
+                            'default_model': 'gemini-2.5-pro',
+                            'timeout': 90,
                         },
                         
                         # DeepSeek官方API配置

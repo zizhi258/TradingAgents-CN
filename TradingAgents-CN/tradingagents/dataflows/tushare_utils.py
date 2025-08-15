@@ -173,6 +173,77 @@ class TushareProvider:
             logger.error(f"❌ [Tushare详细日志] Tushare未连接，无法获取数据")
             return pd.DataFrame()
 
+        # 使用 daily 端点（普通积分可用），并在本地基于 pct_chg 计算连续前复权价
+        try:
+            logger.info(f"🔍 [股票代码追踪] get_stock_daily 调用 _normalize_symbol，传入参数: '{symbol}'")
+            ts_code = self._normalize_symbol(symbol)
+            logger.info(f"🔍 [股票代码追踪] _normalize_symbol 返回结果: '{ts_code}'")
+
+            # 规范日期格式（YYYYMMDD）
+            original_start = start_date
+            original_end = end_date
+            if end_date is None:
+                end_date = datetime.now().strftime('%Y%m%d')
+                logger.info(f"🔍 [Tushare详细日志] 结束日期为空，设置为当前日期: {end_date}")
+            else:
+                end_date = end_date.replace('-', '')
+                logger.info(f"🔍 [Tushare详细日志] 结束日期转换: '{original_end}' -> '{end_date}'")
+
+            if start_date is None:
+                start_date = (datetime.now() - timedelta(days=365)).strftime('%Y%m%d')
+                logger.info(f"🔍 [Tushare详细日志] 开始日期为空，设置为一年前: {start_date}")
+            else:
+                start_date = start_date.replace('-', '')
+                logger.info(f"🔍 [Tushare详细日志] 开始日期转换: '{original_start}' -> '{start_date}'")
+
+            logger.info(f"🔄 从Tushare获取{ts_code}数据 ({start_date} 到 {end_date})...")
+            api_start_time = time.time()
+            try:
+                data = self.api.daily(
+                    ts_code=ts_code,
+                    start_date=start_date,
+                    end_date=end_date
+                )
+                api_duration = time.time() - api_start_time
+                logger.info(f"🔍 [Tushare详细日志] API调用完成，耗时: {api_duration:.3f}秒")
+            except Exception as api_error:
+                api_duration = time.time() - api_start_time
+                logger.error(f"❌ [Tushare详细日志] API调用异常，耗时: {api_duration:.3f}秒")
+                logger.error(f"❌ [Tushare详细日志] API异常类型: {type(api_error).__name__}")
+                logger.error(f"❌ [Tushare详细日志] API异常信息: {str(api_error)}")
+                return pd.DataFrame()
+
+            logger.info(f"🔍 [Tushare详细日志] 返回数据类型: {type(data)} 形状: {getattr(data,'shape', None)}")
+            if data is None or getattr(data, 'empty', True):
+                logger.warning(f"⚠️ [Tushare详细日志] daily 返回空数据: {ts_code}")
+                return pd.DataFrame()
+
+            # 数据预处理
+            data = data.sort_values('trade_date')
+            data['trade_date'] = pd.to_datetime(data['trade_date'])
+
+            # 计算前复权价格（基于 pct_chg 连续价）
+            data = self._calculate_forward_adjusted_prices(data)
+
+            # 缓存
+            if self.enable_cache and self.cache_manager:
+                try:
+                    cache_key = self.cache_manager.save_stock_data(
+                        symbol=symbol,
+                        data=data,
+                        data_source="tushare"
+                    )
+                    logger.info(f"💾 A股历史数据已缓存: {symbol} (tushare) -> {cache_key}")
+                except Exception as cache_error:
+                    logger.error(f"⚠️ 缓存保存失败: {cache_error}")
+
+            logger.info(f"✅ 获取{ts_code}数据成功: {len(data)}条")
+            return data
+
+        except Exception as e:
+            logger.error(f"❌ 获取{symbol}数据失败: {e}")
+            return pd.DataFrame()
+
     def get_stock_daily_probar(self, symbol: str, start_date: str = None, end_date: str = None, adj: str = 'qfq') -> pd.DataFrame:
         """使用官方 pro_bar 返回复权行情（默认前复权）。
 
@@ -210,132 +281,20 @@ class TushareProvider:
             df = ts.pro_bar(ts_code=ts_code, start_date=start_date_fmt, end_date=end_date_fmt, adj=adj)
 
             if df is None or df.empty:
-                logger.warning(f"⚠️ [Tushare详细日志] pro_bar 返回空数据: {ts_code}")
-                return pd.DataFrame()
+                logger.warning(f"⚠️ [Tushare详细日志] pro_bar 返回空数据: {ts_code}，将回退到 daily")
+            else:
+                # 排序与日期型
+                df = df.sort_values('trade_date')
+                df['trade_date'] = pd.to_datetime(df['trade_date'])
 
-            # 排序与日期型
-            df = df.sort_values('trade_date')
-            df['trade_date'] = pd.to_datetime(df['trade_date'])
-
-            logger.info(f"✅ [Tushare详细日志] pro_bar 获取成功: {ts_code}, {len(df)}条")
-            return df
+                logger.info(f"✅ [Tushare详细日志] pro_bar 获取成功: {ts_code}, {len(df)}条")
+                return df
 
         except Exception as e:
-            logger.error(f"❌ [Tushare详细日志] pro_bar 调用失败: {e}")
-            return pd.DataFrame()
+            logger.warning(f"⚠️ [Tushare详细日志] pro_bar 调用失败，将回退到 daily: {e}")
 
-        try:
-            # 标准化股票代码
-            logger.info(f"🔍 [股票代码追踪] get_stock_daily 调用 _normalize_symbol，传入参数: '{symbol}'")
-            ts_code = self._normalize_symbol(symbol)
-            logger.info(f"🔍 [股票代码追踪] _normalize_symbol 返回结果: '{ts_code}'")
-
-            # 设置默认日期
-            original_start = start_date
-            original_end = end_date
-
-            if end_date is None:
-                end_date = datetime.now().strftime('%Y%m%d')
-                logger.info(f"🔍 [Tushare详细日志] 结束日期为空，设置为当前日期: {end_date}")
-            else:
-                end_date = end_date.replace('-', '')
-                logger.info(f"🔍 [Tushare详细日志] 结束日期转换: '{original_end}' -> '{end_date}'")
-
-            if start_date is None:
-                start_date = (datetime.now() - timedelta(days=365)).strftime('%Y%m%d')
-                logger.info(f"🔍 [Tushare详细日志] 开始日期为空，设置为一年前: {start_date}")
-            else:
-                start_date = start_date.replace('-', '')
-                logger.info(f"🔍 [Tushare详细日志] 开始日期转换: '{original_start}' -> '{start_date}'")
-
-            logger.info(f"🔄 从Tushare获取{ts_code}数据 ({start_date} 到 {end_date})...")
-            logger.info(f"🔍 [股票代码追踪] 调用 Tushare API daily，传入参数: ts_code='{ts_code}', start_date='{start_date}', end_date='{end_date}'")
-
-            # 记录API调用前的状态
-            api_start_time = time.time()
-            logger.info(f"🔍 [Tushare详细日志] API调用开始时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}")
-
-            # 获取日线数据
-            try:
-                data = self.api.daily(
-                    ts_code=ts_code,
-                    start_date=start_date,
-                    end_date=end_date
-                )
-                api_duration = time.time() - api_start_time
-                logger.info(f"🔍 [Tushare详细日志] API调用完成，耗时: {api_duration:.3f}秒")
-
-            except Exception as api_error:
-                api_duration = time.time() - api_start_time
-                logger.error(f"❌ [Tushare详细日志] API调用异常，耗时: {api_duration:.3f}秒")
-                logger.error(f"❌ [Tushare详细日志] API异常类型: {type(api_error).__name__}")
-                logger.error(f"❌ [Tushare详细日志] API异常信息: {str(api_error)}")
-                raise api_error
-
-            # 详细记录返回数据的信息
-            logger.info(f"🔍 [股票代码追踪] Tushare API daily 返回数据形状: {data.shape if data is not None and hasattr(data, 'shape') else 'None'}")
-            logger.info(f"🔍 [Tushare详细日志] 返回数据类型: {type(data)}")
-
-            if data is not None:
-                logger.info(f"🔍 [Tushare详细日志] 数据是否为空: {data.empty}")
-                if not data.empty:
-                    logger.info(f"🔍 [Tushare详细日志] 数据列名: {list(data.columns)}")
-                    logger.info(f"🔍 [Tushare详细日志] 数据索引类型: {type(data.index)}")
-                    if 'ts_code' in data.columns:
-                        unique_codes = data['ts_code'].unique()
-                        logger.info(f"🔍 [股票代码追踪] 返回数据中的ts_code: {unique_codes}")
-                    if 'trade_date' in data.columns:
-                        date_range = f"{data['trade_date'].min()} 到 {data['trade_date'].max()}"
-                        logger.info(f"🔍 [Tushare详细日志] 数据日期范围: {date_range}")
-                else:
-                    logger.warning(f"⚠️ [Tushare详细日志] 返回的DataFrame为空")
-            else:
-                logger.warning(f"⚠️ [Tushare详细日志] 返回数据为None")
-
-            if data is not None and not data.empty:
-                # 数据预处理
-                logger.info(f"🔍 [Tushare详细日志] 开始数据预处理...")
-                data = data.sort_values('trade_date')
-                data['trade_date'] = pd.to_datetime(data['trade_date'])
-
-                # 计算前复权价格（基于pct_chg重新计算连续价格）
-                logger.info(f"🔍 [Tushare详细日志] 开始计算前复权价格...")
-                data = self._calculate_forward_adjusted_prices(data)
-                logger.info(f"🔍 [Tushare详细日志] 前复权价格计算完成")
-
-                logger.info(f"🔍 [Tushare详细日志] 数据预处理完成")
-
-                logger.info(f"✅ 获取{ts_code}数据成功: {len(data)}条")
-
-                # 缓存数据
-                if self.enable_cache and self.cache_manager:
-                    try:
-                        logger.info(f"🔍 [Tushare详细日志] 开始缓存数据...")
-                        cache_key = self.cache_manager.save_stock_data(
-                            symbol=symbol,
-                            data=data,
-                            data_source="tushare"
-                        )
-                        logger.info(f"💾 A股历史数据已缓存: {symbol} (tushare) -> {cache_key}")
-                        logger.info(f"🔍 [Tushare详细日志] 数据缓存完成")
-                    except Exception as cache_error:
-                        logger.error(f"⚠️ 缓存保存失败: {cache_error}")
-                        logger.error(f"⚠️ [Tushare详细日志] 缓存异常类型: {type(cache_error).__name__}")
-
-                logger.info(f"🔍 [Tushare详细日志] get_stock_daily 执行成功，返回数据")
-                return data
-            else:
-                logger.warning(f"⚠️ Tushare返回空数据: {ts_code}")
-                logger.warning(f"⚠️ [Tushare详细日志] 空数据详情: data={data}, empty={data.empty if data is not None else 'N/A'}")
-                return pd.DataFrame()
-
-        except Exception as e:
-            logger.error(f"❌ 获取{symbol}数据失败: {e}")
-            logger.error(f"❌ [Tushare详细日志] 异常类型: {type(e).__name__}")
-            logger.error(f"❌ [Tushare详细日志] 异常信息: {str(e)}")
-            import traceback
-            logger.error(f"❌ [Tushare详细日志] 异常堆栈: {traceback.format_exc()}")
-            return pd.DataFrame()
+        # 回退到 daily
+        return self.get_stock_daily(symbol, start_date, end_date)
 
     def _calculate_forward_adjusted_prices(self, data: pd.DataFrame) -> pd.DataFrame:
         """

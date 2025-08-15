@@ -151,6 +151,12 @@ class SiliconFlowClient(BaseMultiModelAdapter):
         self.base_url = config.get('base_url', 'https://api.siliconflow.cn/v1')
         self.default_model = config.get('default_model', 'Qwen/Qwen3-Coder-480B-A35B-Instruct')
         self.timeout = config.get('timeout', 60)
+        # Allow a longer timeout specifically for DeepSeek-R1 (heavy reasoning)
+        # Config key or env var can override. Defaults to 180s to reduce spurious timeouts.
+        self.r1_timeout = int(
+            config.get('r1_timeout')
+            or os.getenv('SILICONFLOW_R1_TIMEOUT', 180)
+        )
         
         if not self.api_key:
             raise ValueError("SiliconFlow API密钥未配置")
@@ -227,7 +233,7 @@ class SiliconFlowClient(BaseMultiModelAdapter):
             model_timeout = self.timeout
             if 'DeepSeek-R1' in model_name:
                 # DeepSeek-R1 推理模型需要更长时间
-                model_timeout = 120  # 2分钟
+                model_timeout = int(self.r1_timeout)
                 logger.info(f"使用DeepSeek-R1模型，超时时间调整为{model_timeout}秒")
             elif 'Thinking' in model_name or 'reasoning' in model_spec.model_type:
                 # 思考类模型也需要更长时间
@@ -236,11 +242,12 @@ class SiliconFlowClient(BaseMultiModelAdapter):
             # 发送API请求
             if streaming and callable(on_token):
                 # 使用SSE流式响应
+                # Use (connect, read) timeouts to avoid premature failures on slow first tokens
                 response = requests.post(
                     f"{self.base_url}/chat/completions",
                     headers=self.headers,
                     json=request_data,
-                    timeout=model_timeout,
+                    timeout=(10, model_timeout),
                     stream=True
                 )
 
@@ -334,7 +341,7 @@ class SiliconFlowClient(BaseMultiModelAdapter):
                     f"{self.base_url}/chat/completions",
                     headers=self.headers,
                     json=request_data,
-                    timeout=model_timeout
+                    timeout=(10, model_timeout)
                 )
 
                 execution_time = int((time.time() - start_time) * 1000)

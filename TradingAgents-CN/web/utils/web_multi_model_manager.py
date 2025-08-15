@@ -152,6 +152,11 @@ class WebMultiModelCollaborationManager:
         """运行串行协作分析"""
         results = {}
         previous_results = []
+        # 预先构建模型覆盖映射（会话 > 持久化）
+        try:
+            built_overrides = self._build_model_overrides()
+        except Exception:
+            built_overrides = {}
         
         for agent_type in self.selected_agents:
             try:
@@ -173,22 +178,26 @@ class WebMultiModelCollaborationManager:
                     # 构建智能体任务提示词（支持角色库自定义）
                     task_prompt = self._build_prompt_for_role(agent_type, analysis_data, previous_results)
                     
+                    # 透传上下文（含模型覆盖）
+                    exec_context = {
+                        'session_id': f"web_multi_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                        'market_type': analysis_data.get('market_type', 'A股'),
+                        'stock_symbol': analysis_data['stock_symbol'],
+                        'model_params': {
+                            'stream': True,
+                            'on_token': (lambda t, agent=agent_type: progress_callback({'stage': 'token', 'agent': agent, 'delta': t}) if progress_callback else None)
+                        }
+                    }
+                    if built_overrides:
+                        exec_context['model_overrides'] = built_overrides
+
                     # 使用多模型管理器执行任务
                     task_result = self.multi_model_manager.execute_task(
                         agent_role=agent_type,
                         task_prompt=task_prompt,
                         task_type=self._get_task_type_for_agent(agent_type),
                         complexity_level="medium" if analysis_data.get('research_depth', 3) <= 3 else "high",
-                        context={
-                            'session_id': f"web_multi_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                            'market_type': analysis_data.get('market_type', 'A股'),
-                            'stock_symbol': analysis_data['stock_symbol'],
-                            # 透传模型参数，启用流式与token回调
-                            'model_params': {
-                                'stream': True,
-                                'on_token': (lambda t, agent=agent_type: progress_callback({'stage': 'token', 'agent': agent, 'delta': t}) if progress_callback else None)
-                            }
-                        }
+                        context=exec_context
                     )
                     
                     if task_result.success:
@@ -245,6 +254,11 @@ class WebMultiModelCollaborationManager:
     def _run_parallel_analysis(self, analysis_data: Dict[str, Any], progress_callback=None) -> Dict[str, Any]:
         """运行并行协作分析"""
         results = {}
+        # 预先构建模型覆盖映射（会话 > 持久化）
+        try:
+            built_overrides = self._build_model_overrides()
+        except Exception:
+            built_overrides = {}
         
         # 并行执行分析
         for agent_type in self.selected_agents:
@@ -260,20 +274,24 @@ class WebMultiModelCollaborationManager:
                 task_prompt = self._build_prompt_for_role(agent_type, analysis_data)
                 
                 # 使用多模型管理器执行任务
+                exec_context = {
+                    'session_id': f"web_multi_parallel_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                    'market_type': analysis_data.get('market_type', 'A股'),
+                    'stock_symbol': analysis_data['stock_symbol'],
+                    'model_params': {
+                        'stream': True,
+                        'on_token': (lambda t, agent=agent_type: progress_callback({'stage': 'token', 'agent': agent, 'delta': t}) if progress_callback else None)
+                    }
+                }
+                if built_overrides:
+                    exec_context['model_overrides'] = built_overrides
+
                 task_result = self.multi_model_manager.execute_task(
                     agent_role=agent_type,
                     task_prompt=task_prompt,
                     task_type=self._get_task_type_for_agent(agent_type),
                     complexity_level="medium" if analysis_data.get('research_depth', 3) <= 3 else "high",
-                    context={
-                        'session_id': f"web_multi_parallel_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                        'market_type': analysis_data.get('market_type', 'A股'),
-                        'stock_symbol': analysis_data['stock_symbol'],
-                        'model_params': {
-                            'stream': True,
-                            'on_token': (lambda t, agent=agent_type: progress_callback({'stage': 'token', 'agent': agent, 'delta': t}) if progress_callback else None)
-                        }
-                    }
+                    context=exec_context
                 )
                 
                 if task_result.success:
@@ -407,9 +425,18 @@ class WebMultiModelCollaborationManager:
                 'collaboration_mode': self.collaboration_mode,
             }
 
+            # 构建模型覆盖（优先使用本次会话的覆盖，其次使用持久化的角色中心绑定）
+            context_payload = {'priority': 'quality_first'}
+            try:
+                model_overrides = self._build_model_overrides()
+                if isinstance(model_overrides, dict) and model_overrides:
+                    context_payload['model_overrides'] = model_overrides
+            except Exception:
+                pass
+
             article_result = writer.analyze(
                 input_data=writer_input,
-                context={'priority': 'quality_first'},
+                context=context_payload,
                 complexity_level='high',
             )
 
@@ -536,3 +563,38 @@ class WebMultiModelCollaborationManager:
             if matches:
                 return matches[0]
             return "请参考详细分析"
+
+    def _build_model_overrides(self) -> Dict[str, str]:
+        """构建按角色的模型覆盖映射。
+
+        优先级：Session 会话覆盖 > 持久化的角色中心绑定（config/ui_role_overrides.json）。
+        返回值示例：{"chief_writer": "moonshotai/Kimi-K2-Instruct", ...}
+        """
+        overrides: Dict[str, str] = {}
+
+        # 1) 先加载持久化的角色中心绑定
+        try:
+            from .ui_utils import load_persistent_role_configs
+            cfg = load_persistent_role_configs()
+            role_overrides = cfg.get('role_overrides', {})
+            if isinstance(role_overrides, dict):
+                for role_key, role_cfg in role_overrides.items():
+                    if isinstance(role_cfg, dict):
+                        model = role_cfg.get('model')
+                        if isinstance(model, str) and model:
+                            overrides[role_key] = model
+        except Exception:
+            pass
+
+        # 2) 再叠加本次会话中的临时覆盖（若存在则覆盖掉持久化）
+        try:
+            import streamlit as st  # 仅在 Web 环境可用
+            session_overrides = getattr(st.session_state, 'model_overrides', None)
+            if isinstance(session_overrides, dict):
+                for role_key, model in session_overrides.items():
+                    if isinstance(model, str) and model:
+                        overrides[role_key] = model
+        except Exception:
+            pass
+
+        return overrides
