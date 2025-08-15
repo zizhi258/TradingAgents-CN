@@ -389,5 +389,101 @@
         "confidence_level": 80
       }
     }
+  },
+  {
+    "scan_id": "local_scan_6008294f_20250814_225924",
+    "config": {
+      "market_type": "A股",
+      "preset_type": "沪深300",
+      "scan_depth": 3,
+      "budget_limit": 10.0,
+      "stock_limit": 140,
+      "time_range": "1月",
+      "custom_filters": {},
+      "analysis_focus": {
+        "technical": true,
+        "fundamental": true,
+        "valuation": true,
+        "news": false,
+        "sentiment": false,
+        "social": false,
+        "risk": true,
+        "liquidity": false,
+        "macro": false
+      },
+      "ai_model_config": {
+        "model": "siliconflow",
+        "use_ensemble": false,
+        "temperature": 0.3,
+        "max_tokens": 4000,
+        "config_override": {
+          "llm_provider": "google",
+          "quick_think_llm": "siliconflow",
+          "deep_think_llm": "siliconflow",
+          "online_tools": true,
+          "max_debate_rounds": 1
+        }
+      },
+      "advanced_options": {
+        "enable_monitoring": true,
+        "enable_notification": false,
+        "save_intermediate": false,
+        "parallel_processing": true,
+        "auto_retry": true,
+        "cache_results": true
+      },
+      "submitted": true,
+      "estimate_requested": false,
+      "save_requested": false,
+      "validate_requested": false
+    },
+    "status": "completed",
+    "created_at": "2025-08-14T22:59:24.953256",
+    "updated_at": "2025-08-14T23:00:44.318520",
+    "progress": 100,
+    "error_message": null,
+    "results_available": true,
+    "results_summary": {
+      "key_insights": [
+        "A股扫描完成：共评估10只股票，买入建议4只",
+        "市场广度上行占比90.0%",
+        "强势板块：科技, 医药, 消费"
+      ],
+      "investment_recommendations": {
+        "buy": [
+          {
+            "symbol": "601988",
+            "reason": "综合评分较高"
+          },
+          {
+            "symbol": "000001",
+            "reason": "综合评分较高"
+          },
+          {
+            "symbol": "600036",
+            "reason": "综合评分较高"
+          },
+          {
+            "symbol": "600030",
+            "reason": "综合评分较高"
+          }
+        ],
+        "watch": [
+          {
+            "symbol": "300750",
+            "reason": "具备一定潜力"
+          }
+        ]
+      },
+      "risk_factors": [
+        "个股波动与流动性风险需关注",
+        "模型数据受离线模式限制，建议结合实盘数据验证"
+      ],
+      "market_outlook": "短期或维持结构性机会，控制仓位、分散风险",
+      "scan_statistics": {
+        "completion_rate": 100,
+        "confidence_level": 75
+      }
+    }
   }
 ]
