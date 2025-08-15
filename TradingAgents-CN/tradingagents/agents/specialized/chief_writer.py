@@ -120,12 +120,22 @@ class ChiefWriter(BaseSpecializedAgent):
             except Exception:
                 selected_model = 'gemini-2.5-pro'
 
+            # Ensure sensible defaults for heavy long-form writing to reduce timeouts
+            merged_ctx = dict(context or {})
+            model_params = dict(merged_ctx.get('model_params') or {})
+            # Prefer streaming and a bounded max_tokens; keep user-provided values
+            model_params.setdefault('stream', True)
+            model_params.setdefault('temperature', 0.3)
+            model_params.setdefault('top_p', 0.9)
+            model_params.setdefault('max_tokens', 1500)
+            merged_ctx['model_params'] = model_params
+
             task_result = self.multi_model_manager.execute_task(
                 agent_role=self.agent_role,
                 task_prompt=prompt,
                 task_type=self.get_specialized_task_type(),
                 complexity_level=complexity_level,
-                context=context,
+                context=merged_ctx,
                 model_override=selected_model,
             )
 
@@ -150,12 +160,21 @@ class ChiefWriter(BaseSpecializedAgent):
                     "充分纳入各专家观点与分歧对照，并补充证据与逻辑链条。"
                 )
                 # 二次写作沿用上一次选择的模型
+                # Keep the same streaming-friendly params in retry
+                retry_ctx = dict(merged_ctx)
+                retry_mp = dict(retry_ctx.get('model_params') or {})
+                retry_mp.setdefault('stream', True)
+                retry_mp.setdefault('temperature', 0.3)
+                retry_mp.setdefault('top_p', 0.9)
+                retry_mp.setdefault('max_tokens', 1800)
+                retry_ctx['model_params'] = retry_mp
+
                 task_result = self.multi_model_manager.execute_task(
                     agent_role=self.agent_role,
                     task_prompt=reinforce_prompt,
                     task_type=self.get_specialized_task_type(),
                     complexity_level=complexity_level,
-                    context={**context, 'reinforced': True} if context else {'reinforced': True},
+                    context={**retry_ctx, 'reinforced': True} if retry_ctx else {'reinforced': True},
                     model_override=selected_model,
                 )
                 exec_ms = int((datetime.now() - start_time).total_seconds() * 1000)

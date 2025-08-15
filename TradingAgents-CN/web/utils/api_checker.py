@@ -27,6 +27,7 @@ def check_api_keys():
     deepseek_key = os.getenv("DEEPSEEK_API_KEY")
     siliconflow_key = os.getenv("SILICONFLOW_API_KEY")
     openrouter_key = os.getenv("OPENROUTER_API_KEY")
+    gemini_api_compat_key = os.getenv("GEMINI_API_COMPAT_API_KEY") or os.getenv("OPENAI_API_KEY")
     tushare_token = os.getenv("TUSHARE_TOKEN")
     openai_key = os.getenv("OPENAI_API_KEY")
     anthropic_key = os.getenv("ANTHROPIC_API_KEY")
@@ -58,6 +59,12 @@ def check_api_keys():
             "display": f"{openrouter_key[:12]}..." if openrouter_key else "未配置",
             "required": False,
             "description": "OpenRouter 聚合平台 API 密钥"
+        },
+        "GEMINI_API_COMPAT_API_KEY": {
+            "configured": bool(gemini_api_compat_key),
+            "display": f"{gemini_api_compat_key[:12]}..." if gemini_api_compat_key else "未配置",
+            "required": False,
+            "description": "Gemini-API 兼容(OpenAI协议反代) 密钥（或使用 OPENAI_API_KEY）"
         },
         "TUSHARE_TOKEN": {
             "configured": bool(tushare_token),

@@ -11,6 +11,18 @@ TradingAgents-CN API 主入口
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# Ensure .env is loaded when running API directly (uvicorn path)
+try:
+    from pathlib import Path
+    from dotenv import load_dotenv
+    # project root: .../TradingAgents-CN
+    _env_path = Path(__file__).resolve().parents[2] / ".env"
+    # In containers, prefer environment provided by Docker over .env file
+    load_dotenv(_env_path, override=False)
+except Exception:
+    # Do not hard-fail if dotenv is missing; many configs also come from real env
+    pass
+
 
 def create_app() -> FastAPI:
     app = FastAPI(title="TradingAgents-CN API", version="0.1.0")
