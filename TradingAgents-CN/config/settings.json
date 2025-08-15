@@ -6,8 +6,23 @@
   "currency_preference": "CNY",
   "auto_save_usage": true,
   "max_usage_records": 10000,
-  "finnhub_api_key": "",
+  "finnhub_api_key": "d244ch9r01qmb590hiegd244ch9r01qmb590hif0",
   "log_level": "INFO",
   "data_dir": "/root/Documents/TradingAgents/data",
-  "cache_dir": "/root/Documents/TradingAgents/data/cache"
+  "cache_dir": "/root/Documents/TradingAgents/data/cache",
+  "email_schedules": {
+    "daily": {
+      "enabled": true,
+      "hour": 18,
+      "minute": 0
+    },
+    "weekly": {
+      "enabled": false,
+      "weekday": [
+        1
+      ],
+      "hour": 9,
+      "minute": 0
+    }
+  }
 }

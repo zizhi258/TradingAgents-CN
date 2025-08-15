@@ -1,9 +1,9 @@
 {
   "role_overrides": {
     "chief_writer": {
-      "model": "deepseek-ai/DeepSeek-R1",
+      "model": "gemini-api/gemini-2.5-pro",
       "is_locked": true
     }
   },
-  "last_modified": "2025-08-12T23:49:23.529255"
+  "last_modified": "2025-08-15T02:19:46.690365"
 }
