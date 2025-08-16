@@ -440,8 +440,7 @@ button[kind="primary"]:active {
 
 /* 次要按钮 */
 .ta-btn.secondary,
-button[kind="secondary"],
-.stButton > button {
+button[kind="secondary"] {
   background: var(--zen-surface) !important;
   color: var(--zen-text) !important;
   border: 2px solid var(--zen-border) !important;
@@ -449,8 +448,7 @@ button[kind="secondary"],
 }
 
 .ta-btn.secondary:hover,
-button[kind="secondary"]:hover,
-.stButton > button:hover {
+button[kind="secondary"]:hover {
   background: var(--zen-surface-hover) !important;
   border-color: var(--zen-accent) !important;
   transform: translateY(-1px) !important;
