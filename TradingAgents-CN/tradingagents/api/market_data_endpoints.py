@@ -159,6 +159,9 @@ def get_daily(
         prov = get_tushare_provider()
         if adj is not None and hasattr(prov, "get_stock_daily_probar"):
             df = prov.get_stock_daily_probar(code, start_date, end_date, adj=adj or "")
+            # 安全回退：pro_bar 返回空时，尝试 daily
+            if df is None or getattr(df, "empty", True):
+                df = prov.get_stock_daily(code, start_date, end_date)
         else:
             df = prov.get_stock_daily(code, start_date, end_date)
 

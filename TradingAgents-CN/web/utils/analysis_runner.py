@@ -250,6 +250,9 @@ def run_stock_analysis(stock_symbol, analysis_date, analysts, research_depth, ll
                 config["backend_url"] = os.getenv('GOOGLE_GENAI_BASE_URL', 'https://generativelanguage.googleapis.com/v1')
             elif llm_provider == 'deepseek':
                 config["backend_url"] = os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
+            elif llm_provider == 'gemini_api':
+                # OpenAI 兼容反代
+                config["backend_url"] = os.getenv('GEMINI_API_COMPAT_BASE_URL', 'http://localhost:8080/v1')
         except Exception:
             pass
         # UI 路由策略与回退链透传（后端可选择使用或忽略）

@@ -106,6 +106,21 @@ def get_google_models() -> List[str]:
     return _dedupe_preserve_order([n for n in names if isinstance(n, str) and n.strip()])
 
 
+def get_gemini_api_models() -> List[str]:
+    """Return Gemini models for the OpenAI-compatible reverse proxy channel.
+
+    Keep names aligned with Google family for recognition, but the backend will
+    route by provider selection to the gemini_api client.
+    """
+    names = [
+        "gemini-2.5-pro",
+        "gemini-2.0-flash",
+        "gemini-1.5-pro",
+        "gemini-1.5-flash",
+    ]
+    return _dedupe_preserve_order(names)
+
+
 def get_openrouter_models() -> List[str]:
     """Return a curated list of OpenRouter models for UI.
 

@@ -44,6 +44,17 @@ providers:
     pool_type: "backup"
     description: "DeepSeek直连备用池"
 
+  # 🌟 Gemini-API 兼容(OpenAI协议反代) - 备用/稳定渠道
+  gemini_api:
+    enabled: true
+    base_url: "${GEMINI_API_COMPAT_BASE_URL:-http://localhost:8080/v1}"
+    default_model: "gemini-2.5-pro"
+    timeout: 90
+    max_retries: 2
+    priority: 1
+    pool_type: "deep_reasoning"
+    description: "自建 Gemini 反代（OpenAI 兼容格式），与官方 SDK 并存，可切换用于长文/稳定性"
+
 # 具体模型目录（便于前后端一致引用与策略匹配）
 model_catalog:
   siliconflow:
@@ -113,6 +124,23 @@ agent_bindings:
     requires: ["code_generation", "visualization"]
     post_processing: true
     max_cost_per_task: 0.05
+  chief_writer:
+    pools: ["deep_reasoning"]
+    allow_models: [
+      "gemini-2.5-pro",
+      "gemini-api/gemini-2.5-pro",
+      "deepseek-ai/DeepSeek-V3",
+      "deepseek-chat",
+      "deepseek-ai/DeepSeek-R1"
+    ]
+    prefer_models: ["gemini-api/gemini-2.5-pro", "gemini-2.5-pro"]
+    fallback_chain: [
+      "gemini-api/gemini-2.5-pro",
+      "gemini-2.5-pro",
+      "deepseek-ai/DeepSeek-V3",
+      "deepseek-chat",
+      "deepseek-ai/DeepSeek-R1"
+    ]
 
 # 任务类型绑定（进一步细化池内候选）
 task_bindings:

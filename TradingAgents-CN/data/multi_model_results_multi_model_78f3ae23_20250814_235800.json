@@ -1,0 +1,56 @@
+{
+  "analysis_id": "multi_model_78f3ae23_20250814_235800",
+  "status": "completed",
+  "results": {
+    "status": "success",
+    "collaboration_mode": "sequential",
+    "agents_used": [
+      "news_hunter",
+      "fundamental_expert",
+      "risk_manager"
+    ],
+    "analysis_data": {
+      "stock_symbol": "600519",
+      "market_type": "A股",
+      "analysis_date": "2025-08-14",
+      "research_depth": 3,
+      "custom_requirements": ""
+    },
+    "results": {
+      "news_hunter": {
+        "agent_type": "news_hunter",
+        "analysis": "",
+        "confidence": 0.85,
+        "recommendations": "请参考详细分析",
+        "timestamp": "2025-08-14T23:59:01.253054",
+        "model_used": "deepseek-chat",
+        "execution_time": 45223,
+        "token_usage": {}
+      },
+      "fundamental_expert": {
+        "agent_type": "fundamental_expert",
+        "analysis": "",
+        "confidence": 0.85,
+        "recommendations": "请参考详细分析",
+        "timestamp": "2025-08-14T23:59:46.240852",
+        "model_used": "deepseek-chat",
+        "execution_time": 44904,
+        "token_usage": {}
+      },
+      "risk_manager": {
+        "agent_type": "risk_manager",
+        "analysis": "",
+        "confidence": 0.85,
+        "recommendations": "请参考详细分析",
+        "timestamp": "2025-08-15T00:00:32.152975",
+        "model_used": "deepseek-chat",
+        "execution_time": 45845,
+        "token_usage": {}
+      }
+    },
+    "final_article": "写作失败: 主笔人写作失败: 系统遇到意外错误，我们的技术团队将尽快解决",
+    "final_article_metrics": {},
+    "timestamp": "2025-08-15T00:00:35.181717"
+  },
+  "timestamp": "2025-08-15T00:00:35.184160"
+}
