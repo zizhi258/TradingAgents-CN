@@ -8,6 +8,6 @@
   "max_usage_records": 10000,
   "finnhub_api_key": "d244ch9r01qmb590hiegd244ch9r01qmb590hif0",
   "log_level": "INFO",
-  "data_dir": "C:\\Users\\zizhi\\Documents\\TradingAgents\\data",
-  "cache_dir": "C:\\Users\\zizhi\\Documents\\TradingAgents\\data\\cache"
+  "data_dir": "",
+  "cache_dir": ""
 }
