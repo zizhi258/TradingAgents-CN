@@ -34,6 +34,7 @@ render_browser_tabs = getattr(_hdr, "render_browser_tabs", None)
 from components.analysis_form import render_analysis_form
 from components.results_display import render_results
 from components.profile_panel import render_profile_panel
+from components.ui_components import render_button_radio
 from utils.api_checker import check_api_keys
 from utils.analysis_runner import run_stock_analysis, validate_analysis_params, format_analysis_results
 from utils.progress_tracker import SmartStreamlitProgressDisplay, create_smart_progress_callback
@@ -609,6 +610,37 @@ def main():
     # 优化布局CSS - 简化并移除冲突样式
     st.markdown("""
     <style>
+    /* --- 自定义按钮 Radio --- */
+    /* 容器 */
+    div[data-testid="stHorizontalBlock"] > div[data-testid="stVerticalBlock"] > div[data-testid="stButton"] {
+        margin-top: 0 !important;
+    }
+    /* 选中的按钮 (Primary) */
+    button[data-testid="stButton"][kind="primary"] {
+        background-color: var(--zen-accent, #17a2b8) !important;
+        color: #ffffff !important;
+        border: 1px solid var(--zen-accent, #17a2b8) !important;
+        box-shadow: 0 0 10px rgba(23, 162, 184, 0.5); /* 添加辉光效果 */
+    }
+    /* 未选中的按钮 (Secondary) */
+    button[data-testid="stButton"][kind="secondary"] {
+        background-color: var(--zen-surface, #ffffff) !important;
+        color: var(--zen-text, #31333F) !important;
+        border: 1px solid var(--zen-border, #d1d1d1) !important;
+    }
+    /* 禁用所有按钮的Hover效果，避免干扰 */
+    button[data-testid="stButton"][kind="primary"]:hover,
+    button[data-testid="stButton"][kind="secondary"]:hover {
+        border: 1px solid var(--zen-border, #d1d1d1) !important;
+        transform: none !important;
+    }
+    button[data-testid="stButton"][kind="primary"]:hover {
+        background-color: var(--zen-accent, #17a2b8) !important;
+        color: #ffffff !important;
+        border: 1px solid var(--zen-accent, #17a2b8) !important;
+    }
+    /* --- END --- */
+
     /* 隐藏侧边栏 */
     section[data-testid="stSidebar"] {
         display: none !important;
@@ -683,15 +715,11 @@ def main():
     if callable(render_browser_tabs):
         page = render_browser_tabs(menu_pages, default_index=0)
     else:
-        if 'top_nav_page' not in st.session_state:
-            st.session_state.top_nav_page = "📊 个股分析"
-        page = st.radio(
-            "功能导航",
-            menu_pages,
-            index=menu_pages.index(st.session_state.top_nav_page) if st.session_state.top_nav_page in menu_pages else 0,
-            horizontal=True,
-            label_visibility="collapsed",
+        # 使用新的自定义按钮组件替换 st.radio
+        page = render_button_radio(
+            options=menu_pages,
             key="top_nav_page",
+            default_value="📊 个股分析"
         )
 
     # 顶部品牌区（位于导航下方）——压缩头部留白
@@ -705,7 +733,11 @@ def main():
     with tool_c1:
         if page == "📊 个股分析":
             if multi_model_enabled:
-                st.radio("分析模式", ["单模型", "多模型"], key="analysis_mode", horizontal=True)
+                render_button_radio(
+                    options=["单模型", "多模型"],
+                    key="analysis_mode",
+                    default_value="单模型"
+                )
             else:
                 st.session_state.analysis_mode = '单模型'
     with tool_c3:
@@ -898,39 +930,15 @@ def main():
                     st.error(f"❌ 表单渲染失败: {e}")
                     form_data = {'submitted': False}
                 
-                # 简单模式（画像）优先，其次才是完整模型面板
-                # simple_mode_enabled = os.getenv('SIMPLE_MODE', 'true').lower() == 'true'
-                # if simple_mode_enabled:
-                #     try:
-                #         profile_cfg = render_profile_panel()
-                #         model_cfg = {
-                #             'llm_provider': profile_cfg.get('llm_provider'),
-                #             'llm_model': profile_cfg.get('llm_deep_model'),
-                #             'llm_quick_model': profile_cfg.get('llm_quick_model'),
-                #             'llm_deep_model': profile_cfg.get('llm_deep_model'),
-                #             'routing_strategy': profile_cfg.get('routing_strategy'),
-                #             'fallbacks': [],
-                #             'max_budget': profile_cfg.get('max_budget') or 0.0,
-                #         }
-                #         # 将关键路由参数注入 session_state 以复用后续逻辑
-                #         st.session_state.routing_strategy_select = profile_cfg.get('routing_strategy')
-                #         st.session_state.max_budget = profile_cfg.get('max_budget') or 0.0
-                #         st.session_state.SIMPLE_MODE_DEFAULT = True
-                #     except Exception as e:
-                #         st.warning(f"⚠️ 简单模式面板加载失败，退回高级模式: {e}")
-                #         try:
-                #             from components.model_selection_panel import render_model_selection_panel
-                #             model_cfg = render_model_selection_panel(location="main")
-                #         except Exception as e2:
-                #             st.error(f"❌ 模型选择面板渲染失败: {e2}")
-                #             model_cfg = {}
-                # else:
-                try:
-                    from components.model_selection_panel import render_model_selection_panel
-                    model_cfg = render_model_selection_panel(location="main")
-                except Exception as e:
-                    st.error(f"❌ 模型选择面板渲染失败: {e}")
-                    model_cfg = {}
+                # 在单模型模式下，始终显示高级模型选择面板
+                model_cfg = {}
+                if st.session_state.get('analysis_mode') == '单模型':
+                    try:
+                        from components.model_selection_panel import render_model_selection_panel
+                        model_cfg = render_model_selection_panel(location="main")
+                    except Exception as e:
+                        st.error(f"❌ 模型选择面板渲染失败: {e}")
+                        model_cfg = {}
 
                 # 在主页面展示并合并原侧边栏的 API 密钥状态
                 try:
