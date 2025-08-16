@@ -1,15 +1,15 @@
 {
-  "analysis_id": "multi_model_5897b3dc_20250812_152036",
-  "status": "idle",
-  "stock_symbol": "",
+  "analysis_id": "analysis_3219f97a_20250817_012953",
+  "status": "running",
+  "stock_symbol": "600520",
   "market_type": "A股",
-  "timestamp": 1755358072.6565328,
-  "last_update": 1755358072.656533,
+  "timestamp": 1755365393.1355023,
+  "last_update": 1755365393.1355026,
   "fingerprint": "session_f8b11600625b",
   "form_config": {
-    "stock_symbol": "",
+    "stock_symbol": "600520",
     "market_type": "A股",
-    "research_depth": 3,
+    "research_depth": 1,
     "selected_analysts": [
       "market",
       "fundamentals"
