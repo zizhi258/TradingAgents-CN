@@ -178,13 +178,31 @@ def render_enhanced_configuration_tab(session_manager):
         st.error(f"❌ 配置区域加载失败: {e}")
         with st.expander("尝试使用简化配置继续", expanded=True):
             with st.form("fallback_market_config_form"):
-                market_type = st.selectbox("🌍 目标市场", ["A股", "美股", "港股", "全球"], index=0)
-                preset_type = st.selectbox("🎲 预设筛选", [
-                    "沪深300", "中证500", "创业板50", "科创50",
-                    "标普500", "纳斯达克100", "道琼斯30",
-                    "恒生指数", "恒生科技",
-                    "自定义筛选"
-                ], index=0)
+                market_type = st.selectbox("🌍 目标市场", ["A股", "美股", "港股", "全球"], index=0, key="fallback_market_type")
+                
+                # 根据市场类型动态设置预设选项
+                fallback_preset_options = {
+                    "A股": ["沪深300", "中证500", "创业板50", "科创50", "自定义筛选"],
+                    "美股": ["标普500", "纳斯达克100", "道琼斯30", "罗素2000", "自定义筛选"],
+                    "港股": ["恒生指数", "恒生科技", "国企指数", "红筹指数", "自定义筛选"],
+                    "全球": ["全球大盘", "新兴市场", "发达市场", "科技巨头", "自定义筛选"]
+                }
+                
+                # 使用市场类型作为key的一部分，确保动态更新
+                fallback_preset_key = f"fallback_preset_{market_type}"
+                
+                # 检查市场类型是否发生变化
+                last_fallback_market = st.session_state.get("fallback_last_market_type")
+                if last_fallback_market != market_type:
+                    st.session_state["fallback_last_market_type"] = market_type
+                    # 清除旧的预设选择
+                    if fallback_preset_key in st.session_state:
+                        del st.session_state[fallback_preset_key]
+                
+                preset_type = st.selectbox("🎲 预设筛选",
+                    fallback_preset_options.get(market_type, fallback_preset_options["A股"]),
+                    index=0,
+                    key=fallback_preset_key)
                 col_a, col_b, col_c = st.columns(3)
                 with col_a:
                     scan_depth = st.select_slider("🔍 分析深度", options=[1,2,3,4,5], value=3)
@@ -696,33 +714,46 @@ class EnhancedMarketConfigurationPanel:
             st.metric("💰 预估成本", f"¥{cost_result:.2f}")
     
     def _get_enhanced_preset_selector(self, market_type: str, key_prefix: str) -> str:
-        """增强的预设选择器"""
+        """增强的预设选择器 - 根据市场类型动态显示对应的预设选项（已修复联动逻辑）"""
         
         preset_options = {
-            "A股": [
-                "沪深300", "中证500", "创业板50", "科创50", 
-                "上证50", "深证100", "中小板", "ST股票", "自定义筛选"
-            ],
-            "美股": [
-                "标普500", "纳斯达克100", "道琼斯30", "罗素2000",
-                "科技股", "成长股", "价值股", "分红股", "自定义筛选"
-            ],
-            "港股": [
-                "恒生指数", "恒生科技", "国企指数", "红筹指数",
-                "蓝筹股", "中概股", "生物科技", "房地产", "自定义筛选"
-            ],
-            "全球": [
-                "全球大盘", "新兴市场", "发达市场", "科技巨头",
-                "ESG投资", "商品期货", "货币市场", "自定义筛选"
-            ]
+            "A股": ["沪深300", "中证500", "创业板50", "科创50", "自定义筛选"],
+            "美股": ["标普500", "纳斯达克100", "道琼斯30", "罗素2000", "自定义筛选"],
+            "港股": ["恒生指数", "恒生科技", "国企指数", "红筹指数", "自定义筛选"],
+            "全球": ["全球大盘", "新兴市场", "发达市场", "科技巨头", "自定义筛选"]
         }
         
+        # 获取当前市场对应的预设选项
+        current_options = preset_options.get(market_type, preset_options["A股"])
+        
+        # --- 修复联动逻辑 ---
+        # 1. 使用固定的 session_state key 来存储上一次的市场选择
+        last_market_key = f"{key_prefix}_last_market_type"
+        last_market = st.session_state.get(last_market_key)
+        
+        # 2. 使用固定的 key 给预设筛选框，避免组件被销毁重建
+        preset_key = f"{key_prefix}_preset_enhanced"
+
+        # 3. 检查市场类型是否已更改
+        if last_market != market_type:
+            # 如果市场已更改，则将预设筛选的值重置为新选项列表的第一个
+            st.session_state[last_market_key] = market_type
+            st.session_state[preset_key] = current_options[0]
+
+        # 从 session_state 获取当前值，如果不存在则使用第一个选项
+        current_selection = st.session_state.get(preset_key, current_options[0])
+        
+        # 如果当前保存的值不在新的选项列表中，也重置为第一个
+        if current_selection not in current_options:
+            current_selection = current_options[0]
+            st.session_state[preset_key] = current_selection
+
         return st.selectbox(
             "🎲 预设筛选",
-            options=preset_options[market_type],
-            index=0,
-            help="选择股票筛选预设，或选择自定义筛选",
-            key=f"{key_prefix}_preset_enhanced"
+            options=current_options,
+            index=current_options.index(current_selection),
+            help=f"选择{market_type}市场的股票筛选预设，或选择自定义筛选",
+            key=preset_key
         )
     
     def _render_enhanced_custom_filters(self, key_prefix: str) -> Dict[str, Any]:
@@ -1596,8 +1627,6 @@ def load_historical_scan(session_manager, scan_id, index):
                 st.info(f"📊 分析正在进行中: {scan_id}")
             else:
                 st.warning(f"⚠️ 暂无可用结果: {scan_id}")
-        
-        st.rerun()
         
     except Exception as e:
         st.error(f"❌ 加载扫描记录失败: {e}")
