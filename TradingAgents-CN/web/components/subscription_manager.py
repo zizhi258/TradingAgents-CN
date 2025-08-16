@@ -32,13 +32,12 @@ def render_subscription_manager():
         st.error(f"❌ 初始化订阅管理器失败: {e}")
         return
         
-    # 标签页
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "➕ 添加订阅", 
-        "📋 我的订阅", 
+    # 标签页 - 移除重复的调度与定时标签页
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "➕ 添加订阅",
+        "📋 我的订阅",
         "📊 订阅统计",
-        "⚙️ 订阅设置",
-        "🕐 调度与定时"
+        "⚙️ 订阅设置"
     ])
     
     # 添加订阅标签页
@@ -57,9 +56,7 @@ def render_subscription_manager():
     with tab4:
         render_subscription_settings(manager)
     
-    # 调度与定时标签页
-    with tab5:
-        render_scheduler_controls()
+    # 移除突兀的相关功能提示，保持界面简洁
 
 
 def render_add_subscription(manager: SubscriptionManager):
@@ -582,46 +579,6 @@ def render_subscription_settings(manager: SubscriptionManager):
                 logger.error(f"邮件服务检查失败: {e}", exc_info=True)
 
 
-def render_scheduler_controls():
-    """渲染调度器控制界面"""
-    
-    try:
-        # 导入scheduler_admin模块
-        from web.modules.scheduler_admin import render_scheduler_admin
-        
-        # 直接渲染调度器管理界面
-        render_scheduler_admin()
-        
-    except ImportError as e:
-        st.error(f"❌ 调度器管理模块未找到: {e}")
-        st.markdown("""
-        ### 📝 手动配置调度器
-        
-        如果调度器管理模块无法加载，您可以手动配置：
-        
-        1. **检查环境变量**
-        ```bash
-        SCHEDULER_ENABLED=true
-        SCHEDULER_TIMEZONE=Asia/Shanghai
-        ```
-        
-        2. **配置邮件调度** (在 `config/settings.json` 中)
-        ```json
-        {
-          "email_schedules": {
-            "daily": {"enabled": false, "hour": 18, "minute": 0},
-            "weekly": {"enabled": false, "weekday": [1], "hour": 9, "minute": 0}
-          }
-        }
-        ```
-        
-        3. **重启调度器服务**
-        ```bash
-        docker compose restart scheduler
-        ```
-        """)
-        
-    except Exception as e:
-        st.error(f"❌ 调度器控制模块加载失败: {e}")
-        logger.error(f"调度器控制模块加载失败: {e}", exc_info=True)
+# render_scheduler_controls 函数已删除，因为调度功能已移至专门的调度器管理页面
+# 用户可以通过 '⚙️ 调度器管理' 页面进行所有调度相关的配置
 

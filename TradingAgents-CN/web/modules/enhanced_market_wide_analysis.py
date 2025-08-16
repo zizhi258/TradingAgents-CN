@@ -178,13 +178,31 @@ def render_enhanced_configuration_tab(session_manager):
         st.error(f"❌ 配置区域加载失败: {e}")
         with st.expander("尝试使用简化配置继续", expanded=True):
             with st.form("fallback_market_config_form"):
-                market_type = st.selectbox("🌍 目标市场", ["A股", "美股", "港股", "全球"], index=0)
-                preset_type = st.selectbox("🎲 预设筛选", [
-                    "沪深300", "中证500", "创业板50", "科创50",
-                    "标普500", "纳斯达克100", "道琼斯30",
-                    "恒生指数", "恒生科技",
-                    "自定义筛选"
-                ], index=0)
+                market_type = st.selectbox("🌍 目标市场", ["A股", "美股", "港股", "全球"], index=0, key="fallback_market_type")
+                
+                # 根据市场类型动态设置预设选项
+                fallback_preset_options = {
+                    "A股": ["沪深300", "中证500", "创业板50", "科创50", "自定义筛选"],
+                    "美股": ["标普500", "纳斯达克100", "道琼斯30", "罗素2000", "自定义筛选"],
+                    "港股": ["恒生指数", "恒生科技", "国企指数", "红筹指数", "自定义筛选"],
+                    "全球": ["全球大盘", "新兴市场", "发达市场", "科技巨头", "自定义筛选"]
+                }
+                
+                # 使用市场类型作为key的一部分，确保动态更新
+                fallback_preset_key = f"fallback_preset_{market_type}"
+                
+                # 检查市场类型是否发生变化
+                last_fallback_market = st.session_state.get("fallback_last_market_type")
+                if last_fallback_market != market_type:
+                    st.session_state["fallback_last_market_type"] = market_type
+                    # 清除旧的预设选择
+                    if fallback_preset_key in st.session_state:
+                        del st.session_state[fallback_preset_key]
+                
+                preset_type = st.selectbox("🎲 预设筛选",
+                    fallback_preset_options.get(market_type, fallback_preset_options["A股"]),
+                    index=0,
+                    key=fallback_preset_key)
                 col_a, col_b, col_c = st.columns(3)
                 with col_a:
                     scan_depth = st.select_slider("🔍 分析深度", options=[1,2,3,4,5], value=3)
@@ -696,11 +714,11 @@ class EnhancedMarketConfigurationPanel:
             st.metric("💰 预估成本", f"¥{cost_result:.2f}")
     
     def _get_enhanced_preset_selector(self, market_type: str, key_prefix: str) -> str:
-        """增强的预设选择器"""
+        """增强的预设选择器 - 根据市场类型动态显示对应的预设选项"""
         
         preset_options = {
             "A股": [
-                "沪深300", "中证500", "创业板50", "科创50", 
+                "沪深300", "中证500", "创业板50", "科创50",
                 "上证50", "深证100", "中小板", "ST股票", "自定义筛选"
             ],
             "美股": [
@@ -717,12 +735,34 @@ class EnhancedMarketConfigurationPanel:
             ]
         }
         
+        # 获取当前市场对应的预设选项
+        current_options = preset_options.get(market_type, preset_options["A股"])
+        
+        # 使用市场类型作为key的一部分，确保市场变化时组件重新渲染
+        preset_key = f"{key_prefix}_preset_enhanced_{market_type}"
+        
+        # 检查上一次的市场类型，如果发生变化则重置选择
+        last_market_key = f"{key_prefix}_last_market_type"
+        last_market = st.session_state.get(last_market_key)
+        
+        default_index = 0
+        if last_market != market_type:
+            # 市场类型发生变化，重置为第一个选项
+            st.session_state[last_market_key] = market_type
+            if preset_key in st.session_state:
+                del st.session_state[preset_key]
+        else:
+            # 市场类型未变化，尝试保持当前选择
+            current_preset = st.session_state.get(preset_key)
+            if current_preset and current_preset in current_options:
+                default_index = current_options.index(current_preset)
+        
         return st.selectbox(
             "🎲 预设筛选",
-            options=preset_options[market_type],
-            index=0,
-            help="选择股票筛选预设，或选择自定义筛选",
-            key=f"{key_prefix}_preset_enhanced"
+            options=current_options,
+            index=default_index,
+            help=f"选择{market_type}市场的股票筛选预设，或选择自定义筛选",
+            key=preset_key
         )
     
     def _render_enhanced_custom_filters(self, key_prefix: str) -> Dict[str, Any]:
