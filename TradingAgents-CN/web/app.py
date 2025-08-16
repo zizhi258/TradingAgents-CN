@@ -899,38 +899,38 @@ def main():
                     form_data = {'submitted': False}
                 
                 # 简单模式（画像）优先，其次才是完整模型面板
-                simple_mode_enabled = os.getenv('SIMPLE_MODE', 'true').lower() == 'true'
-                if simple_mode_enabled:
-                    try:
-                        profile_cfg = render_profile_panel()
-                        model_cfg = {
-                            'llm_provider': profile_cfg.get('llm_provider'),
-                            'llm_model': profile_cfg.get('llm_deep_model'),
-                            'llm_quick_model': profile_cfg.get('llm_quick_model'),
-                            'llm_deep_model': profile_cfg.get('llm_deep_model'),
-                            'routing_strategy': profile_cfg.get('routing_strategy'),
-                            'fallbacks': [],
-                            'max_budget': profile_cfg.get('max_budget') or 0.0,
-                        }
-                        # 将关键路由参数注入 session_state 以复用后续逻辑
-                        st.session_state.routing_strategy_select = profile_cfg.get('routing_strategy')
-                        st.session_state.max_budget = profile_cfg.get('max_budget') or 0.0
-                        st.session_state.SIMPLE_MODE_DEFAULT = True
-                    except Exception as e:
-                        st.warning(f"⚠️ 简单模式面板加载失败，退回高级模式: {e}")
-                        try:
-                            from components.model_selection_panel import render_model_selection_panel
-                            model_cfg = render_model_selection_panel(location="main")
-                        except Exception as e2:
-                            st.error(f"❌ 模型选择面板渲染失败: {e2}")
-                            model_cfg = {}
-                else:
-                    try:
-                        from components.model_selection_panel import render_model_selection_panel
-                        model_cfg = render_model_selection_panel(location="main")
-                    except Exception as e:
-                        st.error(f"❌ 模型选择面板渲染失败: {e}")
-                        model_cfg = {}
+                # simple_mode_enabled = os.getenv('SIMPLE_MODE', 'true').lower() == 'true'
+                # if simple_mode_enabled:
+                #     try:
+                #         profile_cfg = render_profile_panel()
+                #         model_cfg = {
+                #             'llm_provider': profile_cfg.get('llm_provider'),
+                #             'llm_model': profile_cfg.get('llm_deep_model'),
+                #             'llm_quick_model': profile_cfg.get('llm_quick_model'),
+                #             'llm_deep_model': profile_cfg.get('llm_deep_model'),
+                #             'routing_strategy': profile_cfg.get('routing_strategy'),
+                #             'fallbacks': [],
+                #             'max_budget': profile_cfg.get('max_budget') or 0.0,
+                #         }
+                #         # 将关键路由参数注入 session_state 以复用后续逻辑
+                #         st.session_state.routing_strategy_select = profile_cfg.get('routing_strategy')
+                #         st.session_state.max_budget = profile_cfg.get('max_budget') or 0.0
+                #         st.session_state.SIMPLE_MODE_DEFAULT = True
+                #     except Exception as e:
+                #         st.warning(f"⚠️ 简单模式面板加载失败，退回高级模式: {e}")
+                #         try:
+                #             from components.model_selection_panel import render_model_selection_panel
+                #             model_cfg = render_model_selection_panel(location="main")
+                #         except Exception as e2:
+                #             st.error(f"❌ 模型选择面板渲染失败: {e2}")
+                #             model_cfg = {}
+                # else:
+                try:
+                    from components.model_selection_panel import render_model_selection_panel
+                    model_cfg = render_model_selection_panel(location="main")
+                except Exception as e:
+                    st.error(f"❌ 模型选择面板渲染失败: {e}")
+                    model_cfg = {}
 
                 # 在主页面展示并合并原侧边栏的 API 密钥状态
                 try:
@@ -1013,11 +1013,11 @@ def main():
                             try:
                                 # 简单模式下用画像覆盖部分表单项
                                 analysts_to_use = form_data['analysts']
-                                if simple_mode_enabled:
-                                    try:
-                                        analysts_to_use = profile_cfg.get('analysts') or analysts_to_use
-                                    except Exception:
-                                        pass
+                                # if simple_mode_enabled:
+                                #     try:
+                                #         analysts_to_use = profile_cfg.get('analysts') or analysts_to_use
+                                #     except Exception:
+                                #         pass
                                 # 过滤到框架支持的分析师集合
                                 allowed_analysts = ['market', 'fundamentals', 'news', 'social']
                                 analysts_to_use = [a for a in analysts_to_use if a in allowed_analysts]
