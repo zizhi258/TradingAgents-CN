@@ -618,5 +618,15 @@
     "cost": 0.0,
     "session_id": "web_multi_20250812_174017",
     "analysis_type": "multi_model_risk_assessment"
+  },
+  {
+    "timestamp": "2025-08-17T01:00:20.299747",
+    "provider": "google",
+    "model_name": "gemini-2.5-pro",
+    "input_tokens": 8000,
+    "output_tokens": 4000,
+    "cost": 0.3,
+    "session_id": "analysis_102f6d0f_20250817_004901",
+    "analysis_type": "A股_analysis"
   }
 ]
