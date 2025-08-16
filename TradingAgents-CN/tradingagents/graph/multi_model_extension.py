@@ -103,11 +103,18 @@ class MultiModelExtension:
         # 检查配置 - 修正配置路径，使用 'google_ai' 而不是 'google'
         siliconflow_enabled = self.multi_model_config.get('providers', {}).get('siliconflow', {}).get('enabled', False)
         google_enabled = self.multi_model_config.get('providers', {}).get('google_ai', {}).get('enabled', False)
+        gemini_api_enabled = self.multi_model_config.get('providers', {}).get('gemini_api', {}).get('enabled', False)
         deepseek_enabled = self.multi_model_config.get('providers', {}).get('deepseek', {}).get('enabled', False)
         
         deepseek_key = os.getenv('DEEPSEEK_API_KEY')
         
-        has_provider = (siliconflow_key and siliconflow_enabled) or (google_key and google_enabled) or (deepseek_key and deepseek_enabled)
+        gemini_api_key = os.getenv('GEMINI_API_COMPAT_API_KEY') or os.getenv('OPENAI_API_KEY')
+        has_provider = (
+            (siliconflow_key and siliconflow_enabled)
+            or (google_key and google_enabled)
+            or (deepseek_key and deepseek_enabled)
+            or (gemini_api_key and gemini_api_enabled)
+        )
         
         if not has_provider:
             logger.info(f"多模型检查: SiliconFlow={bool(siliconflow_key)}/{siliconflow_enabled}, Google={bool(google_key)}/{google_enabled}, DeepSeek={bool(deepseek_key)}/{deepseek_enabled}")
@@ -132,7 +139,7 @@ class MultiModelExtension:
                     'timeout': self.multi_model_config['providers']['siliconflow'].get('timeout', 60)
                 }
             
-            # Google AI配置 - 支持双重环境变量检查
+            # Google AI配置 - 支持多种环境变量检查
             google_key = (
                 os.getenv('GOOGLE_AI_API_KEY')
                 or os.getenv('GOOGLE_API_KEY')
@@ -144,6 +151,18 @@ class MultiModelExtension:
                     'enabled': True,
                     'api_key': google_key,
                     'timeout': self.multi_model_config['providers']['google_ai'].get('timeout', 60)
+                }
+
+            # Gemini-API 兼容（OpenAI协议反代）
+            gapi_cfg = self.multi_model_config.get('providers', {}).get('gemini_api', {})
+            gapi_key = os.getenv('GEMINI_API_COMPAT_API_KEY') or os.getenv('OPENAI_API_KEY')
+            if gapi_key and gapi_cfg.get('enabled', False):
+                api_configs['gemini_api'] = {
+                    'enabled': True,
+                    'api_key': gapi_key,
+                    'base_url': gapi_cfg.get('base_url', os.getenv('GEMINI_API_COMPAT_BASE_URL', 'http://localhost:8080/v1')),
+                    'default_model': gapi_cfg.get('default_model', 'gemini-2.5-pro'),
+                    'timeout': gapi_cfg.get('timeout', 60),
                 }
             
             # DeepSeek配置

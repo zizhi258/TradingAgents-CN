@@ -19,6 +19,7 @@ class ProviderType(Enum):
     SILICONFLOW = "siliconflow"
     OPENAI = "openai"
     OLLAMA = "ollama"
+    GEMINI_API = "gemini_api"  # 自建 Gemini 反代（OpenAI协议）
 
 
 class CollaborationMode(Enum):
@@ -72,6 +73,27 @@ MODEL_CATALOG = {
         cost_per_1k_output=0.005,
         latency_ms=1500,
         quality_score=0.95
+    ),
+    # Gemini-API 兼容渠道（与名称保持一致，便于UI区分渠道）
+    "gemini-api/gemini-2.5-pro": ModelInfo(
+        name="gemini-api/gemini-2.5-pro",
+        provider=ProviderType.GEMINI_API,
+        context_length=1048576,
+        supports_function_calling=True,
+        cost_per_1k_input=0.00125,
+        cost_per_1k_output=0.005,
+        latency_ms=1200,
+        quality_score=0.94,
+    ),
+    "gemini-api/gemini-2.0-flash": ModelInfo(
+        name="gemini-api/gemini-2.0-flash",
+        provider=ProviderType.GEMINI_API,
+        context_length=1048576,
+        supports_function_calling=True,
+        cost_per_1k_input=0.0020,
+        cost_per_1k_output=0.0020,
+        latency_ms=700,
+        quality_score=0.83,
     ),
     "gemini-2.5-flash": ModelInfo(
         name="gemini-2.5-flash",
@@ -256,6 +278,9 @@ ROLE_DEFINITIONS = {
             "zai-org/GLM-4.5",
             "deepseek-ai/DeepSeek-V3",
             "deepseek-ai/DeepSeek-R1",
+            # Gemini-API 兼容渠道（OpenAI协议反代）
+            "gemini-api/gemini-2.5-pro",
+            "gemini-api/gemini-2.0-flash",
         ],
         preferred_model="gemini-2.5-pro",
         locked_model=None,

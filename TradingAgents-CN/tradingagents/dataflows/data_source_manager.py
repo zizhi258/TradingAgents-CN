@@ -39,11 +39,16 @@ class DataSourceManager:
         """初始化数据源管理器"""
         self.default_source = self._get_default_source()
         self.available_sources = self._check_available_sources()
-        self.current_source = self.default_source
+        # Prefer the default if available; otherwise fall back to the first available source
+        if self.default_source in self.available_sources:
+            self.current_source = self.default_source
+        else:
+            self.current_source = self.available_sources[0] if self.available_sources else self._get_default_source()
 
         logger.info(f"📊 数据源管理器初始化完成")
         logger.info(f"   默认数据源: {self.default_source.value}")
         logger.info(f"   可用数据源: {[s.value for s in self.available_sources]}")
+        logger.info(f"   当前数据源: {self.current_source.value}")
 
     def _get_default_source(self) -> ChinaDataSource:
         """获取默认数据源"""

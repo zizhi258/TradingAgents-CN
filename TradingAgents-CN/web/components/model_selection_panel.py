@@ -19,6 +19,7 @@ from web.utils.model_catalog import (
     get_deepseek_models,
     get_google_models,
     get_openrouter_models,
+    get_gemini_api_models,
 )
 from web.components.custom_model_helper import render_model_help, validate_custom_model_name
 
@@ -314,7 +315,7 @@ def render_model_selection_panel(location: str = "main", *, show_routing: bool =
     st.markdown("### 🧠 AI模型配置")
     
     # LLM提供商选择
-    provider_options = ["deepseek", "google", "openrouter", "siliconflow"]
+    provider_options = ["deepseek", "google", "gemini_api", "openrouter", "siliconflow"]
     llm_provider = st.selectbox(
         "LLM提供商",
         options=provider_options,
@@ -323,6 +324,7 @@ def render_model_selection_panel(location: str = "main", *, show_routing: bool =
         format_func=lambda x: {
             "deepseek": "🚀 DeepSeek 官方",
             "google": "🌟 Google AI (Gemini)", 
+            "gemini_api": "🌟 Gemini-API (OpenAI兼容反代)",
             "openrouter": "🧭 OpenRouter (聚合/含Gemini)",
             "siliconflow": "🌐 SiliconFlow (聚合)"
         }.get(x, x),
@@ -368,9 +370,11 @@ def render_model_selection_panel(location: str = "main", *, show_routing: bool =
         
     elif llm_provider == "openrouter":
         llm_quick_model, llm_deep_model = _render_openrouter_models(location, preset)
-        
+
     elif llm_provider == "siliconflow":
         llm_quick_model, llm_deep_model = _render_siliconflow_models(location, preset)
+    elif llm_provider == "gemini_api":
+        llm_quick_model, llm_deep_model = _render_gemini_api_models(location, preset)
     
     # 更新session state
     st.session_state.llm_model = llm_deep_model  # 兼容旧字段
@@ -404,9 +408,10 @@ def render_model_selection_panel(location: str = "main", *, show_routing: bool =
         # 动态生成回退候选（Provider:Model）
         ds = [f"deepseek:{m}" for m in get_deepseek_models()]
         gg = [f"google:{m}" for m in get_google_models()]
+        ga = [f"gemini_api:{m}" for m in get_gemini_api_models()]
         orc = [f"openrouter:{m}" for m in get_openrouter_models()]
         sf = [f"siliconflow:{m}" for m in get_siliconflow_models()]
-        fallback_choices_catalog = ds + gg + orc + sf
+        fallback_choices_catalog = ds + gg + ga + orc + sf
 
         selected_fallbacks = st.multiselect(
             "回退候选（从上到下优先）",
@@ -712,6 +717,77 @@ def _render_openrouter_models(location: str, preset: str) -> tuple:
         llm_deep_model = model_choice_deep
 
     logger.debug(f"💾 [Persistence] OpenRouter模型已保存: quick={llm_quick_model}, deep={llm_deep_model}")
+    return llm_quick_model, llm_deep_model
+
+
+def _render_gemini_api_models(location: str, preset: str) -> tuple:
+    """渲染 Gemini-API(兼容) 渠道模型选择。"""
+    from web.utils.model_catalog import get_gemini_api_models
+
+    catalog = get_gemini_api_models()
+    options = catalog + ["💡 自定义模型"]
+
+    # 预设：与 Google 家族保持一致的默认
+    if preset == "低成本":
+        default_quick, default_deep = "gemini-2.0-flash", "gemini-2.0-flash"
+    elif preset == "高质量":
+        default_quick, default_deep = "gemini-2.0-flash", "gemini-2.5-pro"
+    else:
+        default_quick, default_deep = "gemini-2.0-flash", "gemini-2.5-pro"
+
+    def _fmt(name: str) -> str:
+        mapping = {
+            "gemini-2.5-pro": "Gemini 2.5 Pro (Gemini-API)",
+            "gemini-2.0-flash": "Gemini 2.0 Flash (Gemini-API)",
+            "gemini-1.5-pro": "Gemini 1.5 Pro (Gemini-API)",
+            "gemini-1.5-flash": "Gemini 1.5 Flash (Gemini-API)",
+            "💡 自定义模型": "💡 自定义模型",
+        }
+        return mapping.get(name, name)
+
+    model_choice_quick = st.selectbox(
+        "快速模型 (Quick)",
+        options=options,
+        index=(options.index(st.session_state.llm_quick_model)
+               if st.session_state.llm_quick_model in options else
+               (options.index(default_quick) if default_quick in options else 0)),
+        format_func=_fmt,
+        key=f"{location}_gemini_api_quick_model_select"
+    )
+
+    model_choice_deep = st.selectbox(
+        "深度模型 (Deep)",
+        options=options,
+        index=(options.index(st.session_state.llm_deep_model)
+               if st.session_state.llm_deep_model in options else
+               (options.index(default_deep) if default_deep in options else 0)),
+        format_func=_fmt,
+        key=f"{location}_gemini_api_deep_model_select"
+    )
+
+    # 自定义模型（与 Google 命名保持一致，便于迁移）
+    if model_choice_quick == "💡 自定义模型":
+        custom_model = st.text_input(
+            "🔧 自定义Gemini-API快速模型",
+            value=st.session_state.llm_quick_model if st.session_state.llm_quick_model not in options else "",
+            placeholder="例如: gemini-2.0-flash, gemini-2.5-pro",
+            key=f"{location}_gemini_api_custom_input_quick"
+        )
+        llm_quick_model = custom_model or default_quick
+    else:
+        llm_quick_model = model_choice_quick
+
+    if model_choice_deep == "💡 自定义模型":
+        custom_model_deep = st.text_input(
+            "🔧 自定义Gemini-API深度模型",
+            value=st.session_state.llm_deep_model if st.session_state.llm_deep_model not in options else "",
+            placeholder="例如: gemini-2.5-pro",
+            key=f"{location}_gemini_api_custom_input_deep"
+        )
+        llm_deep_model = custom_model_deep or default_deep
+    else:
+        llm_deep_model = model_choice_deep
+
     return llm_quick_model, llm_deep_model
 
 def _render_google_models(location: str, preset: str) -> tuple:

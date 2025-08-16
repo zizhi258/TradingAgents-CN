@@ -45,6 +45,14 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: tradingagents123
       REDIS_DB: 0
+      # MongoDB 缓存（供 DatabaseManager 使用）
+      MONGODB_ENABLED: "true"
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: 27017
+      MONGODB_USERNAME: admin
+      MONGODB_PASSWORD: tradingagents123
+      MONGODB_DATABASE: tradingagents
+      MONGODB_AUTH_SOURCE: admin
       # 邮件发送配置（可选）
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT:-465}
@@ -71,6 +79,9 @@ services:
       ENABLE_PERFORMANCE_MONITORING: "${ENABLE_PERFORMANCE_MONITORING:-true}"
       # 兼容新版 Google GenAI SDK 的密钥变量名
       GEMINI_API_KEY: ${GEMINI_API_KEY:-${GOOGLE_AI_API_KEY:-${GOOGLE_API_KEY:-}}}
+      # Gemini-API(兼容) 反代渠道
+      GEMINI_API_COMPAT_API_KEY: ${GEMINI_API_COMPAT_API_KEY}
+      GEMINI_API_COMPAT_BASE_URL: ${GEMINI_API_COMPAT_BASE_URL:-http://localhost:8080/v1}
       # 金融与数据源配置（确保真实数据）
       TUSHARE_TOKEN: ${TUSHARE_TOKEN}
       DEFAULT_CHINA_DATA_SOURCE: ${DEFAULT_CHINA_DATA_SOURCE:-tushare}
@@ -213,10 +224,22 @@ services:
       TZ: "Asia/Shanghai"
       # 启用调度服务
       SCHEDULER_ENABLED: "true"
-      # MongoDB配置
+      # MongoDB配置（URL供旧组件；以下开关供DatabaseManager）
       TRADINGAGENTS_MONGODB_URL: mongodb://admin:tradingagents123@mongodb:27017/tradingagents?authSource=admin
+      MONGODB_ENABLED: "true"
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: 27017
+      MONGODB_USERNAME: admin
+      MONGODB_PASSWORD: tradingagents123
+      MONGODB_DATABASE: tradingagents
+      MONGODB_AUTH_SOURCE: admin
       # Redis配置
       TRADINGAGENTS_REDIS_URL: redis://:tradingagents123@redis:6379
+      REDIS_ENABLED: "true"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: tradingagents123
+      REDIS_DB: 0
       # 日志配置
       TRADINGAGENTS_LOG_LEVEL: "INFO"
       TRADINGAGENTS_LOG_DIR: "/app/logs"
@@ -259,10 +282,22 @@ services:
       PYTHONUNBUFFERED: 1
       PYTHONDONTWRITEBYTECODE: 1
       TZ: "Asia/Shanghai"
-      # MongoDB配置
+      # MongoDB配置（URL供旧组件；以下开关供DatabaseManager）
       TRADINGAGENTS_MONGODB_URL: mongodb://admin:tradingagents123@mongodb:27017/tradingagents?authSource=admin
-      # Redis配置
+      MONGODB_ENABLED: "true"
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: 27017
+      MONGODB_USERNAME: admin
+      MONGODB_PASSWORD: tradingagents123
+      MONGODB_DATABASE: tradingagents
+      MONGODB_AUTH_SOURCE: admin
+      # Redis配置（URL供旧组件；以下开关供DatabaseManager）
       TRADINGAGENTS_REDIS_URL: redis://:tradingagents123@redis:6379
+      REDIS_ENABLED: "true"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: tradingagents123
+      REDIS_DB: 0
       # 启用ChartingArtist
       CHARTING_ARTIST_ENABLED: ${CHARTING_ARTIST_ENABLED:-true}
       # 金融与数据源配置（API服务也需要）
