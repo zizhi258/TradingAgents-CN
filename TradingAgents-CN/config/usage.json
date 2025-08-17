@@ -858,5 +858,175 @@
     "cost": 0.0,
     "session_id": "session_20250817_122704",
     "analysis_type": "multi_model_article_composition"
+  },
+  {
+    "timestamp": "2025-08-17T13:06:58.644971",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-V3",
+    "input_tokens": 433,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250817_130630",
+    "analysis_type": "multi_model_technical_analysis"
+  },
+  {
+    "timestamp": "2025-08-17T13:07:40.475692",
+    "provider": "openai",
+    "model_name": "gemini-2.5-pro",
+    "input_tokens": 235,
+    "output_tokens": 1081,
+    "cost": 0.0,
+    "session_id": "web_multi_20250817_130658",
+    "analysis_type": "multi_model_policy_analysis"
+  },
+  {
+    "timestamp": "2025-08-17T13:08:29.942650",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250817_130740",
+    "analysis_type": "multi_model_sentiment_analysis"
+  },
+  {
+    "timestamp": "2025-08-17T13:10:26.265897",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-R1",
+    "input_tokens": 185,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250817_130829",
+    "analysis_type": "multi_model_technical_analysis"
+  },
+  {
+    "timestamp": "2025-08-17T13:11:10.610529",
+    "provider": "openai",
+    "model_name": "gemini-2.5-pro",
+    "input_tokens": 229,
+    "output_tokens": 1275,
+    "cost": 0.0,
+    "session_id": "web_multi_20250817_131026",
+    "analysis_type": "multi_model_compliance_check"
+  },
+  {
+    "timestamp": "2025-08-17T13:12:41.272866",
+    "provider": "siliconflow",
+    "model_name": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+    "input_tokens": 421,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250817_131110",
+    "analysis_type": "multi_model_decision_making"
+  },
+  {
+    "timestamp": "2025-08-17T13:15:20.795210",
+    "provider": "openai",
+    "model_name": "gemini-api/gemini-2.5-pro",
+    "input_tokens": 474,
+    "output_tokens": 1000,
+    "cost": 0.0,
+    "session_id": "session_20250817_131241",
+    "analysis_type": "multi_model_article_composition"
+  },
+  {
+    "timestamp": "2025-08-17T13:42:00.470301",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-V3",
+    "input_tokens": 178,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250817_134128",
+    "analysis_type": "multi_model_news_analysis"
+  },
+  {
+    "timestamp": "2025-08-17T13:42:25.900413",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-V3",
+    "input_tokens": 562,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250817_134200",
+    "analysis_type": "multi_model_technical_analysis"
+  },
+  {
+    "timestamp": "2025-08-17T13:43:09.873610",
+    "provider": "openai",
+    "model_name": "gemini-2.5-pro",
+    "input_tokens": 344,
+    "output_tokens": 1413,
+    "cost": 0.0,
+    "session_id": "web_multi_20250817_134225",
+    "analysis_type": "multi_model_policy_analysis"
+  },
+  {
+    "timestamp": "2025-08-17T13:44:37.158243",
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-R1",
+    "input_tokens": 546,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250817_134309",
+    "analysis_type": "multi_model_fundamental_analysis"
+  },
+  {
+    "timestamp": "2025-08-17T13:45:26.148416",
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250817_134437",
+    "analysis_type": "multi_model_sentiment_analysis"
+  },
+  {
+    "timestamp": "2025-08-17T13:47:30.016667",
+    "provider": "siliconflow",
+    "model_name": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+    "input_tokens": 216,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250817_134526",
+    "analysis_type": "multi_model_technical_analysis"
+  },
+  {
+    "timestamp": "2025-08-17T13:48:35.860456",
+    "provider": "openai",
+    "model_name": "gemini-1.5-pro",
+    "input_tokens": 293,
+    "output_tokens": 0,
+    "cost": 0.0,
+    "session_id": "web_multi_20250817_134730",
+    "analysis_type": "multi_model_risk_assessment"
+  },
+  {
+    "timestamp": "2025-08-17T13:49:22.265280",
+    "provider": "openai",
+    "model_name": "gemini-2.5-pro",
+    "input_tokens": 326,
+    "output_tokens": 1840,
+    "cost": 0.0,
+    "session_id": "web_multi_20250817_134835",
+    "analysis_type": "multi_model_compliance_check"
+  },
+  {
+    "timestamp": "2025-08-17T13:50:04.898419",
+    "provider": "openai",
+    "model_name": "gemini-2.5-pro",
+    "input_tokens": 337,
+    "output_tokens": 1008,
+    "cost": 0.0,
+    "session_id": "web_multi_20250817_134922",
+    "analysis_type": "multi_model_decision_making"
+  },
+  {
+    "timestamp": "2025-08-17T13:57:00.202190",
+    "provider": "openai",
+    "model_name": "gemini-api/gemini-2.5-pro",
+    "input_tokens": 478,
+    "output_tokens": 1000,
+    "cost": 0.0,
+    "session_id": "session_20250817_135004",
+    "analysis_type": "multi_model_article_composition"
   }
 ]

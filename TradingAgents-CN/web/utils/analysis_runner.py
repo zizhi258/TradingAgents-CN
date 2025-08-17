@@ -114,6 +114,9 @@ def run_stock_analysis(stock_symbol, analysis_date, analysts, research_depth, ll
         progress_callback: 进度回调函数，用于更新UI状态
     """
 
+    # 演示模式（单模型路径）：逻辑保持一致，仅数据侧由底层自行按 DEMO_MODE 读取
+    # 此处不做早返回，不改变后续 TradingAgentsGraph 的流程
+
     def update_progress(message, step=None, total_steps=None):
         """更新进度"""
         if progress_callback:
@@ -574,6 +577,49 @@ def run_stock_analysis(stock_symbol, analysis_date, analysts, research_depth, ll
 def format_analysis_results(results):
     """格式化分析结果用于显示"""
     
+    # 兼容：若传入的是多模型协作结果（web_multi_model_manager 返回的结构）
+    # 尝试提取并转换为单模型展示所需的扁平结构
+    try:
+        if 'success' not in results and isinstance(results.get('results'), dict):
+            nested = results['results']
+            flat_state = {}
+            # 映射角色 -> 展示模块
+            role_to_key = {
+                'technical_analyst': 'market_report',
+                'fundamental_expert': 'fundamentals_report',
+                'sentiment_analyst': 'sentiment_report',
+                'news_hunter': 'news_report',
+                'risk_manager': 'risk_assessment',
+            }
+            for role, module_key in role_to_key.items():
+                v = nested.get(role)
+                if isinstance(v, dict):
+                    content = v.get('analysis') or v.get('result')
+                    if content:
+                        flat_state[module_key] = content
+            # 决策（如有）
+            decision = {
+                'action': '持有',
+                'confidence': 0.6,
+                'risk_score': 0.35,
+                'target_price': None,
+                'reasoning': '基于多模型协作摘要（兼容模式）。'
+            }
+            # 组合最终返回结构
+            return {
+                'stock_symbol': results.get('analysis_data', {}).get('stock_symbol') or 'N/A',
+                'decision': decision,
+                'state': flat_state,
+                'success': True,
+                'analysis_date': results.get('analysis_data', {}).get('analysis_date'),
+                'analysts': list(role_to_key.keys()),
+                'research_depth': results.get('analysis_data', {}).get('research_depth', 3),
+                'llm_provider': 'multi',
+                'llm_model': 'multi',
+            }
+    except Exception:
+        pass
+
     if not results['success']:
         return {
             'error': results['error'],

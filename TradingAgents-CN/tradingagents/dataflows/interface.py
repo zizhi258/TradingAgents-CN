@@ -1560,6 +1560,15 @@ def get_stock_ohlc_json(symbol: str, start_date: str, end_date: str) -> Dict[str
       ]
     }
     """
+    # DEMO_MODE: 仅替代输入数据（保持分析流程不变）
+    try:
+        from .demo_adapter import is_demo_mode, get_ohlc_json_from_demo
+        if is_demo_mode():
+            logger.info("🧪 [DEMO] get_stock_ohlc_json 使用演示数据")
+            return get_ohlc_json_from_demo(symbol, start_date, end_date)
+    except Exception as _demo_e:
+        logger.warning(f"⚠️ [DEMO] OHLC演示数据失败，回退真实数据: {_demo_e}")
+
     from tradingagents.utils.stock_utils import StockUtils
     market_info = StockUtils.get_market_info(symbol)
 

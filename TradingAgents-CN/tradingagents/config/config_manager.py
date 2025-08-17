@@ -580,14 +580,57 @@ class ConfigManager:
             "records_count": len(recent_records)
         }
     
+    def _project_root(self) -> Path:
+        return Path(__file__).parent.parent.parent
+
+    def _try_make_dir(self, path: str) -> bool:
+        try:
+            os.makedirs(path, exist_ok=True)
+            # 进一步检查可写性
+            return os.access(path, os.W_OK)
+        except Exception:
+            return False
+
+    def _select_data_dir(self, settings: dict) -> str:
+        """选择一个可用的数据目录，优先环境变量，其次配置文件，最后回退到项目 data 目录。
+
+        选择顺序:
+        1) TRADINGAGENTS_DATA_DIR 或 DATA_DIR 环境变量
+        2) settings['data_dir']
+        3) '/app/data'（容器默认挂载）
+        4) 项目根目录下 'data'
+        5) 用户目录 ~/Documents/TradingAgents/data
+        """
+        env_data_dir = os.getenv("TRADINGAGENTS_DATA_DIR") or os.getenv("DATA_DIR")
+        candidates = []
+        if env_data_dir:
+            candidates.append(env_data_dir)
+        if settings.get("data_dir"):
+            candidates.append(settings["data_dir"])
+        candidates.extend([
+            "/app/data",
+            str(self._project_root() / "data"),
+            os.path.join(os.path.expanduser("~"), "Documents", "TradingAgents", "data"),
+        ])
+
+        for c in candidates:
+            if c and self._try_make_dir(c):
+                return c
+        # 最坏情况：回退到项目 data
+        fallback = str(self._project_root() / "data")
+        self._try_make_dir(fallback)
+        return fallback
+
     def get_data_dir(self) -> str:
-        """获取数据目录路径"""
+        """获取数据目录路径（含自动回退与创建）。"""
         settings = self.load_settings()
-        data_dir = settings.get("data_dir")
-        if not data_dir:
-            # 如果没有配置，使用默认路径
-            data_dir = os.path.join(os.path.expanduser("~"), "Documents", "TradingAgents", "data")
-        return data_dir
+        chosen = self._select_data_dir(settings)
+        if chosen != settings.get("data_dir"):
+            # 同步更新并保存
+            settings["data_dir"] = chosen
+            settings["cache_dir"] = os.path.join(chosen, "cache")
+            self.save_settings(settings)
+        return chosen
 
     def set_data_dir(self, data_dir: str):
         """设置数据目录路径"""
@@ -602,21 +645,29 @@ class ConfigManager:
             self.ensure_directories_exist()
 
     def ensure_directories_exist(self):
-        """确保必要的目录存在"""
+        """确保必要的目录存在（自动选择可写目录并更新设置）。"""
         settings = self.load_settings()
-        
+        base_dir = self._select_data_dir(settings)
+
+        # 若选择发生变化，立即保存（避免重复尝试无权限目录）
+        if base_dir != settings.get("data_dir"):
+            settings["data_dir"] = base_dir
+            settings["cache_dir"] = os.path.join(base_dir, "cache")
+            self.save_settings(settings)
+            logger.info(f"📁 数据目录已更新为可写路径: {base_dir}")
+
         directories = [
             settings.get("data_dir"),
-            settings.get("cache_dir"),
+            settings.get("cache_dir") or os.path.join(base_dir, "cache"),
             settings.get("results_dir"),
-            os.path.join(settings.get("data_dir", ""), "finnhub_data"),
-            os.path.join(settings.get("data_dir", ""), "finnhub_data", "news_data"),
-            os.path.join(settings.get("data_dir", ""), "finnhub_data", "insider_sentiment"),
-            os.path.join(settings.get("data_dir", ""), "finnhub_data", "insider_transactions")
+            os.path.join(base_dir, "finnhub_data"),
+            os.path.join(base_dir, "finnhub_data", "news_data"),
+            os.path.join(base_dir, "finnhub_data", "insider_sentiment"),
+            os.path.join(base_dir, "finnhub_data", "insider_transactions"),
         ]
-        
+
         for directory in directories:
-            if directory and not os.path.exists(directory):
+            if directory:
                 try:
                     os.makedirs(directory, exist_ok=True)
                     logger.info(f"✅ 创建目录: {directory}")
