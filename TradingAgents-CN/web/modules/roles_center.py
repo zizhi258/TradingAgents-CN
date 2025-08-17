@@ -12,10 +12,11 @@
 
 from __future__ import annotations
 
-import streamlit as st
-from pathlib import Path
 import sys
-from typing import Any, Dict
+from pathlib import Path
+from typing import Any
+
+import streamlit as st
 
 # 确保可导入 web/utils 与项目根目录模块
 CURRENT_DIR = Path(__file__).resolve()
@@ -27,10 +28,17 @@ if str(WEB_DIR) not in sys.path:
     sys.path.append(str(WEB_DIR))
 
 # 复用现有模块
-from components.role_alignment_display import render_role_alignment_dashboard
-from modules.role_model_binding import render_role_model_binding
-from modules.role_library_manager import render_role_library
-from utils.ui_utils import load_persistent_role_configs
+from components.role_alignment_display import (
+    render_role_alignment_dashboard,  # noqa: E402
+)
+from modules.role_library_manager import render_role_library  # noqa: E402
+from modules.role_model_binding import render_role_model_binding  # noqa: E402
+
+from utils.ui_utils import (  # noqa: E402
+    get_available_agents_for_ui,
+    get_role_display_name,
+    load_persistent_role_configs,
+)
 
 
 def _render_overview() -> None:
@@ -44,7 +52,9 @@ def _render_overview() -> None:
     st.markdown("---")
     st.subheader("🔎 当前生效的模型绑定")
     # 会话优先，其次持久
-    session_overrides: Dict[str, Any] = st.session_state.get("model_overrides", {}) or {}
+    session_overrides: dict[str, Any] = (
+        st.session_state.get("model_overrides", {}) or {}
+    )
     persistent_config = load_persistent_role_configs() or {"role_overrides": {}}
     persistent_overrides = persistent_config.get("role_overrides", {})
 
@@ -57,13 +67,32 @@ def _render_overview() -> None:
     else:
         st.info("暂无任何绑定。系统将按路由策略与推荐模型自动选择。")
 
+    st.markdown("---")
+    st.subheader("🧩 后端可用智能体与协作模式")
+    try:
+        meta = get_available_agents_for_ui()
+        roles = meta.get("available_agents", []) or []
+        modes = meta.get("collaboration_modes", []) or []
+        if roles:
+            # 展示中文名
+            disp = [get_role_display_name(r) for r in roles]
+            st.markdown("**可用智能体**: " + ", ".join(disp))
+        else:
+            st.info("未能获取到后端角色清单（可能API未启动），UI已自动使用兜底列表。")
+        if modes:
+            st.caption("协作模式: " + ", ".join(modes))
+    except Exception as e:
+        st.warning(f"无法获取后端可用角色: {e}")
+
 
 def render_roles_center() -> None:
     """渲染合并后的角色中心页面。"""
     st.title("🧭 角色中心")
     st.caption("合并‘角色模型绑定’与‘角色库’，集中完成角色策略配置与模型绑定。")
 
-    tab_overview, tab_binding, tab_library = st.tabs(["📌 概览", "✍️ 主笔人模型", "🧰 角色库"])
+    tab_overview, tab_binding, tab_library = st.tabs(
+        ["📌 概览", "✍️ 主笔人模型", "🧰 角色库"]
+    )
 
     with tab_overview:
         _render_overview()

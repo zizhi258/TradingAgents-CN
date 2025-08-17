@@ -112,6 +112,18 @@ agent_bindings:
     allow_models: ["Qwen/Qwen3-Coder-480B-A35B-Instruct", "zai-org/GLM-4.5"]
     prefer_models: ["Qwen/Qwen3-Coder-480B-A35B-Instruct"]
     requires: ["code_generation"]
+  risk_manager:
+    pools: ["deep_reasoning"]
+    allow_models: ["zai-org/GLM-4.5", "gemini-2.5-pro"]
+    prefer_models: ["zai-org/GLM-4.5"]
+    fallback_chain: ["zai-org/GLM-4.5", "gemini-2.5-pro"]
+    max_cost_per_task: 0.04
+  policy_researcher:
+    pools: ["deep_reasoning"]
+    allow_models: ["gemini-2.5-pro", "deepseek-ai/DeepSeek-R1"]
+    prefer_models: ["gemini-2.5-pro"]
+    fallback_chain: ["gemini-2.5-pro", "deepseek-ai/DeepSeek-R1"]
+    max_cost_per_task: 0.04
   charting_artist:
     pools: ["technical_longseq"]
     allow_models: [
@@ -133,6 +145,12 @@ agent_bindings:
       "deepseek-chat",
       "deepseek-ai/DeepSeek-R1"
     ]
+  compliance_officer:
+    pools: ["deep_reasoning"]
+    allow_models: ["zai-org/GLM-4.5", "gemini-2.5-pro"]
+    prefer_models: ["zai-org/GLM-4.5"]
+    fallback_chain: ["zai-org/GLM-4.5", "gemini-2.5-pro"]
+    max_cost_per_task: 0.03
     prefer_models: ["gemini-api/gemini-2.5-pro", "gemini-2.5-pro"]
     fallback_chain: [
       "gemini-api/gemini-2.5-pro",

@@ -1,12 +1,13 @@
+import os
+import threading
+
 import chromadb
 from chromadb.config import Settings
 from openai import OpenAI
-import os
-import threading
-from typing import Dict, Optional
 
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
+
 logger = get_logger("agents.utils.memory")
 
 
@@ -15,7 +16,7 @@ class ChromaDBManager:
 
     _instance = None
     _lock = threading.Lock()
-    _collections: Dict[str, any] = {}
+    _collections: dict[str, any] = {}
     _client = None
 
     def __new__(cls):
@@ -31,31 +32,37 @@ class ChromaDBManager:
             try:
                 # 自动检测操作系统版本并使用最优配置
                 import platform
+
                 system = platform.system()
-                
+
                 if system == "Windows":
                     # 使用改进的Windows 11检测
                     from .chromadb_win11_config import is_windows_11
+
                     if is_windows_11():
                         # Windows 11 或更新版本，使用优化配置
                         from .chromadb_win11_config import get_win11_chromadb_client
+
                         self._client = get_win11_chromadb_client()
-                        logger.info(f"📚 [ChromaDB] Windows 11优化配置初始化完成 (构建号: {platform.version()})")
+                        logger.info(
+                            f"📚 [ChromaDB] Windows 11优化配置初始化完成 (构建号: {platform.version()})"
+                        )
                     else:
                         # Windows 10 或更老版本，使用兼容配置
                         from .chromadb_win10_config import get_win10_chromadb_client
+
                         self._client = get_win10_chromadb_client()
-                        logger.info(f"📚 [ChromaDB] Windows 10兼容配置初始化完成")
+                        logger.info("📚 [ChromaDB] Windows 10兼容配置初始化完成")
                 else:
                     # 非Windows系统，使用标准配置
                     settings = Settings(
                         allow_reset=True,
                         anonymized_telemetry=False,
-                        is_persistent=False
+                        is_persistent=False,
                     )
                     self._client = chromadb.Client(settings)
                     logger.info(f"📚 [ChromaDB] {system}标准配置初始化完成")
-                
+
                 self._initialized = True
             except Exception as e:
                 logger.error(f"❌ [ChromaDB] 初始化失败: {e}")
@@ -64,10 +71,10 @@ class ChromaDBManager:
                     settings = Settings(
                         allow_reset=True,
                         anonymized_telemetry=False,  # 关键：禁用遥测
-                        is_persistent=False
+                        is_persistent=False,
                     )
                     self._client = chromadb.Client(settings)
-                    logger.info(f"📚 [ChromaDB] 使用备用配置初始化完成")
+                    logger.info("📚 [ChromaDB] 使用备用配置初始化完成")
                 except Exception as backup_error:
                     # 最后的备用方案
                     self._client = chromadb.Client()
@@ -90,13 +97,15 @@ class ChromaDBManager:
                     # 创建新集合
                     collection = self._client.create_collection(name=name)
                     logger.info(f"📚 [ChromaDB] 创建新集合: {name}")
-                except Exception as e:
+                except Exception:
                     # 可能是并发创建，再次尝试获取
                     try:
                         collection = self._client.get_collection(name=name)
                         logger.info(f"📚 [ChromaDB] 并发创建后获取集合: {name}")
                     except Exception as final_error:
-                        logger.error(f"❌ [ChromaDB] 集合操作失败: {name}, 错误: {final_error}")
+                        logger.error(
+                            f"❌ [ChromaDB] 集合操作失败: {name}, 错误: {final_error}"
+                        )
                         raise final_error
 
             # 缓存集合
@@ -108,24 +117,25 @@ class FinancialSituationMemory:
     def __init__(self, name, config):
         self.config = config
         self.llm_provider = config.get("llm_provider", "openai").lower()
-        
+
         # ========================================
         # 统一嵌入策略：优先使用SiliconFlow的Qwen3-Embedding
         # 与现有openai_compatible_base.py架构兼容
         # ========================================
-        
+
         # 第一优先级：SiliconFlow Qwen3-Embedding（推荐）
-        siliconflow_key = os.getenv('SILICONFLOW_API_KEY')
+        siliconflow_key = os.getenv("SILICONFLOW_API_KEY")
         if siliconflow_key:
             try:
-                base_url = os.getenv('SILICONFLOW_BASE_URL', 'https://api.siliconflow.cn/v1')
-                self.embedding = "Qwen/Qwen3-Embedding-8B"
-                self.client = OpenAI(
-                    api_key=siliconflow_key,
-                    base_url=base_url
+                base_url = os.getenv(
+                    "SILICONFLOW_BASE_URL", "https://api.siliconflow.cn/v1"
                 )
+                self.embedding = "Qwen/Qwen3-Embedding-8B"
+                self.client = OpenAI(api_key=siliconflow_key, base_url=base_url)
                 self.embedding_provider = "siliconflow"
-                logger.info("✅ [嵌入模型] 使用SiliconFlow Qwen/Qwen3-Embedding-8B (推荐)")
+                logger.info(
+                    "✅ [嵌入模型] 使用SiliconFlow Qwen/Qwen3-Embedding-8B (推荐)"
+                )
                 logger.debug(f"   API地址: {base_url}")
             except Exception as e:
                 logger.error(f"❌ SiliconFlow嵌入初始化失败: {e}")
@@ -136,16 +146,15 @@ class FinancialSituationMemory:
             self.client = None
             self.embedding = None
             self.embedding_provider = None
-        
+
         # 第二优先级：OpenAI text-embedding-3-small（备选）
         if self.client is None:
-            openai_key = os.getenv('OPENAI_API_KEY')
+            openai_key = os.getenv("OPENAI_API_KEY")
             if openai_key:
                 try:
                     self.embedding = "text-embedding-3-small"
                     self.client = OpenAI(
-                        api_key=openai_key,
-                        base_url="https://api.openai.com/v1"
+                        api_key=openai_key, base_url="https://api.openai.com/v1"
                     )
                     self.embedding_provider = "openai"
                     logger.info("⚠️ [嵌入模型] 回退到OpenAI text-embedding-3-small")
@@ -154,9 +163,12 @@ class FinancialSituationMemory:
                     self.client = None
                     self.embedding = None
                     self.embedding_provider = None
-        
+
         # 第三选项：本地Ollama（如果配置了本地服务）
-        if self.client is None and config.get("backend_url") == "http://localhost:11434/v1":
+        if (
+            self.client is None
+            and config.get("backend_url") == "http://localhost:11434/v1"
+        ):
             try:
                 self.embedding = "nomic-embed-text"
                 self.client = OpenAI(base_url=config["backend_url"])
@@ -167,13 +179,15 @@ class FinancialSituationMemory:
                 self.client = None
                 self.embedding = None
                 self.embedding_provider = None
-        
+
         # 最终降级：禁用记忆功能
         if self.client is None:
             self.client = "DISABLED"
             self.embedding_provider = "disabled"
             logger.warning("🚨 [嵌入模型] 无可用嵌入服务，记忆功能已禁用")
-            logger.info("💡 提示：设置SILICONFLOW_API_KEY或OPENAI_API_KEY以启用记忆功能")
+            logger.info(
+                "💡 提示：设置SILICONFLOW_API_KEY或OPENAI_API_KEY以启用记忆功能"
+            )
 
         # 使用单例ChromaDB管理器
         self.chroma_manager = ChromaDBManager()
@@ -181,27 +195,26 @@ class FinancialSituationMemory:
 
     def get_embedding(self, text):
         """Get embedding for a text using the configured provider"""
-        
+
         # 检查记忆功能是否被禁用
         if self.client == "DISABLED":
             # 内存功能已禁用，返回空向量
-            logger.debug(f"⚠️ 记忆功能已禁用，返回空向量")
+            logger.debug("⚠️ 记忆功能已禁用，返回空向量")
             return [0.0] * 1024  # 返回1024维的零向量
-        
+
         # 使用统一的OpenAI兼容接口（SiliconFlow/OpenAI/Ollama）
         try:
-            response = self.client.embeddings.create(
-                model=self.embedding,
-                input=text
-            )
+            response = self.client.embeddings.create(model=self.embedding, input=text)
             embedding = response.data[0].embedding
-            logger.debug(f"✅ [{self.embedding_provider}] 嵌入成功，维度: {len(embedding)}")
+            logger.debug(
+                f"✅ [{self.embedding_provider}] 嵌入成功，维度: {len(embedding)}"
+            )
             return embedding
-        
+
         except Exception as e:
             # 通用错误处理
             logger.error(f"❌ [{self.embedding_provider}] 嵌入失败: {str(e)}")
-            logger.warning(f"⚠️ 记忆功能降级，返回空向量")
+            logger.warning("⚠️ 记忆功能降级，返回空向量")
             return [0.0] * 1024  # 返回空向量而不是抛出异常
 
     def add_situations(self, situations_and_advice):
@@ -233,7 +246,7 @@ class FinancialSituationMemory:
 
         # 检查是否为空向量（记忆功能被禁用）
         if all(x == 0.0 for x in query_embedding):
-            logger.debug(f"⚠️ 记忆功能已禁用，返回空记忆列表")
+            logger.debug("⚠️ 记忆功能已禁用，返回空记忆列表")
             return []  # 返回空列表而不是查询数据库
 
         try:
@@ -256,7 +269,7 @@ class FinancialSituationMemory:
             return matched_results
         except Exception as e:
             logger.error(f"❌ 记忆查询失败: {e}")
-            logger.warning(f"⚠️ 返回空记忆列表")
+            logger.warning("⚠️ 返回空记忆列表")
             return []  # 查询失败时返回空列表
 
 

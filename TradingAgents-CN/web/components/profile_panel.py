@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import os
+
 import streamlit as st
 
 
@@ -39,19 +40,26 @@ def render_profile_panel() -> dict:
         profile = st.radio(
             "选择模式",
             options=["自动", "速度优先", "均衡", "质量优先"],
-            index=["自动", "速度优先", "均衡", "质量优先"].index(_default_profile())
-            if _default_profile() in ["自动", "速度优先", "均衡", "质量优先"]
-            else 0,
+            index=(
+                ["自动", "速度优先", "均衡", "质量优先"].index(_default_profile())
+                if _default_profile() in ["自动", "速度优先", "均衡", "质量优先"]
+                else 0
+            ),
             horizontal=True,
             key="simple_profile_choice",
         )
     with col2:
         max_budget = st.number_input(
-            "本次成本上限(¥)", min_value=0.0, value=float(os.getenv("DEFAULT_BUDGET", "0") or 0.0), step=0.1
+            "本次成本上限(¥)",
+            min_value=0.0,
+            value=float(os.getenv("DEFAULT_BUDGET", "0") or 0.0),
+            step=0.1,
         )
 
     with st.expander("⏱️ 可选：时间上限"):
-        time_cap_minutes = st.number_input("最长分析时长(分钟)", min_value=0, value=0, step=1)
+        time_cap_minutes = st.number_input(
+            "最长分析时长(分钟)", min_value=0, value=0, step=1
+        )
         time_cap_minutes = int(time_cap_minutes) or None
 
     # 推荐规则（可被上层自动调整）

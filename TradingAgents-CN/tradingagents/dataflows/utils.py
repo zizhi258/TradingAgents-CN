@@ -1,15 +1,16 @@
-import os
-import json
-import pandas as pd
-from datetime import date, timedelta, datetime
+from datetime import date, datetime, timedelta
 from typing import Annotated
+
+import pandas as pd
 
 # 导入日志模块
 from tradingagents.utils.logging_manager import get_logger
-logger = get_logger('agents')
+
+logger = get_logger("agents")
 
 
 SavePathType = Annotated[str, "File path to save data. If None, data is not saved."]
+
 
 def save_output(data: pd.DataFrame, tag: str, save_path: SavePathType = None) -> None:
     if save_path:

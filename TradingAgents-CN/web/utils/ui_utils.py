@@ -6,6 +6,7 @@ UI工具函数
 
 import json
 from pathlib import Path
+
 import streamlit as st
 
 # 计算项目根目录与配置目录
@@ -75,12 +76,14 @@ def clear_role_model_override(role_key: str) -> None:
         data["model_overrides"] = model_overrides
         save_ui_overrides(data)
 
+
 def apply_hide_deploy_button_css():
     """
     应用隐藏Deploy按钮和工具栏的CSS样式
     在所有页面中调用此函数以确保一致的UI体验
     """
-    st.markdown("""
+    st.markdown(
+        """
     <style>
         /* 隐藏Streamlit顶部工具栏和Deploy按钮 - 多种选择器确保兼容性 */
         .stAppToolbar {
@@ -144,7 +147,10 @@ def apply_hide_deploy_button_css():
             padding-top: 0 !important;
         }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
+
 
 def apply_common_styles():
     """
@@ -153,9 +159,10 @@ def apply_common_styles():
     """
     # 隐藏Deploy按钮
     apply_hide_deploy_button_css()
-    
+
     # 其他通用样式
-    st.markdown("""
+    st.markdown(
+        """
     <style>
         /* 应用样式 */
         .main-header {
@@ -207,7 +214,9 @@ def apply_common_styles():
             margin: 1rem 0;
         }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
 
 def inject_top_anchor(anchor_id: str = "ta-top-anchor") -> None:
@@ -240,7 +249,12 @@ def inject_back_to_top_button(anchor_id: str = "ta-top-anchor") -> None:
     )
 
 
-def inject_floating_config_button(image_path: str | None = None, size_px: int = 56, bottom_px: int = 84, right_px: int = 24) -> None:
+def inject_floating_config_button(
+    image_path: str | None = None,
+    size_px: int = 56,
+    bottom_px: int = 84,
+    right_px: int = 24,
+) -> None:
     """在页面右下角注入一个悬浮的“配置”图片按钮。
 
     Args:
@@ -252,6 +266,7 @@ def inject_floating_config_button(image_path: str | None = None, size_px: int = 
     try:
         import base64
         from pathlib import Path
+
         import streamlit as st
 
         # 计算默认图片路径
@@ -267,8 +282,8 @@ def inject_floating_config_button(image_path: str | None = None, size_px: int = 
 
         img_src = None
         if image_path and Path(image_path).exists():
-            with open(image_path, 'rb') as f:
-                b64 = base64.b64encode(f.read()).decode('utf-8')
+            with open(image_path, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("utf-8")
                 img_src = f"data:image/png;base64,{b64}"
 
         # 如果无法加载图片，则显示一个圆形的文字按钮作为兜底
@@ -320,17 +335,18 @@ def inject_floating_config_button(image_path: str | None = None, size_px: int = 
 
 # ===== 角色模型持久化配置工具 =====
 
-import json
-import os
-from pathlib import Path
-from datetime import datetime
-from typing import Dict, Optional, Any
+import os  # noqa: E402
+from datetime import datetime  # noqa: E402
+from pathlib import Path  # noqa: E402
+from typing import Any  # noqa: E402
 
 
 def get_config_dir() -> Path:
     """获取配置目录路径"""
     current_file = Path(__file__).resolve()
-    project_root = current_file.parent.parent.parent  # web/utils/ui_utils.py -> project_root
+    project_root = (
+        current_file.parent.parent.parent
+    )  # web/utils/ui_utils.py -> project_root
     return project_root / "config"
 
 
@@ -346,49 +362,52 @@ def get_role_display_name(role_key: str) -> str:
     """
     try:
         from tradingagents.config.provider_models import model_provider_manager
+
         rc = model_provider_manager.get_role_config(role_key)
-        if rc and getattr(rc, 'name', None):
+        if rc and getattr(rc, "name", None):
             return rc.name
     except Exception:
         pass
     fallback = {
-        'fundamental_expert': '基本面专家',
-        'technical_analyst': '技术分析师',
-        'news_hunter': '快讯猎手',
-        'sentiment_analyst': '情绪分析师',
-        'policy_researcher': '政策研究员',
-        'risk_manager': '风控经理',
-        'compliance_officer': '合规官',
-        'chief_decision_officer': '首席决策官',
-        'bull_researcher': '看涨研究员',
-        'bear_researcher': '看跌研究员',
+        "fundamental_expert": "基本面专家",
+        "technical_analyst": "技术分析师",
+        "news_hunter": "快讯猎手",
+        "sentiment_analyst": "情绪分析师",
+        "policy_researcher": "政策研究员",
+        "risk_manager": "风控经理",
+        "compliance_officer": "合规官",
+        "chief_decision_officer": "首席决策官",
+        "bull_researcher": "看涨研究员",
+        "bear_researcher": "看跌研究员",
     }
     return fallback.get(role_key, role_key)
 
 
-def load_persistent_role_configs() -> Dict[str, Any]:
+def load_persistent_role_configs() -> dict[str, Any]:
     """加载持久化的角色配置"""
     config_file = get_role_overrides_file()
-    
+
     if not config_file.exists():
         return {"role_overrides": {}, "last_modified": None}
-    
+
     try:
-        with open(config_file, 'r', encoding='utf-8') as f:
+        with open(config_file, encoding="utf-8") as f:
             return json.load(f)
-    except (json.JSONDecodeError, IOError) as e:
+    except (OSError, json.JSONDecodeError) as e:
         print(f"警告: 加载角色配置失败: {e}")
         return {"role_overrides": {}, "last_modified": None}
 
 
-def save_persistent_role_config(role_key: str, model: str, is_locked: bool = True) -> bool:
+def save_persistent_role_config(
+    role_key: str, model: str, is_locked: bool = True
+) -> bool:
     """保存角色的持久化配置
-    
+
     Args:
         role_key: 角色键名
         model: 模型名称
         is_locked: 是否锁定到该模型
-    
+
     Returns:
         bool: 保存是否成功
     """
@@ -396,22 +415,19 @@ def save_persistent_role_config(role_key: str, model: str, is_locked: bool = Tru
         # 确保配置目录存在
         config_dir = get_config_dir()
         config_dir.mkdir(exist_ok=True)
-        
+
         # 加载现有配置
         config = load_persistent_role_configs()
-        
+
         # 更新配置
-        config["role_overrides"][role_key] = {
-            "model": model,
-            "is_locked": is_locked
-        }
+        config["role_overrides"][role_key] = {"model": model, "is_locked": is_locked}
         config["last_modified"] = datetime.now().isoformat()
-        
+
         # 保存配置
         config_file = get_role_overrides_file()
-        with open(config_file, 'w', encoding='utf-8') as f:
+        with open(config_file, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
-        
+
         return True
     except Exception as e:
         print(f"错误: 保存角色配置失败: {e}")
@@ -420,37 +436,37 @@ def save_persistent_role_config(role_key: str, model: str, is_locked: bool = Tru
 
 def clear_role_config(role_key: str) -> bool:
     """清除角色的持久化配置
-    
+
     Args:
         role_key: 角色键名
-    
+
     Returns:
         bool: 清除是否成功
     """
     try:
         config = load_persistent_role_configs()
-        
+
         if role_key in config["role_overrides"]:
             del config["role_overrides"][role_key]
             config["last_modified"] = datetime.now().isoformat()
-            
+
             # 保存更新后的配置
             config_file = get_role_overrides_file()
-            with open(config_file, 'w', encoding='utf-8') as f:
+            with open(config_file, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
-        
+
         return True
     except Exception as e:
         print(f"错误: 清除角色配置失败: {e}")
         return False
 
 
-def get_role_config(role_key: str) -> Optional[Dict[str, Any]]:
+def get_role_config(role_key: str) -> dict[str, Any] | None:
     """获取特定角色的配置
-    
+
     Args:
         role_key: 角色键名
-        
+
     Returns:
         角色配置字典或None
     """
@@ -458,14 +474,126 @@ def get_role_config(role_key: str) -> Optional[Dict[str, Any]]:
     return config["role_overrides"].get(role_key)
 
 
-def render_role_config_button(role_key: str, role_label: str, available_models: list, in_form: bool = False) -> bool:
+# ===== 动态获取可用角色（API优先，失败回退）=====
+
+
+def _get_api_base_url() -> str:
+    """获取后端API基础地址。
+
+    优先从环境变量读取，找不到则回退到本地默认地址。
+    支持的环境变量：TA_API_BASE_URL / TRADINGAGENTS_API_BASE_URL / BACKEND_API_BASE_URL / API_BASE_URL
+    """
+    for key in [
+        "TA_API_BASE_URL",
+        "TRADINGAGENTS_API_BASE_URL",
+        "BACKEND_API_BASE_URL",
+        "API_BASE_URL",
+    ]:
+        val = os.getenv(key)
+        if val:
+            return val.rstrip("/")
+    return "http://localhost:8000"
+
+
+def _fetch_available_agents_via_api(timeout: float = 1.2) -> dict[str, Any] | None:
+    """通过HTTP API获取可用角色与协作模式。
+
+    返回示例：{"available_agents": [...], "collaboration_modes": [...], "agent_details": {...}}
+    获取失败返回None。
+    """
+    try:
+        import requests  # 运行环境通常已有，如无则回退本地检测
+
+        base = _get_api_base_url()
+        url = f"{base}/api/v2/agents/available"
+        resp = requests.get(url, timeout=timeout)
+        if resp.status_code == 200:
+            data = resp.json() or {}
+            if (
+                isinstance(data, dict)
+                and data.get("success")
+                and isinstance(data.get("data"), dict)
+            ):
+                return data["data"]
+    except Exception:
+        pass
+    return None
+
+
+def _detect_available_agents_locally() -> dict[str, Any] | None:
+    """在没有API的情况下，本地检测可用角色（轻量方式）。
+
+    尝试初始化多模型扩展并读取已注册的智能体列表；若失败返回None。
+    """
+    try:
+        # 延迟导入，避免在无需求时给页面带来额外负担
+        from tradingagents.default_config import DEFAULT_CONFIG
+        from tradingagents.graph.multi_model_extension import MultiModelExtension
+
+        class _DummyTG:
+            def __init__(self, config):
+                self.config = config
+
+        ext = MultiModelExtension(_DummyTG(DEFAULT_CONFIG.copy()))
+        available_agents = list(ext.specialized_agents.keys())
+        return {
+            "available_agents": available_agents,
+            "collaboration_modes": list(ext.collaboration_modes.keys()),
+            "agent_details": {},
+        }
+    except Exception:
+        return None
+
+
+def get_available_agents_for_ui() -> dict[str, Any]:
+    """供前端UI使用的可用角色获取函数（API优先，本地回退，最终兜底）。
+
+    返回结构：
+      {
+        "available_agents": [role_key...],
+        "collaboration_modes": [...],
+        "agent_details": {...}
+      }
+    """
+    # 1) API优先
+    data = _fetch_available_agents_via_api()
+    if data and isinstance(data.get("available_agents"), list):
+        return data
+
+    # 2) 本地检测回退
+    data = _detect_available_agents_locally()
+    if data and isinstance(data.get("available_agents"), list):
+        return data
+
+    # 3) 兜底（静态列表，保持与UI期望一致）
+    fallback_roles = [
+        "news_hunter",
+        "technical_analyst",
+        "policy_researcher",
+        "fundamental_expert",
+        "sentiment_analyst",
+        "tool_engineer",
+        "risk_manager",
+        "compliance_officer",
+        "chief_decision_officer",
+    ]
+    return {
+        "available_agents": fallback_roles,
+        "collaboration_modes": ["sequential", "parallel", "debate"],
+        "agent_details": {},
+    }
+
+
+def render_role_config_button(
+    role_key: str, role_label: str, available_models: list, in_form: bool = False
+) -> bool:
     """渲染角色配置按钮和弹窗
-    
+
     Args:
         role_key: 角色键名
         role_label: 角色显示名称
         available_models: 可用模型列表
-        
+
     Returns:
         bool: 是否有配置变更
     """
@@ -473,21 +601,27 @@ def render_role_config_button(role_key: str, role_label: str, available_models: 
         import streamlit as st
     except ImportError:
         return False
-    
+
     config_changed = False
     current_config = get_role_config(role_key)
-    
+
     # 配置按钮
     config_key = f"config_{role_key}"
     # 注意：如果该函数在 st.form 内调用，则必须使用 st.form_submit_button
     if in_form:
         # 注意：form_submit_button 不支持 key 参数；使用唯一标签避免重复ID
-        toggled = st.form_submit_button(f"⚙️ 配置（{role_label}）", help=f"配置{role_label}的模型")
+        toggled = st.form_submit_button(
+            f"⚙️ 配置（{role_label}）", help=f"配置{role_label}的模型"
+        )
     else:
-        toggled = st.button("⚙️", key=f"btn_{config_key}", help=f"配置{role_label}的模型")
+        toggled = st.button(
+            "⚙️", key=f"btn_{config_key}", help=f"配置{role_label}的模型"
+        )
     if toggled:
-        st.session_state[f"show_{config_key}"] = not st.session_state.get(f"show_{config_key}", False)
-    
+        st.session_state[f"show_{config_key}"] = not st.session_state.get(
+            f"show_{config_key}", False
+        )
+
     # 如果显示配置面板
     if st.session_state.get(f"show_{config_key}", False):
         with st.container():
@@ -504,15 +638,15 @@ def render_role_config_button(role_key: str, role_label: str, available_models: 
             # 模型选择（左侧）
             model_options = ["(不限制)"] + available_models
             default_idx = 0
-            if current_config and current_config['model'] in available_models:
-                default_idx = available_models.index(current_config['model']) + 1
+            if current_config and current_config["model"] in available_models:
+                default_idx = available_models.index(current_config["model"]) + 1
 
             with left:
                 selected_model = st.selectbox(
                     "选择模型",
                     options=model_options,
                     index=default_idx,
-                    key=f"model_select_{role_key}"
+                    key=f"model_select_{role_key}",
                 )
 
             # 应用范围（右侧，横向单行）
@@ -521,7 +655,7 @@ def render_role_config_button(role_key: str, role_label: str, available_models: 
                     "应用范围",
                     options=["本次会话", "永久保存"],
                     key=f"scope_{role_key}",
-                    horizontal=True
+                    horizontal=True,
                 )
 
             # 按钮区：一行三小按钮 + 右侧留白，整体更紧凑
@@ -533,13 +667,19 @@ def render_role_config_button(role_key: str, role_label: str, available_models: 
                     count = abs(hash(seed)) % 7 + 1
                 except Exception:
                     count = 1
-                return "\u200B" * count
+                return "\u200b" * count
 
             # 保存按钮
             with btn_col1:
                 save_label_visible = "💾 保存" if in_form else "💾 保存"
-                save_label = save_label_visible + (_invisible_suffix(f"save_{role_key}") if in_form else "")
-                if (st.form_submit_button(save_label) if in_form else st.button(save_label, key=f"save_{role_key}")):
+                save_label = save_label_visible + (
+                    _invisible_suffix(f"save_{role_key}") if in_form else ""
+                )
+                if (
+                    st.form_submit_button(save_label)
+                    if in_form
+                    else st.button(save_label, key=f"save_{role_key}")
+                ):
                     if selected_model != "(不限制)":
                         if scope == "永久保存":
                             # 保存到持久化配置
@@ -550,7 +690,7 @@ def render_role_config_button(role_key: str, role_label: str, available_models: 
                                 st.error("❌ 保存失败")
 
                         # 更新session state（本次会话）
-                        if 'model_overrides' not in st.session_state:
+                        if "model_overrides" not in st.session_state:
                             st.session_state.model_overrides = {}
                         st.session_state.model_overrides[role_key] = selected_model
                         config_changed = True
@@ -558,17 +698,23 @@ def render_role_config_button(role_key: str, role_label: str, available_models: 
                         # 清除配置
                         if scope == "永久保存":
                             clear_role_config(role_key)
-                        if role_key in st.session_state.get('model_overrides', {}):
+                        if role_key in st.session_state.get("model_overrides", {}):
                             del st.session_state.model_overrides[role_key]
                         config_changed = True
 
             # 重置按钮
             with btn_col2:
                 reset_label_visible = "🔄 重置" if in_form else "🔄 重置"
-                reset_label = reset_label_visible + (_invisible_suffix(f"reset_{role_key}") if in_form else "")
-                if (st.form_submit_button(reset_label) if in_form else st.button(reset_label, key=f"reset_{role_key}")):
+                reset_label = reset_label_visible + (
+                    _invisible_suffix(f"reset_{role_key}") if in_form else ""
+                )
+                if (
+                    st.form_submit_button(reset_label)
+                    if in_form
+                    else st.button(reset_label, key=f"reset_{role_key}")
+                ):
                     clear_role_config(role_key)
-                    if role_key in st.session_state.get('model_overrides', {}):
+                    if role_key in st.session_state.get("model_overrides", {}):
                         del st.session_state.model_overrides[role_key]
                     st.success("✅ 配置已重置")
                     config_changed = True
@@ -576,11 +722,17 @@ def render_role_config_button(role_key: str, role_label: str, available_models: 
             # 关闭按钮
             with btn_col3:
                 close_label_visible = "❌ 关闭" if in_form else "❌ 关闭"
-                close_label = close_label_visible + (_invisible_suffix(f"close_{role_key}") if in_form else "")
-                if (st.form_submit_button(close_label) if in_form else st.button(close_label, key=f"close_{role_key}")):
+                close_label = close_label_visible + (
+                    _invisible_suffix(f"close_{role_key}") if in_form else ""
+                )
+                if (
+                    st.form_submit_button(close_label)
+                    if in_form
+                    else st.button(close_label, key=f"close_{role_key}")
+                ):
                     st.session_state[f"show_{config_key}"] = False
                     st.rerun()
-    
+
     return config_changed
 
 
@@ -590,16 +742,16 @@ def load_persistent_configs_to_session():
         import streamlit as st
     except ImportError:
         return
-    
+
     config = load_persistent_role_configs()
     role_overrides = config.get("role_overrides", {})
-    
+
     if role_overrides:
         # 初始化session state中的model_overrides
-        if 'model_overrides' not in st.session_state:
+        if "model_overrides" not in st.session_state:
             st.session_state.model_overrides = {}
-        
+
         # 将持久化配置合并到session state（不覆盖临时配置）
         for role_key, role_config in role_overrides.items():
             if role_key not in st.session_state.model_overrides:
-                st.session_state.model_overrides[role_key] = role_config['model']
+                st.session_state.model_overrides[role_key] = role_config["model"]

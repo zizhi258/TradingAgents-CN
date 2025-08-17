@@ -6,21 +6,26 @@
 
 import json
 import os
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, asdict
 from pathlib import Path
-from dotenv import load_dotenv
+from typing import Any
+
+try:
+    from dotenv import load_dotenv
+except Exception:  # python-dotenv may be absent in minimal images
+    def load_dotenv(*args, **kwargs):  # type: ignore
+        return False
 
 # 导入统一日志系统
-from tradingagents.utils.logging_init import get_logger
-
-# 导入日志模块
+# 导入统一日志系统（避免重复导入和副作用，直接使用logging_manager的便捷函数）
 from tradingagents.utils.logging_manager import get_logger
-logger = get_logger('agents')
+
+logger = get_logger("agents")
 
 try:
     from .mongodb_storage import MongoDBStorage
+
     MONGODB_AVAILABLE = True
 except ImportError:
     MONGODB_AVAILABLE = False
@@ -30,10 +35,11 @@ except ImportError:
 @dataclass
 class ModelConfig:
     """模型配置"""
+
     provider: str  # 供应商：deepseek, google, siliconflow, etc.
     model_name: str  # 模型名称
     api_key: str  # API密钥
-    base_url: Optional[str] = None  # 自定义API地址
+    base_url: str | None = None  # 自定义API地址
     max_tokens: int = 32000  # 最大token数
     temperature: float = 0.7  # 温度参数
     enabled: bool = True  # 是否启用
@@ -42,6 +48,7 @@ class ModelConfig:
 @dataclass
 class PricingConfig:
     """定价配置"""
+
     provider: str  # 供应商
     model_name: str  # 模型名称
     input_price_per_1k: float  # 输入token价格（每1000个token）
@@ -52,6 +59,7 @@ class PricingConfig:
 @dataclass
 class UsageRecord:
     """使用记录"""
+
     timestamp: str  # 时间戳
     provider: str  # 供应商
     model_name: str  # 模型名称
@@ -64,7 +72,7 @@ class UsageRecord:
 
 class ConfigManager:
     """配置管理器"""
-    
+
     def __init__(self, config_dir: str = "config"):
         self.config_dir = Path(config_dir)
         self.config_dir.mkdir(exist_ok=True)
@@ -97,7 +105,7 @@ class ConfigManager:
         env_key_map = {
             "deepseek": "DEEPSEEK_API_KEY",
             "google": ["GEMINI_API_KEY", "GOOGLE_API_KEY"],  # 支持多个环境变量名
-            "siliconflow": "SILICONFLOW_API_KEY"
+            "siliconflow": "SILICONFLOW_API_KEY",
         }
 
         env_key = env_key_map.get(provider.lower())
@@ -112,26 +120,25 @@ class ConfigManager:
             else:
                 return os.getenv(env_key, "")
         return ""
-    
+
     def _init_mongodb_storage(self):
         """初始化MongoDB存储"""
         if not MONGODB_AVAILABLE:
             return
-        
+
         # 检查是否启用MongoDB存储
         use_mongodb = os.getenv("USE_MONGODB_STORAGE", "false").lower() == "true"
         if not use_mongodb:
             return
-        
+
         try:
             connection_string = os.getenv("MONGODB_CONNECTION_STRING")
             database_name = os.getenv("MONGODB_DATABASE_NAME", "tradingagents")
-            
+
             self.mongodb_storage = MongoDBStorage(
-                connection_string=connection_string,
-                database_name=database_name
+                connection_string=connection_string, database_name=database_name
             )
-            
+
             if self.mongodb_storage.is_connected():
                 logger.info("✅ MongoDB存储已启用")
             else:
@@ -153,7 +160,7 @@ class ConfigManager:
                     api_key="",
                     max_tokens=32000,  # DeepSeek V3: 64K上下文，32K默认输出
                     temperature=0.7,
-                    enabled=True  # 默认启用
+                    enabled=True,  # 默认启用
                 ),
                 ModelConfig(
                     provider="deepseek",
@@ -161,7 +168,7 @@ class ConfigManager:
                     api_key="",
                     max_tokens=32000,  # R1推理模型，包含思维链输出
                     temperature=0.3,  # 推理模型使用低温度
-                    enabled=True  # 默认启用
+                    enabled=True,  # 默认启用
                 ),
                 ModelConfig(
                     provider="google",
@@ -169,7 +176,7 @@ class ConfigManager:
                     api_key="",
                     max_tokens=65536,  # Gemini 2.5 Flash 最大输出
                     temperature=0.7,
-                    enabled=True  # 默认启用
+                    enabled=True,  # 默认启用
                 ),
                 ModelConfig(
                     provider="google",
@@ -177,7 +184,7 @@ class ConfigManager:
                     api_key="",
                     max_tokens=65536,  # Gemini 2.5 Pro 最大输出
                     temperature=0.3,
-                    enabled=True  # 默认启用
+                    enabled=True,  # 默认启用
                 ),
                 # SiliconFlow Models
                 ModelConfig(
@@ -187,7 +194,7 @@ class ConfigManager:
                     base_url="https://api.siliconflow.cn/v1",
                     max_tokens=16384,  # DeepSeek R1 推理模型最大输出
                     temperature=0.6,
-                    enabled=True  # 默认启用
+                    enabled=True,  # 默认启用
                 ),
                 ModelConfig(
                     provider="siliconflow",
@@ -196,7 +203,7 @@ class ConfigManager:
                     base_url="https://api.siliconflow.cn/v1",
                     max_tokens=8192,  # DeepSeek V3 通用模型
                     temperature=0.7,
-                    enabled=True  # 默认启用
+                    enabled=True,  # 默认启用
                 ),
                 ModelConfig(
                     provider="siliconflow",
@@ -205,7 +212,7 @@ class ConfigManager:
                     base_url="https://api.siliconflow.cn/v1",
                     max_tokens=8192,  # GLM-4.5 最大输出
                     temperature=0.7,
-                    enabled=True  # 默认启用
+                    enabled=True,  # 默认启用
                 ),
                 ModelConfig(
                     provider="siliconflow",
@@ -214,7 +221,7 @@ class ConfigManager:
                     base_url="https://api.siliconflow.cn/v1",
                     max_tokens=8192,  # Qwen3 Coder超大规模模型
                     temperature=0.3,  # 代码生成使用低温度
-                    enabled=True  # 默认启用
+                    enabled=True,  # 默认启用
                 ),
                 ModelConfig(
                     provider="siliconflow",
@@ -223,7 +230,7 @@ class ConfigManager:
                     base_url="https://api.siliconflow.cn/v1",
                     max_tokens=8192,  # Kimi K2 最大输出
                     temperature=0.7,
-                    enabled=True  # 默认启用
+                    enabled=True,  # 默认启用
                 ),
                 ModelConfig(
                     provider="siliconflow",
@@ -232,7 +239,7 @@ class ConfigManager:
                     base_url="https://api.siliconflow.cn/v1",
                     max_tokens=8192,  # Qwen3 推理增强模型
                     temperature=0.5,  # 推理模型使用中等温度
-                    enabled=True  # 默认启用
+                    enabled=True,  # 默认启用
                 ),
                 ModelConfig(
                     provider="siliconflow",
@@ -241,7 +248,7 @@ class ConfigManager:
                     base_url="https://api.siliconflow.cn/v1",
                     max_tokens=8192,  # Qwen3 超大指令模型
                     temperature=0.7,
-                    enabled=True  # 默认启用
+                    enabled=True,  # 默认启用
                 ),
                 # SiliconFlow Embedding and Rerank Models
                 ModelConfig(
@@ -251,7 +258,7 @@ class ConfigManager:
                     base_url="https://api.siliconflow.cn/v1",
                     max_tokens=512,  # Embedding模型通常输出较短
                     temperature=0.0,  # Embedding不需要随机性
-                    enabled=True  # 默认启用
+                    enabled=True,  # 默认启用
                 ),
                 ModelConfig(
                     provider="siliconflow",
@@ -260,41 +267,80 @@ class ConfigManager:
                     base_url="https://api.siliconflow.cn/v1",
                     max_tokens=512,  # Reranker模型输出较短
                     temperature=0.0,  # Reranker不需要随机性
-                    enabled=True  # 默认启用
+                    enabled=True,  # 默认启用
                 ),
             ]
             self.save_models(default_models)
-        
+
         # 默认定价配置
         if not self.pricing_file.exists():
             default_pricing = [
                 # DeepSeek官方定价 (人民币) - 2025年最新价格
-                PricingConfig("deepseek", "deepseek-chat", 0.0014, 0.0028, "CNY"),      # V3通用对话模型
-                PricingConfig("deepseek", "deepseek-reasoner", 0.0055, 0.0195, "CNY"),  # R1推理模型
-
+                PricingConfig(
+                    "deepseek", "deepseek-chat", 0.0014, 0.0028, "CNY"
+                ),  # V3通用对话模型
+                PricingConfig(
+                    "deepseek", "deepseek-reasoner", 0.0055, 0.0195, "CNY"
+                ),  # R1推理模型
                 # Google Gemini 2.5 定价 (美元) - 2025年最新官方定价
-                PricingConfig("google", "gemini-2.5-flash", 0.000125, 0.0005, "USD"),  # Flash: $0.125/$0.50 per 1M tokens
-                PricingConfig("google", "gemini-2.5-pro", 0.0125, 0.05, "USD"),  # Pro: $12.5/$50 per 1M tokens
-                
+                PricingConfig(
+                    "google", "gemini-2.5-flash", 0.000125, 0.0005, "USD"
+                ),  # Flash: $0.125/$0.50 per 1M tokens
+                PricingConfig(
+                    "google", "gemini-2.5-pro", 0.0125, 0.05, "USD"
+                ),  # Pro: $12.5/$50 per 1M tokens
                 # SiliconFlow Models Pricing (人民币) - 2025年官方定价
-                PricingConfig("siliconflow", "deepseek-ai/DeepSeek-R1", 0.004, 0.016, "CNY"),  # ¥4/¥16 per 1M tokens
-                PricingConfig("siliconflow", "deepseek-ai/DeepSeek-V3", 0.002, 0.008, "CNY"),  # ¥2/¥8 per 1M tokens
-                PricingConfig("siliconflow", "zai-org/GLM-4.5", 0.002, 0.008, "CNY"),  # GLM-4.5预估定价
-                PricingConfig("siliconflow", "Qwen/Qwen3-Coder-480B-A35B-Instruct", 0.006, 0.024, "CNY"),  # 超大模型预估
-                PricingConfig("siliconflow", "moonshotai/Kimi-K2-Instruct", 0.003, 0.012, "CNY"),  # Kimi预估定价
-                PricingConfig("siliconflow", "Qwen/Qwen3-235B-A22B-Thinking-2507", 0.005, 0.020, "CNY"),  # 推理模型
-                PricingConfig("siliconflow", "Qwen/Qwen3-235B-A22B-Instruct-2507", 0.005, 0.020, "CNY"),  # 超大指令模型
-                PricingConfig("siliconflow", "Qwen/Qwen3-Embedding-8B", 0.0005, 0.0005, "CNY"),  # Embedding固定价格
-                PricingConfig("siliconflow", "Qwen/Qwen3-Reranker-8B", 0.0008, 0.0008, "CNY"),  # Reranker固定价格
+                PricingConfig(
+                    "siliconflow", "deepseek-ai/DeepSeek-R1", 0.004, 0.016, "CNY"
+                ),  # ¥4/¥16 per 1M tokens
+                PricingConfig(
+                    "siliconflow", "deepseek-ai/DeepSeek-V3", 0.002, 0.008, "CNY"
+                ),  # ¥2/¥8 per 1M tokens
+                PricingConfig(
+                    "siliconflow", "zai-org/GLM-4.5", 0.002, 0.008, "CNY"
+                ),  # GLM-4.5预估定价
+                PricingConfig(
+                    "siliconflow",
+                    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+                    0.006,
+                    0.024,
+                    "CNY",
+                ),  # 超大模型预估
+                PricingConfig(
+                    "siliconflow", "moonshotai/Kimi-K2-Instruct", 0.003, 0.012, "CNY"
+                ),  # Kimi预估定价
+                PricingConfig(
+                    "siliconflow",
+                    "Qwen/Qwen3-235B-A22B-Thinking-2507",
+                    0.005,
+                    0.020,
+                    "CNY",
+                ),  # 推理模型
+                PricingConfig(
+                    "siliconflow",
+                    "Qwen/Qwen3-235B-A22B-Instruct-2507",
+                    0.005,
+                    0.020,
+                    "CNY",
+                ),  # 超大指令模型
+                PricingConfig(
+                    "siliconflow", "Qwen/Qwen3-Embedding-8B", 0.0005, 0.0005, "CNY"
+                ),  # Embedding固定价格
+                PricingConfig(
+                    "siliconflow", "Qwen/Qwen3-Reranker-8B", 0.0008, 0.0008, "CNY"
+                ),  # Reranker固定价格
             ]
             self.save_pricing(default_pricing)
-        
+
         # 默认设置
         if not self.settings_file.exists():
             # 导入默认数据目录配置
             import os
-            default_data_dir = os.path.join(os.path.expanduser("~"), "Documents", "TradingAgents", "data")
-            
+
+            default_data_dir = os.path.join(
+                os.path.expanduser("~"), "Documents", "TradingAgents", "data"
+            )
+
             default_settings = {
                 "default_provider": "deepseek",
                 "default_model": "deepseek-chat",
@@ -305,28 +351,26 @@ class ConfigManager:
                 "max_usage_records": 10000,
                 "data_dir": default_data_dir,  # 数据目录配置
                 "cache_dir": os.path.join(default_data_dir, "cache"),  # 缓存目录
-                "results_dir": os.path.join(os.path.expanduser("~"), "Documents", "TradingAgents", "results"),  # 结果目录
+                "results_dir": os.path.join(
+                    os.path.expanduser("~"), "Documents", "TradingAgents", "results"
+                ),  # 结果目录
                 "auto_create_dirs": True,  # 自动创建目录
                 "email_schedules": {  # 邮件调度配置
-                    "daily": {
-                        "enabled": False,
-                        "hour": 18,
-                        "minute": 0
-                    },
+                    "daily": {"enabled": False, "hour": 18, "minute": 0},
                     "weekly": {
                         "enabled": False,
                         "weekday": [1],  # 周一(0=Monday, 6=Sunday)
                         "hour": 9,
-                        "minute": 0
-                    }
-                }
+                        "minute": 0,
+                    },
+                },
             }
             self.save_settings(default_settings)
-    
-    def load_models(self) -> List[ModelConfig]:
+
+    def load_models(self) -> list[ModelConfig]:
         """加载模型配置，优先使用.env中的API密钥"""
         try:
-            with open(self.models_file, 'r', encoding='utf-8') as f:
+            with open(self.models_file, encoding="utf-8") as f:
                 data = json.load(f)
                 models = [ModelConfig(**item) for item in data]
 
@@ -343,62 +387,69 @@ class ConfigManager:
         except Exception as e:
             logger.error(f"加载模型配置失败: {e}")
             return []
-    
-    def save_models(self, models: List[ModelConfig]):
+
+    def save_models(self, models: list[ModelConfig]):
         """保存模型配置"""
         try:
             data = [asdict(model) for model in models]
-            with open(self.models_file, 'w', encoding='utf-8') as f:
+            with open(self.models_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
             logger.error(f"保存模型配置失败: {e}")
-    
-    def load_pricing(self) -> List[PricingConfig]:
+
+    def load_pricing(self) -> list[PricingConfig]:
         """加载定价配置"""
         try:
-            with open(self.pricing_file, 'r', encoding='utf-8') as f:
+            with open(self.pricing_file, encoding="utf-8") as f:
                 data = json.load(f)
             return [PricingConfig(**item) for item in data]
         except Exception as e:
             logger.error(f"加载定价配置失败: {e}")
             return []
-    
-    def save_pricing(self, pricing: List[PricingConfig]):
+
+    def save_pricing(self, pricing: list[PricingConfig]):
         """保存定价配置"""
         try:
             data = [asdict(price) for price in pricing]
-            with open(self.pricing_file, 'w', encoding='utf-8') as f:
+            with open(self.pricing_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
             logger.error(f"保存定价配置失败: {e}")
-    
-    def load_usage_records(self) -> List[UsageRecord]:
+
+    def load_usage_records(self) -> list[UsageRecord]:
         """加载使用记录"""
         try:
             if not self.usage_file.exists():
                 return []
-            with open(self.usage_file, 'r', encoding='utf-8') as f:
+            with open(self.usage_file, encoding="utf-8") as f:
                 data = json.load(f)
                 return [UsageRecord(**item) for item in data]
         except Exception as e:
             logger.error(f"加载使用记录失败: {e}")
             return []
-    
-    def save_usage_records(self, records: List[UsageRecord]):
+
+    def save_usage_records(self, records: list[UsageRecord]):
         """保存使用记录"""
         try:
             data = [asdict(record) for record in records]
-            with open(self.usage_file, 'w', encoding='utf-8') as f:
+            with open(self.usage_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
             logger.error(f"保存使用记录失败: {e}")
-    
-    def add_usage_record(self, provider: str, model_name: str, input_tokens: int,
-                        output_tokens: int, session_id: str, analysis_type: str = "stock_analysis"):
+
+    def add_usage_record(
+        self,
+        provider: str,
+        model_name: str,
+        input_tokens: int,
+        output_tokens: int,
+        session_id: str,
+        analysis_type: str = "stock_analysis",
+    ):
         """添加使用记录"""
         # 计算成本
         cost = self.calculate_cost(provider, model_name, input_tokens, output_tokens)
-        
+
         record = UsageRecord(
             timestamp=datetime.now().isoformat(),
             provider=provider,
@@ -407,31 +458,33 @@ class ConfigManager:
             output_tokens=output_tokens,
             cost=cost,
             session_id=session_id,
-            analysis_type=analysis_type
+            analysis_type=analysis_type,
         )
-        
+
         # 优先使用MongoDB存储
         if self.mongodb_storage and self.mongodb_storage.is_connected():
             success = self.mongodb_storage.save_usage_record(record)
             if success:
                 return record
             else:
-                logger.error(f"⚠️ MongoDB保存失败，回退到JSON文件存储")
-        
+                logger.error("⚠️ MongoDB保存失败，回退到JSON文件存储")
+
         # 回退到JSON文件存储
         records = self.load_usage_records()
         records.append(record)
-        
+
         # 限制记录数量
         settings = self.load_settings()
         max_records = settings.get("max_usage_records", 10000)
         if len(records) > max_records:
             records = records[-max_records:]
-        
+
         self.save_usage_records(records)
         return record
-    
-    def calculate_cost(self, provider: str, model_name: str, input_tokens: int, output_tokens: int) -> float:
+
+    def calculate_cost(
+        self, provider: str, model_name: str, input_tokens: int, output_tokens: int
+    ) -> float:
         """计算使用成本"""
         pricing_configs = self.load_pricing()
 
@@ -443,17 +496,21 @@ class ConfigManager:
                 return round(total_cost, 6)
 
         # 只在找不到配置时输出调试信息
-        logger.warning(f"⚠️ [calculate_cost] 未找到匹配的定价配置: {provider}/{model_name}")
-        logger.debug(f"⚠️ [calculate_cost] 可用的配置:")
+        logger.warning(
+            f"⚠️ [calculate_cost] 未找到匹配的定价配置: {provider}/{model_name}"
+        )
+        logger.debug("⚠️ [calculate_cost] 可用的配置:")
         for pricing in pricing_configs:
-            logger.debug(f"⚠️ [calculate_cost]   - {pricing.provider}/{pricing.model_name}")
+            logger.debug(
+                f"⚠️ [calculate_cost]   - {pricing.provider}/{pricing.model_name}"
+            )
 
         return 0.0
-    
-    def load_settings(self) -> Dict[str, Any]:
+
+    def load_settings(self) -> dict[str, Any]:
         """加载设置，合并.env中的配置"""
         try:
-            with open(self.settings_file, 'r', encoding='utf-8') as f:
+            with open(self.settings_file, encoding="utf-8") as f:
                 settings = json.load(f)
         except Exception as e:
             logger.error(f"加载设置失败: {e}")
@@ -478,45 +535,49 @@ class ConfigManager:
 
         return settings
 
-    def get_env_config_status(self) -> Dict[str, Any]:
+    def get_env_config_status(self) -> dict[str, Any]:
         """获取.env配置状态"""
         return {
             "env_file_exists": (Path(__file__).parent.parent.parent / ".env").exists(),
             "api_keys": {
                 "deepseek": bool(os.getenv("DEEPSEEK_API_KEY")),
-                "google": bool(os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")),
+                "google": bool(
+                    os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+                ),
                 "siliconflow": bool(os.getenv("SILICONFLOW_API_KEY")),
                 "finnhub": bool(os.getenv("FINNHUB_API_KEY")),
             },
             "other_configs": {
-                "reddit_configured": bool(os.getenv("REDDIT_CLIENT_ID") and os.getenv("REDDIT_CLIENT_SECRET")),
+                "reddit_configured": bool(
+                    os.getenv("REDDIT_CLIENT_ID") and os.getenv("REDDIT_CLIENT_SECRET")
+                ),
                 "results_dir": os.getenv("TRADINGAGENTS_RESULTS_DIR", "./results"),
                 "log_level": os.getenv("TRADINGAGENTS_LOG_LEVEL", "INFO"),
-            }
+            },
         }
 
-    def save_settings(self, settings: Dict[str, Any]):
+    def save_settings(self, settings: dict[str, Any]):
         """保存设置"""
         try:
-            with open(self.settings_file, 'w', encoding='utf-8') as f:
+            with open(self.settings_file, "w", encoding="utf-8") as f:
                 json.dump(settings, f, ensure_ascii=False, indent=2)
         except Exception as e:
             logger.error(f"保存设置失败: {e}")
-    
-    def get_enabled_models(self) -> List[ModelConfig]:
+
+    def get_enabled_models(self) -> list[ModelConfig]:
         """获取启用的模型"""
         models = self.load_models()
         return [model for model in models if model.enabled and model.api_key]
-    
-    def get_model_by_name(self, provider: str, model_name: str) -> Optional[ModelConfig]:
+
+    def get_model_by_name(self, provider: str, model_name: str) -> ModelConfig | None:
         """根据名称获取模型配置"""
         models = self.load_models()
         for model in models:
             if model.provider == provider and model.model_name == model_name:
                 return model
         return None
-    
-    def get_usage_statistics(self, days: int = 30) -> Dict[str, Any]:
+
+    def get_usage_statistics(self, days: int = 30) -> dict[str, Any]:
         """获取使用统计"""
         # 优先使用MongoDB获取统计
         if self.mongodb_storage and self.mongodb_storage.is_connected():
@@ -525,36 +586,36 @@ class ConfigManager:
                 stats = self.mongodb_storage.get_usage_statistics(days)
                 # 获取供应商统计
                 provider_stats = self.mongodb_storage.get_provider_statistics(days)
-                
+
                 if stats:
                     stats["provider_stats"] = provider_stats
                     stats["records_count"] = stats.get("total_requests", 0)
                     return stats
             except Exception as e:
                 logger.error(f"⚠️ MongoDB统计获取失败，回退到JSON文件: {e}")
-        
+
         # 回退到JSON文件统计
         records = self.load_usage_records()
-        
+
         # 过滤最近N天的记录
         from datetime import datetime, timedelta
 
         cutoff_date = datetime.now() - timedelta(days=days)
-        
+
         recent_records = []
         for record in records:
             try:
                 record_date = datetime.fromisoformat(record.timestamp)
                 if record_date >= cutoff_date:
                     recent_records.append(record)
-            except:
+            except Exception:
                 continue
-        
+
         # 统计数据
         total_cost = sum(record.cost for record in recent_records)
         total_input_tokens = sum(record.input_tokens for record in recent_records)
         total_output_tokens = sum(record.output_tokens for record in recent_records)
-        
+
         # 按供应商统计
         provider_stats = {}
         for record in recent_records:
@@ -563,13 +624,13 @@ class ConfigManager:
                     "cost": 0,
                     "input_tokens": 0,
                     "output_tokens": 0,
-                    "requests": 0
+                    "requests": 0,
                 }
             provider_stats[record.provider]["cost"] += record.cost
             provider_stats[record.provider]["input_tokens"] += record.input_tokens
             provider_stats[record.provider]["output_tokens"] += record.output_tokens
             provider_stats[record.provider]["requests"] += 1
-        
+
         return {
             "period_days": days,
             "total_cost": round(total_cost, 4),
@@ -577,9 +638,9 @@ class ConfigManager:
             "total_output_tokens": total_output_tokens,
             "total_requests": len(recent_records),
             "provider_stats": provider_stats,
-            "records_count": len(recent_records)
+            "records_count": len(recent_records),
         }
-    
+
     def _project_root(self) -> Path:
         return Path(__file__).parent.parent.parent
 
@@ -607,11 +668,15 @@ class ConfigManager:
             candidates.append(env_data_dir)
         if settings.get("data_dir"):
             candidates.append(settings["data_dir"])
-        candidates.extend([
-            "/app/data",
-            str(self._project_root() / "data"),
-            os.path.join(os.path.expanduser("~"), "Documents", "TradingAgents", "data"),
-        ])
+        candidates.extend(
+            [
+                "/app/data",
+                str(self._project_root() / "data"),
+                os.path.join(
+                    os.path.expanduser("~"), "Documents", "TradingAgents", "data"
+                ),
+            ]
+        )
 
         for c in candidates:
             if c and self._try_make_dir(c):
@@ -639,7 +704,7 @@ class ConfigManager:
         # 同时更新缓存目录
         settings["cache_dir"] = os.path.join(data_dir, "cache")
         self.save_settings(settings)
-        
+
         # 如果启用自动创建目录，则创建目录
         if settings.get("auto_create_dirs", True):
             self.ensure_directories_exist()
@@ -681,8 +746,15 @@ class TokenTracker:
     def __init__(self, config_manager: ConfigManager):
         self.config_manager = config_manager
 
-    def track_usage(self, provider: str, model_name: str, input_tokens: int,
-                   output_tokens: int, session_id: str = None, analysis_type: str = "stock_analysis"):
+    def track_usage(
+        self,
+        provider: str,
+        model_name: str,
+        input_tokens: int,
+        output_tokens: int,
+        session_id: str = None,
+        analysis_type: str = "stock_analysis",
+    ):
         """跟踪Token使用"""
         if session_id is None:
             session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -701,7 +773,7 @@ class TokenTracker:
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             session_id=session_id,
-            analysis_type=analysis_type
+            analysis_type=analysis_type,
         )
 
         # 检查成本警告
@@ -720,23 +792,34 @@ class TokenTracker:
         total_today = today_stats["total_cost"]
 
         if total_today >= threshold:
-            logger.warning(f"⚠️ 成本警告: 今日成本已达到 ¥{total_today:.4f}，超过阈值 ¥{threshold}",
-                          extra={'cost': total_today, 'threshold': threshold, 'event_type': 'cost_alert'})
+            logger.warning(
+                f"⚠️ 成本警告: 今日成本已达到 ¥{total_today:.4f}，超过阈值 ¥{threshold}",
+                extra={
+                    "cost": total_today,
+                    "threshold": threshold,
+                    "event_type": "cost_alert",
+                },
+            )
 
     def get_session_cost(self, session_id: str) -> float:
         """获取会话成本"""
         records = self.config_manager.load_usage_records()
-        session_cost = sum(record.cost for record in records if record.session_id == session_id)
+        session_cost = sum(
+            record.cost for record in records if record.session_id == session_id
+        )
         return session_cost
 
-    def estimate_cost(self, provider: str, model_name: str, estimated_input_tokens: int,
-                     estimated_output_tokens: int) -> float:
+    def estimate_cost(
+        self,
+        provider: str,
+        model_name: str,
+        estimated_input_tokens: int,
+        estimated_output_tokens: int,
+    ) -> float:
         """估算成本"""
         return self.config_manager.calculate_cost(
             provider, model_name, estimated_input_tokens, estimated_output_tokens
         )
-
-
 
 
 # 全局配置管理器实例 - 使用项目根目录的配置
@@ -746,6 +829,7 @@ def _get_project_config_dir():
     current_file = Path(__file__)  # tradingagents/config/config_manager.py
     project_root = current_file.parent.parent.parent  # 向上三级到项目根目录
     return str(project_root / "config")
+
 
 config_manager = ConfigManager(_get_project_config_dir())
 token_tracker = TokenTracker(config_manager)

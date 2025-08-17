@@ -3,44 +3,45 @@
 包含各种专业分析智能体，用于多模型协作分析
 """
 
-from typing import Dict, Any
 import re
+from typing import Any
 
 # 导入基类
-from .base_specialized_agent import BaseSpecializedAgent, AgentAnalysisResult
+from .base_specialized_agent import AgentAnalysisResult, BaseSpecializedAgent
+from .charting_artist import ChartingArtist
+from .chief_decision_officer import ChiefDecisionOfficer
+from .chief_writer import ChiefWriter
+from .fundamental_expert import FundamentalExpert
 
 # 导入具体的专业智能体
 from .news_hunter import NewsHunter
-from .fundamental_expert import FundamentalExpert 
-from .chief_decision_officer import ChiefDecisionOfficer
-from .chief_writer import ChiefWriter
-from .charting_artist import ChartingArtist
 
 
 class TechnicalAnalyst(BaseSpecializedAgent):
     """技术分析师智能体"""
-    
-    def __init__(self, multi_model_manager, config: Dict[str, Any] = None):
+
+    def __init__(self, multi_model_manager, config: dict[str, Any] = None):
         super().__init__(
             agent_role="technical_analyst",
             description="技术分析专家，专注于图表分析、趋势识别和价格预测",
             multi_model_manager=multi_model_manager,
-            config=config
+            config=config,
         )
-        
+
         self.key_indicators = {
-            'trend': ['SMA', 'EMA', '趋势线', 'MACD'],
-            'momentum': ['RSI', 'CCI', 'Stochastic', 'Williams %R'],
-            'volume': ['成交量', 'OBV', 'Volume Profile'],
-            'volatility': ['布林带', 'ATR', 'VIX'],
-            'patterns': ['头肩顶', '双底', '三角形', '楔形']
+            "trend": ["SMA", "EMA", "趋势线", "MACD"],
+            "momentum": ["RSI", "CCI", "Stochastic", "Williams %R"],
+            "volume": ["成交量", "OBV", "Volume Profile"],
+            "volatility": ["布林带", "ATR", "VIX"],
+            "patterns": ["头肩顶", "双底", "三角形", "楔形"],
         }
-    
+
     def _build_system_prompt_template(self) -> str:
         # 允许从角色库覆盖
         try:
             from tradingagents.config.role_library import get_prompt
-            custom = get_prompt('technical_analyst', 'system_prompt')
+
+            custom = get_prompt("technical_analyst", "system_prompt")
             if custom:
                 return custom
         except Exception:
@@ -67,11 +68,12 @@ class TechnicalAnalyst(BaseSpecializedAgent):
 - 风险回报比评估
 
 你的分析应该客观、基于数据，提供可操作的交易建议。"""
-    
+
     def _build_analysis_prompt_template(self) -> str:
         try:
             from tradingagents.config.role_library import get_prompt
-            custom = get_prompt('technical_analyst', 'analysis_prompt_template')
+
+            custom = get_prompt("technical_analyst", "analysis_prompt_template")
             if custom:
                 return custom
         except Exception:
@@ -90,58 +92,63 @@ class TechnicalAnalyst(BaseSpecializedAgent):
 - 止损和止盈建议
 - 入场时机判断
 - 风险预警信号"""
-    
+
     def get_specialized_task_type(self) -> str:
         return "technical_analysis"
-    
-    def validate_input_data(self, data: Dict[str, Any]) -> bool:
-        required_fields = ['price_data']
+
+    def validate_input_data(self, data: dict[str, Any]) -> bool:
+        required_fields = ["price_data"]
         return all(field in data and data[field] for field in required_fields)
-    
-    def extract_key_metrics(self, analysis_result: str) -> Dict[str, Any]:
+
+    def extract_key_metrics(self, analysis_result: str) -> dict[str, Any]:
         metrics = {
-            'trend_direction': 'neutral',
-            'trend_strength': 0.5,
-            'support_level': 0.0,
-            'resistance_level': 0.0,
-            'rsi_signal': 'neutral',
-            'macd_signal': 'neutral',
-            'volume_confirmation': False
+            "trend_direction": "neutral",
+            "trend_strength": 0.5,
+            "support_level": 0.0,
+            "resistance_level": 0.0,
+            "rsi_signal": "neutral",
+            "macd_signal": "neutral",
+            "volume_confirmation": False,
         }
-        
+
         # 提取趋势方向
-        if any(keyword in analysis_result for keyword in ['上升趋势', '看涨', 'bullish']):
-            metrics['trend_direction'] = 'bullish'
-        elif any(keyword in analysis_result for keyword in ['下降趋势', '看跌', 'bearish']):
-            metrics['trend_direction'] = 'bearish'
-        
+        if any(
+            keyword in analysis_result for keyword in ["上升趋势", "看涨", "bullish"]
+        ):
+            metrics["trend_direction"] = "bullish"
+        elif any(
+            keyword in analysis_result for keyword in ["下降趋势", "看跌", "bearish"]
+        ):
+            metrics["trend_direction"] = "bearish"
+
         # 提取支撑阻力位
-        support_match = re.search(r'支撑位[:：]\s*([0-9.]+)', analysis_result)
+        support_match = re.search(r"支撑位[:：]\s*([0-9.]+)", analysis_result)
         if support_match:
-            metrics['support_level'] = float(support_match.group(1))
-        
-        resistance_match = re.search(r'阻力位[:：]\s*([0-9.]+)', analysis_result)
+            metrics["support_level"] = float(support_match.group(1))
+
+        resistance_match = re.search(r"阻力位[:：]\s*([0-9.]+)", analysis_result)
         if resistance_match:
-            metrics['resistance_level'] = float(resistance_match.group(1))
-        
+            metrics["resistance_level"] = float(resistance_match.group(1))
+
         return metrics
 
 
 class RiskManager(BaseSpecializedAgent):
     """风控经理智能体"""
-    
-    def __init__(self, multi_model_manager, config: Dict[str, Any] = None):
+
+    def __init__(self, multi_model_manager, config: dict[str, Any] = None):
         super().__init__(
             agent_role="risk_manager",
             description="风险管理专家，负责投资风险评估和控制策略制定",
             multi_model_manager=multi_model_manager,
-            config=config
+            config=config,
         )
-    
+
     def _build_system_prompt_template(self) -> str:
         try:
             from tradingagents.config.role_library import get_prompt
-            custom = get_prompt('risk_manager', 'system_prompt')
+
+            custom = get_prompt("risk_manager", "system_prompt")
             if custom:
                 return custom
         except Exception:
@@ -167,11 +174,12 @@ class RiskManager(BaseSpecializedAgent):
 - 资产配置优化
 
 你的分析应该全面、谨慎，为投资决策提供风险保障。"""
-    
+
     def _build_analysis_prompt_template(self) -> str:
         try:
             from tradingagents.config.role_library import get_prompt
-            custom = get_prompt('risk_manager', 'analysis_prompt_template')
+
+            custom = get_prompt("risk_manager", "analysis_prompt_template")
             if custom:
                 return custom
         except Exception:
@@ -189,38 +197,39 @@ class RiskManager(BaseSpecializedAgent):
 - 止损止盈设置
 - 对冲方案
 - 分散化建议"""
-    
+
     def get_specialized_task_type(self) -> str:
         return "risk_assessment"
-    
-    def validate_input_data(self, data: Dict[str, Any]) -> bool:
-        required_fields = ['investment_proposal']
+
+    def validate_input_data(self, data: dict[str, Any]) -> bool:
+        required_fields = ["investment_proposal"]
         return all(field in data and data[field] for field in required_fields)
-    
-    def extract_key_metrics(self, analysis_result: str) -> Dict[str, Any]:
+
+    def extract_key_metrics(self, analysis_result: str) -> dict[str, Any]:
         return {
-            'risk_score': 0.5,
-            'max_position_size': 0.0,
-            'stop_loss_level': 0.0,
-            'risk_reward_ratio': 1.0
+            "risk_score": 0.5,
+            "max_position_size": 0.0,
+            "stop_loss_level": 0.0,
+            "risk_reward_ratio": 1.0,
         }
 
 
 class SentimentAnalyst(BaseSpecializedAgent):
     """情绪分析师智能体"""
-    
-    def __init__(self, multi_model_manager, config: Dict[str, Any] = None):
+
+    def __init__(self, multi_model_manager, config: dict[str, Any] = None):
         super().__init__(
-            agent_role="sentiment_analyst", 
+            agent_role="sentiment_analyst",
             description="市场情绪分析专家，专注于投资者情绪和市场心理分析",
             multi_model_manager=multi_model_manager,
-            config=config
+            config=config,
         )
-    
+
     def _build_system_prompt_template(self) -> str:
         try:
             from tradingagents.config.role_library import get_prompt
-            custom = get_prompt('sentiment_analyst', 'system_prompt')
+
+            custom = get_prompt("sentiment_analyst", "system_prompt")
             if custom:
                 return custom
         except Exception:
@@ -240,11 +249,12 @@ class SentimentAnalyst(BaseSpecializedAgent):
 - 情绪传导机制
 
 你需要客观分析市场情绪，识别情绪极端点的投资机会。"""
-    
+
     def _build_analysis_prompt_template(self) -> str:
         try:
             from tradingagents.config.role_library import get_prompt
-            custom = get_prompt('sentiment_analyst', 'analysis_prompt_template')
+
+            custom = get_prompt("sentiment_analyst", "analysis_prompt_template")
             if custom:
                 return custom
         except Exception:
@@ -261,19 +271,19 @@ class SentimentAnalyst(BaseSpecializedAgent):
 - 情绪对价格的影响
 - 逆向投资机会
 - 情绪风险提示"""
-    
+
     def get_specialized_task_type(self) -> str:
         return "sentiment_analysis"
-    
-    def validate_input_data(self, data: Dict[str, Any]) -> bool:
-        required_fields = ['sentiment_data']
+
+    def validate_input_data(self, data: dict[str, Any]) -> bool:
+        required_fields = ["sentiment_data"]
         return all(field in data and data[field] for field in required_fields)
-    
-    def extract_key_metrics(self, analysis_result: str) -> Dict[str, Any]:
+
+    def extract_key_metrics(self, analysis_result: str) -> dict[str, Any]:
         return {
-            'sentiment_score': 0.0,  # -1 to 1
-            'fear_greed_index': 50,  # 0-100
-            'volatility_sentiment': 'normal'
+            "sentiment_score": 0.0,  # -1 to 1
+            "fear_greed_index": 50,  # 0-100
+            "volatility_sentiment": "normal",
         }
 
 
@@ -285,17 +295,17 @@ ComplianceOfficer = RiskManager  # 可以扩展为独立类
 
 # 导出所有智能体类
 __all__ = [
-    'BaseSpecializedAgent',
-    'AgentAnalysisResult', 
-    'NewsHunter',
-    'FundamentalExpert',
-    'ChiefDecisionOfficer',
-    'ChiefWriter',
-    'ChartingArtist',  # 新增绘图师智能体
-    'TechnicalAnalyst',
-    'RiskManager',
-    'SentimentAnalyst',
-    'PolicyResearcher',
-    'ToolEngineer', 
-    'ComplianceOfficer'
+    "BaseSpecializedAgent",
+    "AgentAnalysisResult",
+    "NewsHunter",
+    "FundamentalExpert",
+    "ChiefDecisionOfficer",
+    "ChiefWriter",
+    "ChartingArtist",  # 新增绘图师智能体
+    "TechnicalAnalyst",
+    "RiskManager",
+    "SentimentAnalyst",
+    "PolicyResearcher",
+    "ToolEngineer",
+    "ComplianceOfficer",
 ]

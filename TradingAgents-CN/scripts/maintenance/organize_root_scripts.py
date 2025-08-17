@@ -4,43 +4,40 @@
 将测试和验证脚本移动到对应的目录中
 """
 
-import os
 import shutil
 from pathlib import Path
 
 # 导入日志模块
 from tradingagents.utils.logging_manager import get_logger
-logger = get_logger('scripts')
+
+logger = get_logger("scripts")
+
 
 def organize_root_scripts():
     """整理根目录下的脚本文件"""
-    
+
     # 项目根目录
     project_root = Path(__file__).parent.parent.parent
-    
-    logger.info(f"📁 整理TradingAgentsCN根目录下的脚本文件")
-    logger.info(f"=")
+
+    logger.info("📁 整理TradingAgentsCN根目录下的脚本文件")
+    logger.info("=")
     logger.info(f"📍 项目根目录: {project_root}")
-    
+
     # 定义文件移动规则
     file_moves = {
         # 验证脚本 -> scripts/validation/
         "check_dependencies.py": "scripts/validation/check_dependencies.py",
         "verify_gitignore.py": "scripts/validation/verify_gitignore.py",
         "smart_config.py": "scripts/validation/smart_config.py",
-        
         # 测试脚本 -> tests/
         "quick_test.py": "tests/quick_test.py",
         "test_smart_system.py": "tests/test_smart_system.py",
         "demo_fallback_system.py": "tests/demo_fallback_system.py",
-        
         # 开发脚本 -> scripts/development/
         "adaptive_cache_manager.py": "scripts/development/adaptive_cache_manager.py",
         "organize_scripts.py": "scripts/development/organize_scripts.py",
-        
         # 设置脚本 -> scripts/setup/
         "setup_fork_environment.ps1": "scripts/setup/setup_fork_environment.ps1",
-        
         # 维护脚本 -> scripts/maintenance/
         "remove_contribution_from_git.ps1": "scripts/maintenance/remove_contribution_from_git.ps1",
         "analyze_differences.ps1": "scripts/maintenance/analyze_differences.ps1",
@@ -49,70 +46,75 @@ def organize_root_scripts():
         "migrate_first_contribution.ps1": "scripts/maintenance/migrate_first_contribution.ps1",
         "create_scripts_structure.ps1": "scripts/maintenance/create_scripts_structure.ps1",
     }
-    
+
     # 创建必要的目录
     directories_to_create = [
         "scripts/validation",
-        "scripts/setup", 
+        "scripts/setup",
         "scripts/maintenance",
         "scripts/development",
         "tests/integration",
-        "tests/validation"
+        "tests/validation",
     ]
-    
-    logger.info(f"\n📁 创建必要的目录...")
+
+    logger.info("\n📁 创建必要的目录...")
     for dir_path in directories_to_create:
         full_path = project_root / dir_path
         full_path.mkdir(parents=True, exist_ok=True)
         logger.info(f"✅ 确保目录存在: {dir_path}")
-    
+
     # 移动文件
-    logger.info(f"\n📦 移动脚本文件...")
+    logger.info("\n📦 移动脚本文件...")
     moved_count = 0
     skipped_count = 0
-    
+
     for source_file, target_path in file_moves.items():
         source_path = project_root / source_file
         target_full_path = project_root / target_path
-        
+
         if source_path.exists():
             try:
                 # 确保目标目录存在
                 target_full_path.parent.mkdir(parents=True, exist_ok=True)
-                
+
                 # 移动文件
                 shutil.move(str(source_path), str(target_full_path))
                 logger.info(f"✅ 移动: {source_file} -> {target_path}")
                 moved_count += 1
-                
+
             except Exception as e:
                 logger.error(f"❌ 移动失败 {source_file}: {e}")
         else:
             logger.info(f"ℹ️ 文件不存在: {source_file}")
             skipped_count += 1
-    
+
     # 检查剩余的脚本文件
-    logger.debug(f"\n🔍 检查剩余的脚本文件...")
+    logger.debug("\n🔍 检查剩余的脚本文件...")
     remaining_scripts = []
-    
-    script_extensions = ['.py', '.ps1', '.sh', '.bat']
+
+    script_extensions = [".py", ".ps1", ".sh", ".bat"]
     for item in project_root.iterdir():
         if item.is_file() and item.suffix in script_extensions:
             # 排除主要的项目文件
-            if item.name not in ['main.py', 'setup.py', 'start_web.bat', 'start_web.ps1']:
+            if item.name not in [
+                "main.py",
+                "setup.py",
+                "start_web.bat",
+                "start_web.ps1",
+            ]:
                 remaining_scripts.append(item.name)
-    
+
     if remaining_scripts:
-        logger.warning(f"⚠️ 根目录下仍有脚本文件:")
+        logger.warning("⚠️ 根目录下仍有脚本文件:")
         for script in remaining_scripts:
             logger.info(f"  - {script}")
-        logger.info(f"\n💡 建议手动检查这些文件是否需要移动")
+        logger.info("\n💡 建议手动检查这些文件是否需要移动")
     else:
-        logger.info(f"✅ 根目录下没有剩余的脚本文件")
-    
+        logger.info("✅ 根目录下没有剩余的脚本文件")
+
     # 创建README文件
-    logger.info(f"\n📝 更新README文件...")
-    
+    logger.info("\n📝 更新README文件...")
+
     # 更新scripts/validation/README.md
     validation_readme = project_root / "scripts/validation/README.md"
     validation_content = """# Validation Scripts
@@ -158,17 +160,17 @@ python scripts/validation/smart_config.py
 - 某些验证可能需要网络连接或特定权限
 - 验证失败时会提供详细的错误信息和解决方案
 """
-    
-    with open(validation_readme, 'w', encoding='utf-8') as f:
+
+    with open(validation_readme, "w", encoding="utf-8") as f:
         f.write(validation_content)
-    logger.info(f"✅ 更新: scripts/validation/README.md")
-    
+    logger.info("✅ 更新: scripts/validation/README.md")
+
     # 更新tests/README.md
     tests_readme = project_root / "tests/README.md"
     if tests_readme.exists():
-        with open(tests_readme, 'r', encoding='utf-8') as f:
+        with open(tests_readme, encoding="utf-8") as f:
             existing_content = f.read()
-        
+
         # 添加新移动的测试文件说明
         additional_content = """
 
@@ -191,47 +193,49 @@ python tests/test_smart_system.py
 python tests/demo_fallback_system.py
 ```
 """
-        
+
         if "新增的测试文件" not in existing_content:
-            with open(tests_readme, 'a', encoding='utf-8') as f:
+            with open(tests_readme, "a", encoding="utf-8") as f:
                 f.write(additional_content)
-            logger.info(f"✅ 更新: tests/README.md")
-    
+            logger.info("✅ 更新: tests/README.md")
+
     # 统计结果
-    logger.info(f"\n📊 整理结果统计:")
+    logger.info("\n📊 整理结果统计:")
     logger.info(f"✅ 成功移动: {moved_count} 个文件")
     logger.info(f"ℹ️ 跳过文件: {skipped_count} 个文件")
     logger.warning(f"⚠️ 剩余脚本: {len(remaining_scripts)} 个文件")
-    
-    logger.info(f"\n🎯 目录结构优化完成!")
-    logger.info(f"📁 验证脚本: scripts/validation/")
-    logger.info(f"🧪 测试脚本: tests/")
-    logger.info(f"🔧 工具脚本: scripts/对应分类/")
-    
+
+    logger.info("\n🎯 目录结构优化完成!")
+    logger.info("📁 验证脚本: scripts/validation/")
+    logger.info("🧪 测试脚本: tests/")
+    logger.info("🔧 工具脚本: scripts/对应分类/")
+
     return moved_count > 0
+
 
 def main():
     """主函数"""
     try:
         success = organize_root_scripts()
-        
+
         if success:
-            logger.info(f"\n🎉 脚本整理完成!")
-            logger.info(f"\n💡 建议:")
-            logger.info(f"1. 检查移动后的脚本是否正常工作")
-            logger.info(f"2. 更新相关文档中的路径引用")
-            logger.info(f"3. 提交这些目录结构变更")
+            logger.info("\n🎉 脚本整理完成!")
+            logger.info("\n💡 建议:")
+            logger.info("1. 检查移动后的脚本是否正常工作")
+            logger.info("2. 更新相关文档中的路径引用")
+            logger.info("3. 提交这些目录结构变更")
         else:
-            logger.warning(f"\n⚠️ 没有文件被移动")
-        
+            logger.warning("\n⚠️ 没有文件被移动")
+
         return success
-        
+
     except Exception as e:
         logger.error(f"❌ 整理失败: {e}")
         import traceback
 
         traceback.print_exc()
         return False
+
 
 if __name__ == "__main__":
     success = main()
