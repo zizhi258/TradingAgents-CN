@@ -51,16 +51,14 @@ def render_model_help(provider: str):
             "description": "输入任何Google AI Studio支持的模型名称",
             "examples": [
                 "gemini-2.5-pro - 最强大的Gemini模型，适合复杂分析",
-                "gemini-2.0-flash-exp - 实验版Flash模型，速度快",
-                "gemini-1.5-pro-002 - Gemini Pro最新版本",
-                "gemini-1.5-flash-8b - 轻量级Flash模型",
+                "gemini-2.5-flash - 快速版本",
                 "gemini-pro-vision - 视觉理解模型",
             ],
             "docs_url": "https://ai.google.dev/gemini-api/docs/models/gemini",
             "notes": [
                 "💡 Gemini模型在多语言任务上表现优秀",
                 "🚀 推荐gemini-2.5-pro进行深度个股分析",
-                "⚡ gemini-2.0-flash适合快速响应场景",
+                "⚡ gemini-2.5-flash适合快速响应场景",
                 "⚠️ 2.5-pro模型成本较高但分析更全面",
                 "🌟 系统已针对不同模型自动优化参数",
             ],
@@ -71,7 +69,7 @@ def render_model_help(provider: str):
             "examples": [
                 "anthropic/claude-3.5-sonnet - Claude 3.5 Sonnet",
                 "meta-llama/llama-3.2-90b-instruct - Llama 3.2大模型",
-                "google/gemini-2.0-flash - Gemini 2.0 Flash",
+                "google/gemini-2.5-flash - Gemini 2.5 Flash",
                 "openai/gpt-4o-2024-11-20 - GPT-4o最新版",
             ],
             "docs_url": "https://openrouter.ai/models",

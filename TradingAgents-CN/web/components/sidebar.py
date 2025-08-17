@@ -181,7 +181,8 @@ def render_sidebar():
             <script>
             // 从localStorage读取设置并发送给Streamlit
             const provider = loadFromLocalStorage('llm_provider', 'deepseek');
-            const category = loadFromLocalStorage('model_category', 'google');
+            // 统一：category 与 provider 对齐的默认值
+            const category = loadFromLocalStorage('model_category', provider);
             const model = loadFromLocalStorage('llm_model', '');
 
             // 通过自定义事件发送数据

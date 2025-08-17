@@ -205,7 +205,7 @@ def render_model_config():
         )
         new_model_name = st.text_input(
             "模型名称",
-            placeholder="例如: gemini-1.5-pro, deepseek-chat",
+            placeholder="例如: gemini-2.5-pro, deepseek-chat",
             key="new_model_name",
         )
         new_api_key = st.text_input("API密钥", type="password", key="new_api_key")

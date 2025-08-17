@@ -1,0 +1,69 @@
+{
+  "analysis_id": "multi_model_979bf9c0_20250818_005124",
+  "status": "completed",
+  "results": {
+    "status": "success",
+    "collaboration_mode": "debate",
+    "agents_used": [
+      "sentiment_analyst",
+      "charting_artist"
+    ],
+    "analysis_data": {
+      "stock_symbol": "000625",
+      "market_type": "A股",
+      "analysis_date": "2025-08-18",
+      "research_depth": 1,
+      "custom_requirements": "",
+      "stock_name": "长安汽车",
+      "demo_sections": {
+        "market_report": "## 📈 长安汽车 技术面分析\n- 最新收盘: 12.93 (开 13.37 高 13.51 低 13.26)\n- 成交量: 86934326  成交额: 1124595921.18\n- 技术指标概览：\n  - MA: 5=12.93 / 10=13.089 / 20=13.246\n  - RSI(14)=35.92  MACD: dif=-0.2015 dea=-0.2018 hist=0.0006",
+        "fundamentals_report": "## 💰 长安汽车 基本面快照\n- 代码: 000625.SZ\n- 关键指标 (TTM/近四季)：\n  - 收入: 159,733,034,210 元  净利润: 7,321,363,900 元\n  - EPS: 0.74  ROE: 3.31%  毛利率: 12.79%\n  - 估值: PE(TTM)=17.2  PB=1.64  资产负债率=63.21%",
+        "sentiment_report": "## 💭 长安汽车 市场情绪概览(7日)\n- 情绪计数：正面 2 / 中性 1 / 负面 0 (共 3)\n- 情绪偏向：偏正面",
+        "news_report": "## 📰 长安汽车 近期新闻事件\n- 2025-07-02 | Reuters | China's Changan plans European factory, executive says (pos)\n  长安汽车计划在欧洲建设制造基地，并计划进入十个欧洲市场。在 2024 年该公司海外销量约 60 万辆，目标提高到 100 万辆；公司高管称其 2024 年销量 220 万辆，排名全球第 16。\n- 2025-07-29 | Reuters | China's Changan restructured as independent state‑owned automaker (pos)\n  央视报道，长安汽车从中国兵器装备集团剥离，成为由中央政府控股的独立汽车企业，拥有 117 家子公司，重点发展智能汽车、机器人和飞行汽车，并计划拓展东南亚、中东等海外市场。\n- 2025-03-21 | Reuters | Chinese carmaker Changan to start EV sales in 10 European markets this year (pos)\n  长安汽车计划从 2025 年 4 月起在多个欧洲国家推出深蓝 S07 电动 SUV，并将通过超过 1000 家经销商开展销售。高管表示公司 2024 年销量达 220 万辆，并计划海外销量达到 100 万辆。",
+        "risk_assessment": "## ⚠️ 风险评估\n- 市场波动与政策变化可能影响需求与估值\n- 海外扩张执行与汇率波动风险\n- 行业竞争与价格战压力",
+        "investment_plan": "## 📋 投资建议(演示)\n- 策略: 以演示数据生成的参考结论，非投资建议\n- 建议: 观察关键均线与RSI拐点，分批操作"
+      }
+    },
+    "results": {
+      "independent_analyses": {
+        "sentiment_analyst": {
+          "agent_type": "sentiment_analyst",
+          "analysis": "sentiment_analyst 对 000625 的初始观点（模拟）",
+          "stance": "bearish",
+          "confidence": 0.75,
+          "timestamp": "2025-08-18T00:52:04.811102"
+        },
+        "charting_artist": {
+          "agent_type": "charting_artist",
+          "analysis": "charting_artist 对 000625 的初始观点（模拟）",
+          "stance": "bearish",
+          "confidence": 0.75,
+          "timestamp": "2025-08-18T00:52:04.817312"
+        }
+      },
+      "consensus": {
+        "consensus_method": "debate_resolution",
+        "final_recommendation": "经过多轮辩论，对 000625 的最终共识（模拟）",
+        "agreement_level": 0.78,
+        "dissenting_opinions": [
+          "部分智能体持保留意见"
+        ],
+        "timestamp": "2025-08-18T00:52:04.817318"
+      },
+      "charting_artist": {
+        "agent_type": "charting_artist",
+        "analysis": "未生成任何图表",
+        "visualizations": {
+          "enabled": false,
+          "message": "绘图师功能未启用"
+        },
+        "timestamp": "2025-08-18T00:52:04.832740"
+      }
+    },
+    "final_article": "",
+    "final_article_metrics": {},
+    "is_demo": true,
+    "timestamp": "2025-08-18T00:52:04.832744"
+  },
+  "timestamp": "2025-08-18T00:52:04.834104"
+}

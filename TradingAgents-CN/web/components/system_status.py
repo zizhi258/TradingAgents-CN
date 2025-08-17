@@ -8,8 +8,10 @@ import os
 import sys
 import tempfile
 import zipfile
+import time
 from datetime import datetime
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import psutil
 import streamlit as st
@@ -233,49 +235,15 @@ def render_diagnostic_tools():
 
     st.markdown("### 诊断和维护工具")
 
-    # 日志分析
+    # 日志分析（仅保留已实现项）
     st.markdown("#### 📋 日志分析")
-    col1, col2, col3 = st.columns(3)
+    if st.button("📖 查看最新日志"):
+        show_recent_logs()
 
-    with col1:
-        if st.button("📖 查看最新日志"):
-            show_recent_logs()
-
-    with col2:
-        if st.button("⚠️ 查看错误日志"):
-            show_error_logs()
-
-    with col3:
-        if st.button("🧹 清理日志文件"):
-            cleanup_old_logs()
-
-    # 线程管理
+    # 线程管理（仅保留已实现项）
     st.markdown("#### 🔄 进程管理")
-    col4, col5 = st.columns(2)
-
-    with col4:
-        if st.button("🔍 检查运行线程"):
-            show_running_threads()
-
-    with col5:
-        if st.button("🧹 清理僵尸线程"):
-            cleanup_zombie_threads()
-
-    # 缓存管理
-    st.markdown("#### 💾 缓存管理")
-    col6, col7, col8 = st.columns(3)
-
-    with col6:
-        if st.button("📊 缓存统计"):
-            show_cache_statistics()
-
-    with col7:
-        if st.button("🔄 重置缓存"):
-            reset_cache()
-
-    with col8:
-        if st.button("🧹 清理过期缓存"):
-            cleanup_expired_cache()
+    if st.button("🔍 检查运行线程"):
+        show_running_threads()
 
     # 导出诊断包
     st.markdown("#### 📦 诊断包导出")
@@ -283,6 +251,25 @@ def render_diagnostic_tools():
 
     if st.button("📥 生成诊断包", type="primary"):
         generate_diagnostic_package()
+
+    st.markdown("---")
+    # ===== LLM 深度检查 =====
+    st.markdown("### 🤖 大模型健康深度检查")
+    st.caption("自动枚举当前可用供应商与模型，逐一发起最小调用，统计可用性/延迟/错误信息")
+
+    col_m1, col_m2 = st.columns(2)
+    with col_m1:
+        run_probe = st.button("🔍 一键检查所有模型", type="primary")
+    with col_m2:
+        if st.button("🧼 清除检查结果"):
+            st.session_state.pop("llm_probe_results", None)
+
+    if run_probe:
+        with st.spinner("正在枚举并检查模型可用性..."):
+            st.session_state.llm_probe_results = probe_all_llm_models()
+
+    if "llm_probe_results" in st.session_state:
+        show_llm_probe_results(st.session_state.llm_probe_results)
 
 
 def perform_health_check() -> dict:
@@ -739,3 +726,245 @@ def export_health_report(health_results: dict):
 
     except Exception as e:
         st.error(f"❌ 导出健康报告失败: {e}")
+
+
+# ===== 新增：LLM深度检查工具 =====
+
+def _collect_current_models() -> dict[str, set[str]]:
+    """收集尽可能全面的模型清单（按供应商分组）。
+
+    来源优先级：
+    1) provider_models 中的内置目录（含自定义覆盖）
+    2) 后端各客户端的 SUPPORTED_MODELS（Google/DeepSeek/SiliconFlow/Gemini-API）
+    3) 前端 YAML/工具的 SiliconFlow 模型目录（web.utils.model_catalog）
+    4) 会话态显式选择（llm_model/llm_quick_model/llm_deep_model）
+    """
+    out: dict[str, set[str]] = {}
+
+    # 1) 内置目录（含角色库覆盖）
+    try:
+        from tradingagents.config.provider_models import model_provider_manager
+
+        for name, info in (model_provider_manager.model_catalog or {}).items():
+            provider = getattr(info, "provider", None)
+            provider_val = getattr(provider, "value", str(provider))
+            if provider_val:
+                out.setdefault(provider_val, set()).add(name)
+    except Exception as e:
+        logger.warning(f"收集模型目录失败: {e}")
+
+    # 2) 后端客户端支持清单
+    try:
+        from tradingagents.api.google_ai_client import GoogleAIClient  # type: ignore
+
+        for name in (GoogleAIClient.SUPPORTED_MODELS or {}).keys():
+            out.setdefault("google", set()).add(str(name))
+    except Exception:
+        pass
+
+    try:
+        from tradingagents.api.deepseek_client import DeepSeekClient  # type: ignore
+
+        for name in (DeepSeekClient.SUPPORTED_MODELS or {}).keys():
+            out.setdefault("deepseek", set()).add(str(name))
+    except Exception:
+        pass
+
+    try:
+        from tradingagents.api.siliconflow_client import (
+            SiliconFlowClient,  # type: ignore
+        )
+
+        for name in (SiliconFlowClient.SUPPORTED_MODELS or {}).keys():
+            out.setdefault("siliconflow", set()).add(str(name))
+    except Exception:
+        pass
+
+    try:
+        from tradingagents.api.gemini_openai_compat_client import (
+            GeminiOpenAICompatClient,  # type: ignore
+        )
+
+        for name in (GeminiOpenAICompatClient.SUPPORTED_MODELS or {}).keys():
+            # 该客户端既支持 "gemini-2.5-*" 也支持 "gemini-api/*" 两种命名
+            # 按 provider 归为 gemini_api
+            out.setdefault("gemini_api", set()).add(str(name))
+    except Exception:
+        pass
+
+    # 3) 前端 YAML/工具的 SiliconFlow 模型目录
+    try:
+        from web.utils.model_catalog import get_siliconflow_models  # type: ignore
+
+        for name in get_siliconflow_models() or []:
+            out.setdefault("siliconflow", set()).add(str(name))
+    except Exception:
+        pass
+
+    # 4) 叠加会话态显式选择
+    try:
+        sel = []
+        for k in ["llm_model", "llm_quick_model", "llm_deep_model"]:
+            v = str(st.session_state.get(k) or "").strip()
+            if v:
+                sel.append(v)
+        for v in sel:
+            provider = None
+            try:
+                from tradingagents.config.provider_models import (
+                    model_provider_manager as _mpm,
+                )
+
+                mi = _mpm.get_model_info(v)
+                provider = getattr(mi, "provider", None)
+                provider = getattr(provider, "value", str(provider))
+            except Exception:
+                pass
+            provider = provider or st.session_state.get("llm_provider") or "unknown"
+            out.setdefault(str(provider), set()).add(v)
+    except Exception:
+        pass
+
+    return out
+
+
+def probe_all_llm_models() -> dict:
+    """调用所有已知供应商/模型的健康检查或最小调用，返回结构化结果。
+
+    - 并发轻量化：线程池并发以加速整体探测
+    - 结果结构：与原有 UI 展示兼容
+    """
+    catalog = _collect_current_models()
+    results: dict[str, dict] = {"summary": {}, "providers": {}}
+
+    # 预创建结果字典
+    for provider in catalog.keys():
+        results["providers"][provider] = {"ok": 0, "fail": 0, "items": []}
+
+    tasks: list[tuple[str, str]] = []  # (provider, model)
+    for provider, models in catalog.items():
+        for model in sorted(models):
+            tasks.append((provider, model))
+
+    # 控制并发度，避免过高负载
+    max_workers = min(16, max(1, len(tasks)))
+
+    def _run_one(p: str, m: str) -> tuple[str, dict]:
+        start_ts = time.time()
+        item = {"model": m, "ok": False, "latency_ms": None, "error": None}
+        try:
+            ok = _probe_one(p, m)
+            item["ok"] = bool(ok)
+        except Exception as e:  # 记录错误，不抛出
+            item["error"] = str(e)
+        finally:
+            item["latency_ms"] = int((time.time() - start_ts) * 1000)
+        return p, item
+
+    # 并发执行
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_map = {executor.submit(_run_one, p, m): (p, m) for p, m in tasks}
+        for fut in as_completed(future_map):
+            p, item = fut.result()
+            bucket = results["providers"].setdefault(p, {"ok": 0, "fail": 0, "items": []})
+            bucket["items"].append(item)
+            if item.get("ok"):
+                bucket["ok"] += 1
+            else:
+                bucket["fail"] += 1
+
+    # 汇总
+    total_ok = sum(p["ok"] for p in results["providers"].values())
+    total_fail = sum(p["fail"] for p in results["providers"].values())
+    results["summary"] = {"ok": total_ok, "fail": total_fail, "total": total_ok + total_fail}
+    return results
+
+
+def _probe_one(provider: str, model: str) -> bool:
+    """按供应商执行最小可用性调用。"""
+    provider = (provider or "").lower().strip()
+    try:
+        from tradingagents.core.base_multi_model_adapter import (
+            TaskSpec,
+            TaskComplexity,
+        )
+
+        dummy = TaskSpec(
+            task_type="health_check",
+            complexity=TaskComplexity.LOW,
+            estimated_tokens=8,
+            requires_reasoning=False,
+            requires_chinese=False,
+            requires_speed=True,
+            context_data={},
+        )
+
+        if provider in ("google",):
+            from tradingagents.api.google_ai_client import GoogleAIClient
+
+            client = GoogleAIClient({"default_model": model})
+            # 优先走专用 health_check
+            try:
+                return client.health_check()
+            except Exception:
+                pass
+            res = client.execute_task(model, "ping", dummy, max_tokens=8)
+            return bool(res and res.success)
+
+        if provider in ("gemini_api", "gemini-api"):
+            from tradingagents.api.gemini_openai_compat_client import (
+                GeminiOpenAICompatClient,
+            )
+
+            client = GeminiOpenAICompatClient({"default_model": model})
+            try:
+                return client.health_check()
+            except Exception:
+                pass
+            res = client.execute_task(model, "ping", dummy, max_tokens=8)
+            return bool(res and res.success)
+
+        if provider in ("deepseek",):
+            from tradingagents.api.deepseek_client import DeepSeekClient
+
+            client = DeepSeekClient({"default_model": model})
+            try:
+                return client.health_check()
+            except Exception:
+                pass
+            res = client.execute_task(model, "ping", dummy, max_tokens=8)
+            return bool(res and res.success)
+
+        if provider in ("siliconflow",):
+            from tradingagents.api.siliconflow_client import SiliconFlowClient
+
+            client = SiliconFlowClient({"default_model": model})
+            try:
+                return client.health_check()
+            except Exception:
+                pass
+            res = client.execute_task(model, "ping", dummy, max_tokens=8)
+            return bool(res and res.success)
+
+        # 未知/其他，尝试跳过
+        return False
+    except Exception as e:
+        logger.warning(f"探测失败: provider={provider}, model={model}, err={e}")
+        return False
+
+
+def show_llm_probe_results(results: dict) -> None:
+    """以表格/摘要展示检查结果。"""
+    st.markdown("#### 检查结果汇总")
+    summary = results.get("summary", {})
+    st.write(f"可用: {summary.get('ok', 0)} | 不可用: {summary.get('fail', 0)} | 总计: {summary.get('total', 0)}")
+
+    st.markdown("#### 供应商详情")
+    providers = results.get("providers", {})
+    for provider, info in providers.items():
+        with st.expander(f"{provider} ({info.get('ok',0)}/{info.get('ok',0)+info.get('fail',0)} 可用)"):
+            for item in info.get("items", []):
+                icon = "✅" if item.get("ok") else "❌"
+                latency = item.get("latency_ms")
+                err = item.get("error")
+                st.write(f"{icon} {item['model']} - {latency}ms" + (f" - {err}" if err else ""))

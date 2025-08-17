@@ -216,13 +216,7 @@ class SmartRoutingEngine:
                 "cost": 0.8,
                 "reliability": 0.85,
             },
-            "Pro/Qwen/Qwen2.5-72B-Instruct": {
-                "reasoning": 0.87,
-                "speed": 0.6,
-                "chinese": 0.9,
-                "cost": 0.65,
-                "reliability": 0.9,
-            },
+            # 移除 Qwen2.5 旧系列（72B）
             "deepseek-ai/deepseek-llm-67b-chat": {
                 "reasoning": 0.8,
                 "speed": 0.6,
@@ -244,7 +238,7 @@ class SmartRoutingEngine:
                 "cost": 0.7,
                 "reliability": 0.85,
             },
-            # Google模型 - 保持所有模型配置，但gemini-2.5-pro优先级最高
+            # Google模型 - 保持 2.5 家族配置，gemini-2.5-pro优先级最高
             "gemini-2.5-pro": {
                 "reasoning": 0.95,
                 "multimodal": 0.95,
@@ -263,20 +257,7 @@ class SmartRoutingEngine:
                 "cost": 0.4,
                 "reliability": 0.9,
             },
-            "gemini-1.5-pro": {
-                "reasoning": 0.85,
-                "speed": 0.6,
-                "chinese": 0.7,
-                "cost": 0.6,
-                "reliability": 0.9,
-            },
-            "gemini-2.0-flash": {
-                "reasoning": 0.8,
-                "speed": 0.8,
-                "chinese": 0.7,
-                "cost": 0.75,
-                "reliability": 0.85,
-            },
+            # 已移除 1.5/2.0 系列
             "gemini-2.5-flash": {
                 "reasoning": 0.85,
                 "speed": 0.9,
@@ -391,8 +372,6 @@ class SmartRoutingEngine:
                 # 在可用模型中优先选择Flash系列
                 for candidate in [
                     "gemini-2.5-flash",
-                    "gemini-2.0-flash",
-                    "gemini-1.5-flash",
                 ]:
                     if candidate in available_models:
                         flagship_model = candidate
@@ -569,9 +548,9 @@ class SmartRoutingEngine:
         pool_models = {
             "deep_reasoning": ["Qwen/Qwen3-235B-A22B-Instruct-2507", "gemini-2.5-pro"],
             "technical_longseq": [
-                "deepseek-ai/DeepSeek-R1",
+                # 已移除 R1
                 "moonshotai/Kimi-K2-Instruct",
-                "Pro/Qwen/Qwen2.5-72B-Instruct",
+                # 已移除 Qwen2.5-72B 旧系列
                 "deepseek-chat",
             ],
         }
@@ -1292,8 +1271,8 @@ class SmartRoutingEngine:
         # 优先选择成本效益较好的模型 - 只保留可用的模型
         cost_efficient_models = [
             "gemini-2.5-pro",
+            "gemini-2.5-flash",
             "deepseek-ai/DeepSeek-V3",
-            "gemini-2.0-flash",
             "deepseek-chat",
             "moonshotai/Kimi-K2-Instruct",
         ]

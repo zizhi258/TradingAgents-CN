@@ -499,6 +499,46 @@ class EnhancedMarketConfigurationPanel:
         st.markdown("#### 🤖 AI模型配置")
         ai_model_config = self._render_ai_model_config(key_prefix)
 
+        # 统一的专业智能体团队（与多模型/单模型一致）
+        st.markdown("#### 👥 专业智能体团队")
+        try:
+            from tradingagents.config.provider_models import model_provider_manager
+
+            _defs = model_provider_manager.role_definitions
+            roles_config = []
+            for rk, rc in _defs.items():
+                if getattr(rc, "enabled", True):
+                    roles_config.append((rk, rc.name or rk, rc.description or rc.name or rk))
+            roles_config.sort(key=lambda x: x[1])
+        except Exception:
+            roles_config = [
+                ("news_hunter", "快讯猎手", "实时新闻收集与分析"),
+                ("fundamental_expert", "基本面专家", "财务数据与估值分析"),
+                ("technical_analyst", "技术分析师", "技术指标与图表分析"),
+                ("sentiment_analyst", "情绪分析师", "市场情绪与社媒分析"),
+                ("risk_manager", "风控经理", "风险评估与管理"),
+                ("compliance_officer", "合规官", "合规性检查"),
+                ("policy_researcher", "政策研究员", "政策法规解读分析"),
+                ("tool_engineer", "工具工程师", "量化工具与代码生成"),
+                ("chief_decision_officer", "首席决策官", "最终决策仲裁"),
+                ("charting_artist", "绘图师", "生成可交互金融图表"),
+            ]
+
+        # 恢复会话选择
+        prev_agents = st.session_state.get("market_selected_agents", [])
+        cols_ra = st.columns(3)
+        selected_agents: list[str] = []
+        per_col = len(roles_config) // 3 + (1 if len(roles_config) % 3 else 0)
+        for idx, col in enumerate(cols_ra):
+            s = idx * per_col
+            e = min(s + per_col, len(roles_config))
+            with col:
+                for rk, rl, rd in roles_config[s:e]:
+                    if st.checkbox(rl, value=(rk in prev_agents), key=f"market_role_{rk}", help=rd):
+                        selected_agents.append(rk)
+
+        st.session_state.market_selected_agents = selected_agents
+
         # 高级筛选条件（响应式）
         custom_filters = {}
         if preset_type == "自定义筛选":
@@ -560,7 +600,10 @@ class EnhancedMarketConfigurationPanel:
             "time_range": time_range,
             "custom_filters": custom_filters,
             "analysis_focus": analysis_focus,
-            "ai_model_config": ai_model_config,
+            "ai_model_config": {
+                **ai_model_config,
+                "selected_agents": selected_agents,
+            },
             "advanced_options": advanced_options,
             "submitted": start_scan,
             "estimate_requested": estimate_cost,
@@ -579,7 +622,7 @@ class EnhancedMarketConfigurationPanel:
             primary_model = st.selectbox(
                 "🧠 主要模型",
                 options=[
-                    "gemini-2.0-flash",
+                    "gemini-2.5-flash",
                     "gemini-2.5-pro",
                     "deepseek-v3",
                     "siliconflow",
@@ -1379,7 +1422,7 @@ def calculate_enhanced_scan_cost(config_data: dict[str, Any]):
 
     # AI模型成本系数
     model_cost_factor = {
-        "gemini-2.0-flash": 1.0,  # 基准
+        "gemini-2.5-flash": 1.0,  # 基准
         "gemini-2.5-pro": 2.5,
         "deepseek-v3": 0.3,
         "siliconflow": 0.2,
@@ -1409,7 +1452,7 @@ def calculate_enhanced_scan_cost(config_data: dict[str, Any]):
     time_range = config_data.get("time_range", "1月")
 
     # AI模型配置影响
-    ai_model = config_data.get("ai_model_config", {}).get("model", "gemini-2.0-flash")
+    ai_model = config_data.get("ai_model_config", {}).get("model", "gemini-2.5-flash")
     model_factor_value = model_cost_factor.get(ai_model, 1.0)
 
     # 逐步计算

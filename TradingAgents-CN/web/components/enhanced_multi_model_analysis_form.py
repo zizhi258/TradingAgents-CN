@@ -176,7 +176,7 @@ def render_compact_multi_model_config_panel(
 ) -> dict[str, Any]:
     """分区分页的多模型配置面板（去除重复的角色配置，集中到‘🧭 角色中心’）"""
     tabs = st.tabs(
-        ["基础信息", "模型与提供商", "协作与智能体", "路由与预算", "高级设置"]
+        ["基础信息", "模型与提供商", "协作与智能体", "路由与预算", "高级设置", "结果"]
     )
 
     # 1) 基础信息
@@ -205,6 +205,19 @@ def render_compact_multi_model_config_panel(
     # 5) 高级设置（基础项）
     with tabs[4]:
         adv_cfg = render_basic_advanced_settings(location="main")
+
+    # 6) 结果（新增）：在同一面板内查看分析结果与绘图
+    with tabs[5]:
+        try:
+            render_inline_multi_model_results_tab()
+            # 标记已在面板内渲染结果，避免页面下方重复渲染
+            try:
+                st.session_state._multi_model_results_rendered_inline = True
+            except Exception:
+                pass
+        except Exception as _e:
+            st.info("结果区域待生成。提交分析后将在此显示。")
+            st.caption(f"详情: {_e}")
 
     # 汇总配置（与原有键保持兼容）
     full_cfg = {
@@ -469,6 +482,8 @@ def render_ai_collaboration_config(cached_config: dict[str, Any]) -> dict[str, A
         "risk_manager",
         "compliance_officer",
         "chief_decision_officer",
+        # 新增：绘图师
+        "charting_artist",
     ]
 
     # 仅展示当前后端可用的角色，保持顺序
@@ -496,6 +511,7 @@ def render_ai_collaboration_config(cached_config: dict[str, Any]) -> dict[str, A
         "risk_manager": "投资风险评估与控制，推荐使用GLM-4.5模型",
         "compliance_officer": "法律合规性检查，推荐使用GLM-4.5或Gemini",
         "chief_decision_officer": "综合决策与最终建议，推荐使用最强模型",
+        "charting_artist": "基于分析结果自动生成可交互金融图表（Plotly）",
     }
 
     selected_agents = []
@@ -521,6 +537,7 @@ def render_ai_collaboration_config(cached_config: dict[str, Any]) -> dict[str, A
                 "risk_manager": "⚠️",
                 "compliance_officer": "🛡️",
                 "chief_decision_officer": "🏆",
+                "charting_artist": "🎨",
             }
             label = f"{emoji_map.get(role, '🤖')} {label}"
             if st.checkbox(
@@ -587,6 +604,136 @@ def render_advanced_settings(cached_config: dict[str, Any]) -> dict[str, Any]:
         "use_cache": use_cache,
         "enable_progress_updates": enable_progress_updates,
     }
+
+
+def _get_mm_results_from_state() -> dict | None:
+    """从 session_state 或最近的结果文件中获取多模型结果（容错）。"""
+    try:
+        import json, os
+        from glob import glob
+        results = st.session_state.get("multi_model_analysis_results")
+        if results:
+            return results
+        # 兜底：尝试读取最近一次的结果文件
+        files = sorted(glob("./data/multi_model_results_*.json"))
+        if files:
+            latest = files[-1]
+            with open(latest, encoding="utf-8") as f:
+                data = json.load(f)
+            return data.get("results") or data
+    except Exception:
+        return None
+
+
+def render_inline_multi_model_results_tab() -> None:
+    """在增强面板内渲染“结果”页签，包含各角色与绘图师的标签页。"""
+    results = _get_mm_results_from_state()
+    if not results:
+        st.info("暂无结果。请在前面的页签完成配置并提交分析。")
+        return
+
+    # 兼容两种结构：直接是 results 映射 或 外层包含 results/final_article
+    agent_results = results.get("results") if isinstance(results, dict) else None
+    if not agent_results and isinstance(results, dict):
+        agent_results = results
+    final_article = None
+    if isinstance(results, dict):
+        final_article = results.get("final_article")
+
+    # 标签页顺序（含绘图师）
+    tab_labels = [
+        "📝 主笔人长文",
+        "📰 快讯猎手",
+        "📈 技术分析师",
+        "📋 政策研究员",
+        "💰 基本面专家",
+        "💭 情绪分析师",
+        "🔧 工具工程师",
+        "🛡️ 风控经理",
+        "⚖️ 合规官",
+        "🎯 首席决策官",
+        "🎨 绘图师",
+    ]
+    tabs = st.tabs(tab_labels)
+
+    # 1) 主笔人长文
+    with tabs[0]:
+        if isinstance(final_article, str) and final_article.strip():
+            st.markdown(final_article)
+        else:
+            st.info("尚无主笔人长文。")
+
+    # 角色键映射
+    role_map = {
+        1: "news_hunter",
+        2: "technical_analyst",
+        3: "policy_researcher",
+        4: "fundamental_expert",
+        5: "sentiment_analyst",
+        6: "tool_engineer",
+        7: "risk_manager",
+        8: "compliance_officer",
+        9: "chief_decision_officer",
+    }
+
+    # 2-10) 各智能体文本结果
+    for idx, key in role_map.items():
+        with tabs[idx]:
+            if isinstance(agent_results, dict) and key in agent_results:
+                item = agent_results[key]
+                text = item.get("analysis") if isinstance(item, dict) else str(item)
+                if text:
+                    st.markdown(text)
+                else:
+                    st.info("暂无该角色输出。")
+            else:
+                st.info("未选择或无该角色输出。")
+
+    # 11) 绘图师
+    with tabs[10]:
+        # 优先读取结果内的可视化清单
+        viz = None
+        if isinstance(agent_results, dict) and "charting_artist" in agent_results:
+            entry = agent_results["charting_artist"]
+            viz = entry.get("visualizations") if isinstance(entry, dict) else None
+        charts = []
+        if isinstance(viz, dict):
+            charts = viz.get("charts_generated", []) or []
+        if charts:
+            for chart in charts:
+                p = chart.get("path") or chart.get("file_path")
+                if p and os.path.exists(p):
+                    try:
+                        if p.endswith(".html"):
+                            with open(p, encoding="utf-8") as f:
+                                html = f.read()
+                            st.components.v1.html(html, height=600, scrolling=True)
+                        elif p.endswith(".json"):
+                            import json as _json
+                            import plotly.graph_objects as go
+                            with open(p, encoding="utf-8") as f:
+                                fig_dict = _json.load(f)
+                            st.plotly_chart(go.Figure(fig_dict), use_container_width=True)
+                    except Exception as _e:
+                        st.warning(f"图表显示失败: {_e}")
+                st.markdown("---")
+        else:
+            # 兜底：展示历史图表
+            st.caption("未检测到本次分析的图表结果，尝试加载历史图表…")
+            try:
+                from components.charting_artist_component import get_local_charts, display_local_charts
+                symbol = None
+                try:
+                    symbol = (results.get("analysis_data") or {}).get("stock_symbol") if isinstance(results, dict) else None
+                except Exception:
+                    symbol = None
+                local_charts = get_local_charts(symbol)
+                if local_charts:
+                    display_local_charts(local_charts)
+                else:
+                    st.info("暂无可展示的图表。")
+            except Exception:
+                st.info("图表组件不可用或未生成图表。")
 
 
 def handle_analysis_submission(config: dict[str, Any]):

@@ -126,6 +126,7 @@ def run_stock_analysis(
     routing_strategy: str = None,
     fallbacks: list = None,
     max_budget: float = 0.0,
+    extended_roles: list[str] | None = None,
 ):
     """执行个股分析
 
@@ -342,14 +343,14 @@ def run_stock_analysis(
                     config.get("deep_think_llm", "deepseek-chat") or "deepseek-chat"
                 )
             elif llm_provider == "google":
-                # 低深度优先使用Flash系列以获得更快响应
+                # 低深度优先使用最新 Flash 系列，移除已淘汰的 2.0/1.5 系列
                 config["quick_think_llm"] = (
                     config.get("quick_think_llm", "gemini-2.5-flash")
                     or "gemini-2.5-flash"
                 )
                 config["deep_think_llm"] = (
-                    config.get("deep_think_llm", "gemini-2.0-flash")
-                    or "gemini-2.0-flash"
+                    config.get("deep_think_llm", "gemini-2.5-flash")
+                    or "gemini-2.5-flash"
                 )
         elif research_depth == 2:  # 2级 - 基础分析
             config["max_debate_rounds"] = 1
@@ -369,8 +370,8 @@ def run_stock_analysis(
                     or "gemini-2.5-flash"
                 )
                 config["deep_think_llm"] = (
-                    config.get("deep_think_llm", "gemini-2.0-flash")
-                    or "gemini-2.0-flash"
+                    config.get("deep_think_llm", "gemini-2.5-flash")
+                    or "gemini-2.5-flash"
                 )
         elif research_depth == 3:  # 3级 - 标准分析 (默认)
             config["max_debate_rounds"] = 1
@@ -621,6 +622,13 @@ def run_stock_analysis(
             "session_id": session_id if TOKEN_TRACKING_ENABLED else None,
         }
 
+        # 注入扩展角色（用于兼容展示/后处理），不改变后端主流程
+        try:
+            if extended_roles:
+                results["extended_roles"] = sorted({str(r) for r in extended_roles})
+        except Exception:
+            pass
+
         # 记录分析完成的详细日志
         analysis_duration = time.time() - analysis_start_time
 
@@ -713,7 +721,7 @@ def run_stock_analysis(
                         config_guide += f"• **{provider.title()}**: {suggestion}\n"
 
                     # 返回特殊的配置指引错误
-                    return generate_demo_results(
+                    demo = generate_demo_results(
                         stock_symbol,
                         analysis_date,
                         analysts,
@@ -723,11 +731,19 @@ def run_stock_analysis(
                         f"API认证失败 - {config_guide}",
                         market_type,
                     )
+                    try:
+                        if isinstance(demo, dict) and extended_roles:
+                            demo["extended_roles"] = sorted(
+                                {str(r) for r in extended_roles}
+                            )
+                    except Exception:
+                        pass
+                    return demo
             except ImportError:
                 pass
 
         # 如果真实分析失败，返回模拟数据用于演示
-        return generate_demo_results(
+        demo = generate_demo_results(
             stock_symbol,
             analysis_date,
             analysts,
@@ -737,6 +753,12 @@ def run_stock_analysis(
             str(e),
             market_type,
         )
+        try:
+            if isinstance(demo, dict) and extended_roles:
+                demo["extended_roles"] = sorted({str(r) for r in extended_roles})
+        except Exception:
+            pass
+        return demo
 
 
 def format_analysis_results(results):
@@ -793,6 +815,7 @@ def format_analysis_results(results):
 
     state = results["state"]
     decision = results["decision"]
+    extended_roles = results.get("extended_roles") or []
 
     # 提取关键信息
     # decision 可能是字符串（如 "BUY", "SELL", "HOLD"）或字典
@@ -893,6 +916,41 @@ def format_analysis_results(results):
                 content = translate_analyst_labels(content)
             formatted_state[key] = content
 
+    # 轻量后处理：为扩展角色添加兼容占位说明，不调用额外LLM
+    try:
+        if extended_roles and isinstance(formatted_state, dict):
+            if "policy_researcher" in extended_roles and formatted_state.get("news_report"):
+                formatted_state["news_report"] = (
+                    str(formatted_state.get("news_report", ""))
+                    + "\n\n---\n\n**【政策研究员补充】** 基于新闻要点的政策与监管解读（兼容模式，占位提示）。"
+                )
+            if "compliance_officer" in extended_roles and formatted_state.get("risk_assessment"):
+                formatted_state["risk_assessment"] = (
+                    str(formatted_state.get("risk_assessment", ""))
+                    + "\n\n---\n\n**【合规官补充】** 重点合规检查项与披露要点（兼容模式，占位提示）。"
+                )
+            if "tool_engineer" in extended_roles and formatted_state.get("market_report"):
+                formatted_state["market_report"] = (
+                    str(formatted_state.get("market_report", ""))
+                    + "\n\n---\n\n**【工具工程师提示】** 可选量化脚本与回测思路（兼容模式，占位提示）。"
+                )
+            if "chief_decision_officer" in extended_roles and formatted_state.get("investment_plan"):
+                formatted_state["investment_plan"] = (
+                    str(formatted_state.get("investment_plan", ""))
+                    + "\n\n---\n\n**【首席决策官签注】** 建议结合组合风险与仓位管理，分步执行（兼容模式，占位提示）。"
+                )
+    except Exception:
+        pass
+
+    # 合并显示分析师列表：在列表中加入扩展角色键，统一角色展示
+    analysts_display = list(results["analysts"]) if isinstance(results.get("analysts"), list) else []
+    try:
+        for r in extended_roles:
+            if r not in analysts_display:
+                analysts_display.append(r)
+    except Exception:
+        pass
+
     return {
         "stock_symbol": results["stock_symbol"],
         "decision": formatted_decision,
@@ -900,13 +958,13 @@ def format_analysis_results(results):
         "success": True,
         # 将配置信息放在顶层，供前端直接访问
         "analysis_date": results["analysis_date"],
-        "analysts": results["analysts"],
+        "analysts": analysts_display,
         "research_depth": results["research_depth"],
         "llm_provider": results.get("llm_provider", "deepseek"),
         "llm_model": results["llm_model"],
         "metadata": {
             "analysis_date": results["analysis_date"],
-            "analysts": results["analysts"],
+            "analysts": analysts_display,
             "research_depth": results["research_depth"],
             "llm_provider": results.get("llm_provider", "deepseek"),
             "llm_model": results["llm_model"],

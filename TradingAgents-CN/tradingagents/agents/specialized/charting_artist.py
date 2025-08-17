@@ -16,6 +16,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from .base_specialized_agent import BaseSpecializedAgent
+from tradingagents.utils.telemetry import telemetry
 
 
 class ChartingArtist(BaseSpecializedAgent):
@@ -256,9 +257,31 @@ class ChartingArtist(BaseSpecializedAgent):
 
             if config_path.exists():
                 with open(config_path, encoding="utf-8") as f:
-                    return yaml.safe_load(f)
+                    cfg = yaml.safe_load(f) or {}
             else:
                 self.logger.warning("图表配置文件不存在，使用默认配置")
+                cfg = {}
+
+            # 基础默认填充
+            if not isinstance(cfg.get("charting_artist"), dict):
+                cfg["charting_artist"] = {}
+            ca = cfg["charting_artist"]
+            ca.setdefault("enabled", False)
+            ca.setdefault("chart_settings", {})
+            cs = ca["chart_settings"]
+            cs.setdefault("default_theme", "plotly_dark")
+            cs.setdefault("width", 800)
+            cs.setdefault("height", 600)
+            cs.setdefault("interactive", True)
+
+            # 环境变量优先：修复YAML禁用覆盖ENV的缺陷
+            env_flag = os.getenv("CHARTING_ARTIST_ENABLED", "").strip().lower()
+            if env_flag in ("true", "1", "yes", "on"):
+                ca["enabled"] = True
+            elif env_flag in ("false", "0", "no", "off"):
+                ca["enabled"] = False
+
+            return cfg
 
         except Exception as e:
             self.logger.warning(f"加载图表配置失败: {e}")
@@ -300,6 +323,11 @@ class ChartingArtist(BaseSpecializedAgent):
             Dict包含生成的图表信息
         """
         if not self.is_enabled():
+            telemetry.emit(
+                "charting.disabled",
+                component="charting",
+                data={"symbol": symbol},
+            )
             return {"enabled": False, "message": "绘图师功能未启用"}
 
         visualization_results = {
@@ -329,6 +357,14 @@ class ChartingArtist(BaseSpecializedAgent):
 
             # 分析需要生成的图表类型
             chart_plan = self._analyze_chart_requirements(analysis_results, market_data)
+            telemetry.emit(
+                "charting.plan",
+                component="charting",
+                data={
+                    "symbol": symbol,
+                    "plan": [c.get("type") for c in chart_plan],
+                },
+            )
 
             # 生成各类图表（优先尝试LLM，失败回退程序化）
             for chart_spec in chart_plan:
@@ -356,12 +392,31 @@ class ChartingArtist(BaseSpecializedAgent):
 
                     if chart_result["success"]:
                         visualization_results["charts_generated"].append(chart_result)
+                        telemetry.emit(
+                            "charting.chart_done",
+                            component="charting",
+                            data={
+                                "symbol": symbol,
+                                "type": chart_spec["type"],
+                                "path": chart_result.get("path"),
+                            },
+                        )
                     else:
                         visualization_results["errors"].append(
                             {
                                 "chart_type": chart_spec["type"],
                                 "error": chart_result["error"],
                             }
+                        )
+                        telemetry.emit(
+                            "charting.chart_error",
+                            component="charting",
+                            level="error",
+                            data={
+                                "symbol": symbol,
+                                "type": chart_spec["type"],
+                                "error": chart_result.get("error"),
+                            },
                         )
 
                 except Exception as e:
@@ -380,6 +435,12 @@ class ChartingArtist(BaseSpecializedAgent):
         except Exception as e:
             self.logger.error(f"可视化生成过程失败: {e}")
             visualization_results["errors"].append({"general_error": str(e)})
+            telemetry.emit(
+                "charting.failure",
+                component="charting",
+                level="error",
+                data={"symbol": symbol, "error": str(e)},
+            )
 
         return visualization_results
 

@@ -189,7 +189,7 @@ class ConfigManager:
                 # SiliconFlow Models
                 ModelConfig(
                     provider="siliconflow",
-                    model_name="deepseek-ai/DeepSeek-R1",
+                    # 移除 deepseek-ai/DeepSeek-R1
                     api_key="",
                     base_url="https://api.siliconflow.cn/v1",
                     max_tokens=16384,  # DeepSeek R1 推理模型最大输出
@@ -234,7 +234,7 @@ class ConfigManager:
                 ),
                 ModelConfig(
                     provider="siliconflow",
-                    model_name="Qwen/Qwen3-235B-A22B-Thinking-2507",
+                    # 移除 Qwen/Qwen3-235B-A22B-Thinking-2507
                     api_key="",
                     base_url="https://api.siliconflow.cn/v1",
                     max_tokens=8192,  # Qwen3 推理增强模型
@@ -291,7 +291,7 @@ class ConfigManager:
                 ),  # Pro: $12.5/$50 per 1M tokens
                 # SiliconFlow Models Pricing (人民币) - 2025年官方定价
                 PricingConfig(
-                    "siliconflow", "deepseek-ai/DeepSeek-R1", 0.004, 0.016, "CNY"
+                    # 移除 deepseek-ai/DeepSeek-R1 定价
                 ),  # ¥4/¥16 per 1M tokens
                 PricingConfig(
                     "siliconflow", "deepseek-ai/DeepSeek-V3", 0.002, 0.008, "CNY"
@@ -311,7 +311,7 @@ class ConfigManager:
                 ),  # Kimi预估定价
                 PricingConfig(
                     "siliconflow",
-                    "Qwen/Qwen3-235B-A22B-Thinking-2507",
+                    # 移除 Qwen/Qwen3-235B-A22B-Thinking-2507
                     0.005,
                     0.020,
                     "CNY",

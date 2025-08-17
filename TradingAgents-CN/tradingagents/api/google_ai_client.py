@@ -35,42 +35,21 @@ logger = get_logger("google_ai_client")
 class GoogleAIClient(BaseMultiModelAdapter):
     """Google AI API客户端 - 使用新版google-genai SDK"""
 
-    # 支持的模型配置（根据官方2025年1月文档更新）
+    # 支持的模型配置（清理过期系列，仅保留 2.5 家族）
     SUPPORTED_MODELS = {
         "gemini-2.5-pro": {
             "type": "premium",
             "cost_per_1k": 0.0125,
-            "max_tokens": 65536,  # 官方文档：输出token限制65,536
-            "context_window": 1048576,  # 官方文档：输入token限制1,048,576
-            "description": "Gemini 2.5 Pro，Google最先进的推理模型，支持思考模式",
+            "max_tokens": 65536,
+            "context_window": 1048576,
+            "description": "Gemini 2.5 Pro，Google最先进的推理模型",
         },
         "gemini-2.5-flash": {
             "type": "speed",
             "cost_per_1k": 0.0025,
-            "max_tokens": 8192,  # Flash版本输出限制较小
-            "context_window": 1048576,  # 1M tokens输入
+            "max_tokens": 8192,
+            "context_window": 1048576,
             "description": "Gemini 2.5 Flash，快速响应版本",
-        },
-        "gemini-2.0-flash": {
-            "type": "balanced",
-            "cost_per_1k": 0.0020,
-            "max_tokens": 8192,
-            "context_window": 1048576,
-            "description": "Gemini 2.0 Flash，平衡性能与速度",
-        },
-        "gemini-1.5-pro": {
-            "type": "general",
-            "cost_per_1k": 0.0075,
-            "max_tokens": 8192,
-            "context_window": 2097152,
-            "description": "Gemini 1.5 Pro，通用大模型",
-        },
-        "gemini-1.5-flash": {
-            "type": "speed",
-            "cost_per_1k": 0.0015,
-            "max_tokens": 8192,
-            "context_window": 1048576,
-            "description": "Gemini 1.5 Flash，快速版本",
         },
     }
 
@@ -290,7 +269,7 @@ class GoogleAIClient(BaseMultiModelAdapter):
         try:
             # 使用最轻量级的模型进行健康检查（降低成本）
             response = self.client.models.generate_content(
-                model="gemini-1.5-flash",
+                model="gemini-2.5-flash",
                 contents="Hello, please respond with 'OK'",
                 config=types.GenerateContentConfig(
                     max_output_tokens=10, temperature=0.1
@@ -318,37 +297,13 @@ class GoogleAIClient(BaseMultiModelAdapter):
         Returns:
             List[str]: 推荐的模型名称列表，按优先级排序
         """
-        # 始终优先推荐gemini-2.5-pro，然后是其他备选模型
+        # 始终优先推荐 gemini-2.5 家族
         recommendations = ["gemini-2.5-pro"]
-
-        # 根据任务复杂度添加备选模型
-        if task_spec.complexity == TaskComplexity.HIGH:
-            if task_spec.requires_reasoning:
-                recommendations.extend(["gemini-1.5-pro"])
-            else:
-                recommendations.extend(["gemini-2.0-flash", "gemini-1.5-pro"])
-
-        elif task_spec.complexity == TaskComplexity.MEDIUM:
-            if task_spec.requires_speed:
-                recommendations.extend(
-                    ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
-                )
-            else:
-                recommendations.extend(
-                    ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-2.5-flash"]
-                )
-
-        else:  # LOW complexity
-            recommendations.extend(
-                ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-2.0-flash"]
-            )
-
-        # 对于超长文本，确保2.5 Pro在首位
-        if task_spec.estimated_tokens > 500000:
-            if "gemini-2.5-pro" in recommendations:
-                recommendations.remove("gemini-2.5-pro")
+        if task_spec.requires_speed or task_spec.complexity != TaskComplexity.HIGH:
+            recommendations.append("gemini-2.5-flash")
+        # 对于超长文本，固定 pro 优先
+        if task_spec.estimated_tokens > 500000 and "gemini-2.5-pro" not in recommendations:
             recommendations.insert(0, "gemini-2.5-pro")
-            recommendations.insert(1, "gemini-1.5-pro")
 
         # 去重并保持顺序，gemini-2.5-pro始终在首位
         seen = set()

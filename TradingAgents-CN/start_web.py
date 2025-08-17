@@ -59,6 +59,47 @@ def main():
     else:
         env["PYTHONPATH"] = str(project_root)
 
+    # 若本地API未启动，则尝试在后台启动（提供 /api/kb 等端点）
+    try:
+        import socket
+
+        def _is_port_open(host: str, port: int) -> bool:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(0.5)
+                try:
+                    return s.connect_ex((host, port)) == 0
+                except Exception:
+                    return False
+
+        api_host = os.getenv("MARKET_API_HOST", "127.0.0.1")
+        api_port = int(os.getenv("MARKET_API_PORT", "8000"))
+        if not _is_port_open(api_host, api_port):
+            print(f"🛠️ 未检测到本地API({api_host}:{api_port})，尝试后台启动…")
+            api_cmd = [
+                sys.executable,
+                "-m",
+                "uvicorn",
+                "tradingagents.api.main:app",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                str(api_port),
+                "--log-level",
+                "warning",
+            ]
+            # 最小化依赖：失败时不阻断Web启动
+            try:
+                subprocess.Popen(api_cmd, cwd=project_root, env=env)
+                # 提前设置供前端/客户端发现
+                env.setdefault("MARKET_API_BASE_URL", f"http://localhost:{api_port}")
+                print("✅ 已尝试启动本地API (后台进程)")
+            except Exception as e:
+                print(f"⚠️ 启动本地API失败（继续启动Web）：{e}")
+        else:
+            env.setdefault("MARKET_API_BASE_URL", f"http://localhost:{api_port}")
+    except Exception as e:
+        print(f"⚠️ API探测步骤跳过：{e}")
+
     # 构建启动命令
     cmd = [
         sys.executable,

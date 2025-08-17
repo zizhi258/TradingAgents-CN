@@ -4,7 +4,7 @@ Multi-Model Trading Graph Extension
 """
 
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +24,9 @@ from tradingagents.agents.specialized import (  # Alias classes for roles expose
 )
 from tradingagents.agents.specialized.base_specialized_agent import AgentAnalysisResult
 from tradingagents.agents.specialized.charting_artist import ChartingArtist
+from tradingagents.tools.unified_news_tool import (
+    UnifiedNewsAnalyzer,
+)
 
 # 导入多模型组件
 from tradingagents.core.multi_model_manager import MultiModelManager
@@ -374,14 +377,89 @@ class MultiModelExtension:
     ) -> dict[str, Any]:
         """准备传统分析的数据"""
         try:
-            # 使用现有的数据获取功能
-            traditional_data = {}
+            traditional_data: dict[str, Any] = {}
 
-            # 如果trading_graph有数据获取方法，调用它们
-            if hasattr(self.trading_graph, "toolkit"):
-                # 获取股票数据
-                traditional_data["stock_data"] = "使用现有数据获取工具"
-                # 可以在这里调用现有的数据获取工具
+            if not hasattr(self.trading_graph, "toolkit") or not self.trading_graph.toolkit:
+                return traditional_data
+
+            toolkit = self.trading_graph.toolkit
+
+            # 计算时间窗口（默认取近30天）
+            try:
+                end_dt = datetime.strptime(trade_date, "%Y-%m-%d")
+            except Exception:
+                end_dt = datetime.now()
+            start_dt = end_dt - timedelta(days=30)
+            start_date = start_dt.strftime("%Y-%m-%d")
+            end_date = end_dt.strftime("%Y-%m-%d")
+
+            # 市场数据（统一接口，自动路由中/港/美数据源，演示模式下由下层适配器接管）
+            try:
+                if hasattr(toolkit, "get_stock_market_data_unified"):
+                    market_report = toolkit.get_stock_market_data_unified.invoke(
+                        {
+                            "ticker": company_name,
+                            "start_date": start_date,
+                            "end_date": end_date,
+                        }
+                    )
+                    traditional_data["market_data"] = market_report
+            except Exception as e:
+                logger.warning(f"获取市场数据失败: {e}")
+                # DEMO 兜底：强制使用演示数据生成市场报告
+                try:
+                    from tradingagents.dataflows.demo_adapter import (
+                        build_market_technical_from_demo,
+                    )
+
+                    traditional_data["market_data"] = build_market_technical_from_demo(
+                        company_name, start_date, end_date
+                    )
+                except Exception:
+                    pass
+
+            # 基本面数据（统一接口，A股/港股/美股自动选择）
+            try:
+                if hasattr(toolkit, "get_stock_fundamentals_unified"):
+                    fundamentals_report = toolkit.get_stock_fundamentals_unified.invoke(
+                        {
+                            "ticker": company_name,
+                            "start_date": start_date,
+                            "end_date": end_date,
+                            "curr_date": end_date,
+                        }
+                    )
+                    traditional_data["fundamentals"] = fundamentals_report
+            except Exception as e:
+                logger.warning(f"获取基本面数据失败: {e}")
+                # DEMO 兜底：构造基础的基本面快照
+                try:
+                    from tradingagents.dataflows.demo_adapter import (
+                        build_fundamentals_report_from_demo,
+                    )
+
+                    traditional_data["fundamentals"] = (
+                        build_fundamentals_report_from_demo(company_name)
+                    )
+                except Exception:
+                    pass
+
+            # 新闻数据（统一新闻分析器聚合多源）
+            try:
+                analyzer = UnifiedNewsAnalyzer(toolkit)
+                news_report = analyzer.get_stock_news_unified(company_name)
+                traditional_data["news"] = news_report
+            except Exception as e:
+                logger.warning(f"获取新闻数据失败: {e}")
+                # DEMO 兜底：使用演示新闻
+                try:
+                    from tradingagents.dataflows.demo_adapter import (
+                        build_news_markdown_from_demo,
+                    )
+
+                    traditional_data["news"] = build_news_markdown_from_demo()
+                except Exception:
+                    pass
 
             return traditional_data
 
@@ -578,37 +656,278 @@ class MultiModelExtension:
     def _prepare_agent_input(
         self, agent_role: str, context: dict[str, Any]
     ) -> dict[str, Any]:
-        """为特定智能体准备输入数据"""
-        base_input = {
-            "company_name": context["company_name"],
-            "trade_date": context["trade_date"],
-            "analysis_request": f"请作为{agent_role}分析股票{context['company_name']}",
+        """为特定智能体准备输入数据（真实取数 + 演示模式兜底）"""
+        symbol = context.get("company_name")
+        trade_date = context.get("trade_date")
+        demo_mode = os.getenv("DEMO_MODE", "false").lower() == "true" or bool(
+            context.get("demo")
+        )
+        demo_payload: dict[str, Any] | None = None
+        if demo_mode:
+            try:
+                from tradingagents.dataflows.demo_adapter import _load_demo_json
+
+                demo_payload = _load_demo_json()
+            except Exception as _:
+                demo_payload = None
+
+        # 计算时间窗口（不同角色默认窗口不同）
+        try:
+            end_dt = datetime.strptime(trade_date, "%Y-%m-%d") if trade_date else datetime.now()
+        except Exception:
+            end_dt = datetime.now()
+        start_dt_default = end_dt - timedelta(days=30)
+        start_date_30 = start_dt_default.strftime("%Y-%m-%d")
+        end_date = end_dt.strftime("%Y-%m-%d")
+
+        base_input: dict[str, Any] = {
+            "company_name": symbol,
+            "trade_date": end_date,
+            "analysis_request": f"请作为{agent_role}分析股票{symbol}",
         }
 
-        # 根据智能体类型添加特定数据
-        if agent_role == "news_hunter":
-            base_input["news_content"] = (
-                f"关于{context['company_name']}的最新新闻分析请求"
-            )
-        elif agent_role == "fundamental_expert":
-            base_input["financial_data"] = {
-                "company": context["company_name"],
-                "basic_info": "需要分析",
-            }
-        elif agent_role == "technical_analyst":
-            base_input["price_data"] = {
-                "company": context["company_name"],
-                "chart_data": "需要分析",
-            }
-        elif agent_role == "sentiment_analyst":
-            base_input["sentiment_data"] = {
-                "company": context["company_name"],
-                "market_sentiment": "需要分析",
-            }
-        elif agent_role == "risk_manager":
-            base_input["investment_proposal"] = (
-                f"投资{context['company_name']}的风险评估请求"
-            )
+        toolkit = getattr(self.trading_graph, "toolkit", None)
+
+        # 根据智能体类型，拉取真实数据
+        try:
+            if agent_role == "news_hunter":
+                try:
+                    analyzer = UnifiedNewsAnalyzer(toolkit) if toolkit else None
+                    news_text = (
+                        analyzer.get_stock_news_unified(symbol) if analyzer else ""
+                    )
+                except Exception:
+                    news_text = ""
+                # 兜底：使用Google新闻
+                if not news_text and toolkit and hasattr(toolkit, "get_google_news"):
+                    try:
+                        news_text = toolkit.get_google_news.invoke(
+                            {"query": f"{symbol} 股票 新闻 财报", "curr_date": end_date}
+                        )
+                    except Exception:
+                        news_text = ""
+                # DEMO兜底：使用演示JSON中的 recent news 切片
+                if not news_text and demo_payload and isinstance(demo_payload.get("news_recent"), list):
+                    items = demo_payload["news_recent"]
+                    formatted = [
+                        f"- [{it.get('date','')}] {it.get('source','')}: {it.get('title','')}\n  {it.get('summary','')}"
+                        for it in items[:8]
+                    ]
+                    news_text = "\n".join(formatted)
+                base_input["news_content"] = news_text or f"{symbol} 近7天新闻暂无，需人工补充"
+
+            elif agent_role == "fundamental_expert":
+                fundamentals_text = ""
+                if toolkit and hasattr(toolkit, "get_stock_fundamentals_unified"):
+                    try:
+                        fundamentals_text = toolkit.get_stock_fundamentals_unified.invoke(
+                            {
+                                "ticker": symbol,
+                                "start_date": start_date_30,
+                                "end_date": end_date,
+                                "curr_date": end_date,
+                            }
+                        )
+                    except Exception:
+                        fundamentals_text = ""
+                # DEMO 兜底：基本面快照
+                if not fundamentals_text and demo_mode:
+                    try:
+                        from tradingagents.dataflows.demo_adapter import (
+                            build_fundamentals_report_from_demo,
+                        )
+
+                        fundamentals_text = build_fundamentals_report_from_demo(symbol)
+                    except Exception:
+                        fundamentals_text = ""
+                base_input["financial_data"] = {
+                    "company": symbol,
+                    "fundamentals_report": fundamentals_text,
+                }
+
+            elif agent_role == "technical_analyst":
+                market_text = ""
+                if toolkit and hasattr(toolkit, "get_stock_market_data_unified"):
+                    try:
+                        market_text = toolkit.get_stock_market_data_unified.invoke(
+                            {
+                                "ticker": symbol,
+                                "start_date": start_date_30,
+                                "end_date": end_date,
+                            }
+                        )
+                    except Exception:
+                        market_text = ""
+                # DEMO 兜底：市场 + 技术指标
+                if not market_text and demo_mode:
+                    try:
+                        from tradingagents.dataflows.demo_adapter import (
+                            build_market_technical_from_demo,
+                        )
+
+                        market_text = build_market_technical_from_demo(
+                            symbol, start_date_30, end_date
+                        )
+                    except Exception:
+                        market_text = ""
+                base_input["price_data"] = {
+                    "company": symbol,
+                    "market_report": market_text,
+                }
+
+            elif agent_role == "sentiment_analyst":
+                sentiment_text = ""
+                if toolkit and hasattr(toolkit, "get_chinese_social_sentiment"):
+                    try:
+                        sentiment_text = toolkit.get_chinese_social_sentiment.invoke(
+                            {"ticker": symbol, "curr_date": end_date}
+                        )
+                    except Exception:
+                        sentiment_text = ""
+                if not sentiment_text and toolkit and hasattr(toolkit, "get_reddit_stock_info"):
+                    try:
+                        sentiment_text = toolkit.get_reddit_stock_info.invoke(
+                            {"ticker": symbol, "curr_date": end_date}
+                        )
+                    except Exception:
+                        sentiment_text = ""
+                # DEMO兜底：根据演示JSON的情绪聚合生成一段摘要
+                if not sentiment_text and demo_payload:
+                    agg = demo_payload.get("sentiment_agg_7d") or {}
+                    pos = int(agg.get("pos", 0))
+                    neu = int(agg.get("neu", 0))
+                    neg = int(agg.get("neg", 0))
+                    total = max(pos + neu + neg, 1)
+                    sentiment_text = (
+                        f"演示情绪聚合(7日): 正面{pos}、中性{neu}、负面{neg}。"
+                        f" 正面占比{pos/total:.1%}，负面占比{neg/total:.1%}。"
+                    )
+                base_input["sentiment_data"] = {
+                    "company": symbol,
+                    "sentiment_report": sentiment_text,
+                }
+
+            elif agent_role == "risk_manager":
+                # 组合内部者交易与情绪/新闻作为风险佐证
+                insider_senti = ""
+                insider_trans = ""
+                if toolkit and hasattr(toolkit, "get_finnhub_company_insider_sentiment"):
+                    try:
+                        insider_senti = toolkit.get_finnhub_company_insider_sentiment.invoke(
+                            {"ticker": symbol, "curr_date": end_date}
+                        )
+                    except Exception:
+                        insider_senti = ""
+                if toolkit and hasattr(toolkit, "get_finnhub_company_insider_transactions"):
+                    try:
+                        insider_trans = toolkit.get_finnhub_company_insider_transactions.invoke(
+                            {"ticker": symbol, "curr_date": end_date}
+                        )
+                    except Exception:
+                        insider_trans = ""
+                # DEMO兜底：用市场概览信息提示风险点
+                if not insider_senti and demo_payload:
+                    mo = demo_payload.get("market_overview", {})
+                    csi = (((mo or {}).get("index") or {}).get("CSI300") or {})
+                    idx_line = (
+                        f"CSI300 {csi.get('close','N/A')} ({csi.get('pct_change','N/A')}%)"
+                        if csi
+                        else "无"
+                    )
+                    insider_senti = (
+                        f"演示环境：无内部者数据。参考市场概览：{idx_line}。"
+                    )
+                base_input["investment_proposal"] = (
+                    f"请评估对{symbol}的投资风险，结合内部者交易与市场情绪。\n\n"
+                    f"[内部者情绪]\n{insider_senti}\n\n[内部者交易]\n{insider_trans}"
+                )
+
+            else:
+                # 其他别名类（policy_researcher/tool_engineer/compliance_officer）
+                # 优先使用传统数据；若为空且处于演示模式，拼装演示摘要并按角色提供更精细的上下文
+                general_ctx = context.get("traditional_data", {})
+                if demo_mode and demo_payload:
+                    try:
+                        # 角色定制上下文
+                        if agent_role == "policy_researcher":
+                            pe = demo_payload.get("policy_events", [])
+                            if pe:
+                                lines = [
+                                    f"- {it.get('date','')}: {it.get('title','')} — {it.get('summary','')} (相关性: {it.get('relevance','')})"
+                                    for it in pe[:6]
+                                ]
+                                base_input["policy_context"] = (
+                                    "演示政策事件:\n" + "\n".join(lines)
+                                )
+                        if agent_role == "compliance_officer":
+                            cr = demo_payload.get("compliance_risks", [])
+                            if cr:
+                                lines = [
+                                    f"[{it.get('risk_type','')}] 严重度:{it.get('severity','')} 描述:{it.get('description','')} 缓解:{it.get('mitigation','')}"
+                                    for it in cr[:8]
+                                ]
+                                base_input["compliance_context"] = (
+                                    "演示合规风险:\n" + "\n".join(lines)
+                                )
+                        if agent_role == "tool_engineer":
+                            rd = demo_payload.get("tech_roadmap", {})
+                            if rd:
+                                parts = []
+                                if rd.get("brands"):
+                                    parts.append(
+                                        "品牌: " + ", ".join(map(str, rd.get("brands", [])))
+                                    )
+                                if rd.get("jvs"):
+                                    parts.append(
+                                        "合资: " + ", ".join(map(str, rd.get("jvs", [])))
+                                    )
+                                if rd.get("focus_areas"):
+                                    parts.append(
+                                        "重点方向: "
+                                        + ", ".join(map(str, rd.get("focus_areas", [])))
+                                    )
+                                for m in rd.get("milestones", [])[:6]:
+                                    parts.append(f"{m.get('year','')}: {m.get('item','')}")
+                                base_input["engineering_context"] = (
+                                    "演示技术路线:\n" + "\n".join(parts)
+                                )
+                        # 通用摘要（若传统数据缺失）
+                        if not general_ctx:
+                            summary_parts = []
+                            fi = demo_payload.get("fundamentals_snapshot", {})
+                            if fi:
+                                summary_parts.append(
+                                    f"基本面: 收入{fi.get('revenue','N/A'):,} 净利{fi.get('net_profit','N/A'):,} ROE {fi.get('roe','N/A')}% PE {fi.get('pe_ttm','N/A')} PB {fi.get('pb','N/A')}"
+                                )
+                            mo = (demo_payload.get("market_overview", {}) or {}).get(
+                                "index", {}
+                            )
+                            csi = mo.get("CSI300", {})
+                            if csi:
+                                summary_parts.append(
+                                    f"市场: CSI300 收{csi.get('close','N/A')}({csi.get('pct_change','N/A')}%)"
+                                )
+                            sn = demo_payload.get("sentiment_agg_7d", {})
+                            if sn:
+                                summary_parts.append(
+                                    f"情绪(7日): 正{sn.get('pos',0)} 中{sn.get('neu',0)} 负{sn.get('neg',0)}"
+                                )
+                            news = demo_payload.get("news_recent", [])
+                            if news:
+                                summary_parts.append(
+                                    f"新闻: {news[0].get('title','近期要闻')} ({news[0].get('source','')})"
+                                )
+                            general_ctx = {
+                                "demo_summary": " | ".join(summary_parts)
+                                if summary_parts
+                                else "演示摘要不可用"
+                            }
+                    except Exception:
+                        pass
+                base_input["general_context"] = general_ctx
+
+        except Exception as fetch_err:
+            logger.warning(f"为智能体{agent_role}准备数据失败: {fetch_err}")
 
         # 添加辩论特定字段
         if "debate_instruction" in context:

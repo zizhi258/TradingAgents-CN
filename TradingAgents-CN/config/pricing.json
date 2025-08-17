@@ -96,5 +96,68 @@
     "input_price_per_1k": 0.00025,
     "output_price_per_1k": 0.0005,
     "currency": "USD"
+  },
+  {
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-R1",
+    "input_price_per_1k": 0.004,
+    "output_price_per_1k": 0.016,
+    "currency": "CNY"
+  },
+  {
+    "provider": "siliconflow",
+    "model_name": "deepseek-ai/DeepSeek-V3",
+    "input_price_per_1k": 0.002,
+    "output_price_per_1k": 0.008,
+    "currency": "CNY"
+  },
+  {
+    "provider": "siliconflow",
+    "model_name": "zai-org/GLM-4.5",
+    "input_price_per_1k": 0.002,
+    "output_price_per_1k": 0.008,
+    "currency": "CNY"
+  },
+  {
+    "provider": "siliconflow",
+    "model_name": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+    "input_price_per_1k": 0.006,
+    "output_price_per_1k": 0.024,
+    "currency": "CNY"
+  },
+  {
+    "provider": "siliconflow",
+    "model_name": "Qwen/Qwen3-235B-A22B-Thinking-2507",
+    "input_price_per_1k": 0.005,
+    "output_price_per_1k": 0.020,
+    "currency": "CNY"
+  },
+  {
+    "provider": "siliconflow",
+    "model_name": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+    "input_price_per_1k": 0.005,
+    "output_price_per_1k": 0.020,
+    "currency": "CNY"
+  },
+  {
+    "provider": "siliconflow",
+    "model_name": "Qwen/Qwen3-Embedding-8B",
+    "input_price_per_1k": 0.0005,
+    "output_price_per_1k": 0.0005,
+    "currency": "CNY"
+  },
+  {
+    "provider": "siliconflow",
+    "model_name": "Qwen/Qwen3-Reranker-8B",
+    "input_price_per_1k": 0.0008,
+    "output_price_per_1k": 0.0008,
+    "currency": "CNY"
+  },
+  {
+    "provider": "siliconflow",
+    "model_name": "moonshotai/Kimi-K2-Instruct",
+    "input_price_per_1k": 0.003,
+    "output_price_per_1k": 0.012,
+    "currency": "CNY"
   }
 ]

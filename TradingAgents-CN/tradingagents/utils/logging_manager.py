@@ -65,6 +65,8 @@ class StructuredFormatter(logging.Formatter):
             log_entry["cost"] = record.cost
         if hasattr(record, "tokens"):
             log_entry["tokens"] = record.tokens
+        if hasattr(record, "request_id"):
+            log_entry["request_id"] = record.request_id
 
         return json.dumps(log_entry, ensure_ascii=False)
 

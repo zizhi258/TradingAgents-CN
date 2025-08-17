@@ -207,3 +207,94 @@ __all__ = [
     "build_china_stock_info_from_demo",
     "get_ohlc_json_from_demo",
 ]
+
+
+# ==== 新增：为各角色提供更完整的演示数据构建器 ====
+
+def build_fundamentals_report_from_demo(symbol: str) -> str:
+    """Build a concise fundamentals report string from demo JSON.
+
+    Uses the "fundamentals_snapshot" section if present.
+    """
+    data = _load_demo_json()
+    info = data.get("stock_info", {})
+    snap = data.get("fundamentals_snapshot", {})
+
+    name = info.get("name", f"股票{symbol}")
+    if not snap:
+        return (
+            f"## {name}({symbol}) 基本面（演示）\n"
+            "演示数据缺少 fundamentals_snapshot 段，建议补充。"
+        )
+
+    def _fmt_pct(v):
+        try:
+            return f"{float(v):.2f}%"
+        except Exception:
+            return str(v)
+
+    report = [
+        f"## {name}({symbol}) 基本面快照（演示）",
+        f"- 期间: {snap.get('period','TTM')}",
+        f"- 收入: {snap.get('revenue', 'N/A'):,} 元",
+        f"- 净利润: {snap.get('net_profit', 'N/A'):,} 元",
+        f"- EPS(TTM): {snap.get('eps_ttm', 'N/A')}",
+        f"- ROE: {_fmt_pct(snap.get('roe'))}",
+        f"- 毛利率: {_fmt_pct(snap.get('gross_margin'))}",
+        f"- 经营利润率: {_fmt_pct(snap.get('op_margin'))}",
+        f"- 估值: PE(TTM)={snap.get('pe_ttm','N/A')} PB={snap.get('pb','N/A')}",
+        f"- 资产负债率: {_fmt_pct(snap.get('debt_to_asset'))}",
+        "",
+        "数据来源: 本地演示JSON (仅替代输入数据)",
+    ]
+
+    return "\n".join(report)
+
+
+def build_market_technical_from_demo(symbol: str, start_date: str, end_date: str) -> str:
+    """Build a market + technical indicators report from demo JSON.
+
+    Combines the formatted price data and a technical snapshot when available.
+    """
+    data = _load_demo_json()
+    header = build_china_stock_data_from_demo(symbol, start_date, end_date)
+
+    tech = data.get("technical_indicators_snapshot", {})
+    if not tech:
+        return header
+
+    ma5 = tech.get("ma5")
+    ma10 = tech.get("ma10")
+    ma20 = tech.get("ma20")
+    rsi14 = tech.get("rsi14")
+    macd = tech.get("macd", {})
+    kdj = tech.get("kdj", {})
+
+    lines = [
+        "\n技术指标概览(演示):",
+        f"- MA: 5={ma5} / 10={ma10} / 20={ma20}",
+        f"- RSI(14)={rsi14}",
+        f"- MACD: dif={macd.get('dif')} dea={macd.get('dea')} hist={macd.get('hist')}",
+        f"- KDJ: K={kdj.get('k')} D={kdj.get('d')} J={kdj.get('j')}",
+    ]
+
+    return header + "\n" + "\n".join(lines)
+
+
+def build_news_markdown_from_demo(max_items: int = 8) -> str:
+    """Format recent news from demo JSON into a markdown list."""
+    data = _load_demo_json()
+    items = data.get("news_recent", [])
+    out = ["## 近期新闻(演示)"]
+    for it in items[: max(1, max_items)]:
+        out.append(
+            f"- [{it.get('date','')}] {it.get('source','')}: {it.get('title','')}\n  {it.get('summary','')}"
+        )
+    return "\n".join(out)
+
+
+__all__ += [
+    "build_fundamentals_report_from_demo",
+    "build_market_technical_from_demo",
+    "build_news_markdown_from_demo",
+]

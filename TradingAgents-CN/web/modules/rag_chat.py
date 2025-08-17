@@ -6,8 +6,10 @@
 """
 
 import os
+from datetime import datetime
 
 import streamlit as st
+
 
 
 def _get_kb_client():
@@ -21,105 +23,57 @@ def _get_kb_client():
 
 
 def render_rag_chat():
-    st.header("💬 智能对话（RAG）")
-    st.caption("面向对话场景的检索增强问答（不影响报告生成流程）")
-
     client = _get_kb_client()
     if client is None:
         st.stop()
 
     # 初始化会话历史
     if "rag_chat_history" not in st.session_state:
-        st.session_state.rag_chat_history = []  # list of dicts: {q,a,sources}
+        st.session_state.rag_chat_history = []
 
-    # 左右布局：左侧聊天，右侧库统计/管理
-    col_chat, col_stats = st.columns([7, 3])
+    # 改为标签布局：聊天/知识库/索引管理，界面更简洁
+    tab_chat, tab_kb, tab_index = st.tabs(["💬 智能对话", "📚 知识库管理", "🛠️ 索引设置"])
 
-    with col_stats:
-        st.subheader("📚 知识库")
-        try:
-            stats = client.kb_stats()
-            kb = stats.get("knowledge_base", {})
-            st.metric("文档数量", kb.get("total_documents", 0))
-            st.write("向量库可用:", "✅" if kb.get("vector_db_available") else "❌")
-            if kb.get("documents_by_type"):
-                st.write("类型分布:")
-                st.json(kb["documents_by_type"])
-        except Exception as e:
-            st.info(f"无法获取知识库状态：{e}")
+    # --- 聊天界面 ---
+    with tab_chat:
+        # 顶部工具栏（单行紧凑布局）
+        tool_cols = st.columns([12, 1, 1, 1])
+        with tool_cols[0]:
+            messages_count = len(st.session_state.get("rag_chat_messages", []))
+            title = f"💬 对话中（{messages_count}）" if messages_count > 0 else "🤖 智能助手"
+            st.markdown(f"**{title}**")
+        with tool_cols[1]:
+            if st.button("⚙️", key="chat_settings", help="设置"):
+                st.session_state.show_chat_settings = not st.session_state.get("show_chat_settings", False)
+        with tool_cols[2]:
+            if st.button("📊", key="chat_stats", help="统计"):
+                st.session_state.show_chat_stats = not st.session_state.get("show_chat_stats", False)
+        with tool_cols[3]:
+            if st.button("🧹", key="clear_chat", help="清空对话"):
+                st.session_state.pop("rag_chat_messages", None)
+                st.session_state.rag_chat_history = []
+                st.rerun()
 
-        with st.expander("索引管理", expanded=False):
-            default_root = os.getenv("LIBRARY_ROOT", "./data/library")
-            root_dir = st.text_input(
-                "根目录", value=default_root, help="RAG 文库根目录"
-            )
-            user_id = st.text_input("用户ID（可选）", value="")
-            symbol = st.text_input("默认证券（可选）", value="")
-            # 嵌入配置（仅作用于本次重建流程）
-            st.markdown("**嵌入配置（Qwen3-Embedding-8B）**")
-            c1, c2 = st.columns([1, 1])
-            with c1:
-                emb_dim = st.number_input(
-                    "嵌入维度 (32–4096)",
-                    value=4096,
-                    min_value=32,
-                    max_value=4096,
-                    step=32,
-                )
-            with c2:
-                emb_model = st.text_input("模型ID", value="Qwen/Qwen3-Embedding-8B")
-            # provider 固定为 siliconflow（统一策略）
-            emb_provider = "siliconflow"
+        # 紧凑设置面板
+        if st.session_state.get("show_chat_settings", False):
+            with st.expander("⚙️ 聊天设置", expanded=False):
+                s = st.session_state.rag_chat_settings
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    s["query_type"] = st.selectbox("问题类型", ["general", "technical", "fundamental", "news", "risk"])
+                with col2:
+                    s["top_k"] = st.slider("检索数量", 1, 10, s.get("top_k", 5))
+                with col3:
+                    s["relevance_threshold"] = st.slider("相关性", 0.0, 1.0, s.get("relevance_threshold", 0.7), 0.1)
 
-            # 简易上传到文库根目录
-            st.markdown("**上传文件到文库**（保存到上述根目录）")
-            uploads = st.file_uploader(
-                "选择文件（txt/md/csv/html 建议）", accept_multiple_files=True
-            )
-            if uploads:
-                from pathlib import Path as _Path
+        # 紧凑统计（条件显示）
+        if st.session_state.get("show_chat_stats", False):
+            messages = st.session_state.get("rag_chat_messages", [])
+            user_count = len([m for m in messages if m.get("role") == "user"])
+            ai_count = len([m for m in messages if m.get("role") == "assistant"])
+            st.info(f"📊 总计: {len(messages)}条 | 用户: {user_count}条 | AI: {ai_count}条")
 
-                try:
-                    troot = _Path(root_dir)
-                    troot.mkdir(parents=True, exist_ok=True)
-                    count = 0
-                    for f in uploads:
-                        data = f.read()
-                        (troot / f.name).write_bytes(data)
-                        count += 1
-                    st.success(f"已保存 {count} 个文件到 {troot}")
-                except Exception as e:
-                    st.error(f"保存失败：{e}")
-
-            if st.button("🔄 重建索引", use_container_width=True):
-                try:
-                    res = client.kb_reindex(
-                        root_dir=root_dir or None,
-                        user_id=user_id or None,
-                        symbol=symbol or None,
-                        embedding_dim=int(emb_dim),
-                        embedding_model=emb_model,
-                        embedding_provider=emb_provider,
-                    )
-                    if res.get("success"):
-                        st.success(
-                            f"索引完成：新增 {res.get('added',0)}，跳过 {res.get('skipped',0)}"
-                        )
-                        if res.get("warnings"):
-                            st.warning("\n".join(res["warnings"]))
-                    else:
-                        st.error(str(res))
-                except Exception as e:
-                    st.error(f"重建索引失败：{e}")
-
-    with col_chat:
-        st.subheader("聊天")
-
-        CHAT_AVAILABLE = all(
-            hasattr(st, name) for name in ("chat_input", "chat_message")
-        )
-
-        # 默认参数（可在设置中调整）
+        # 初始化设置
         if "rag_chat_settings" not in st.session_state:
             st.session_state.rag_chat_settings = {
                 "query_type": "general",
@@ -128,142 +82,140 @@ def render_rag_chat():
                 "symbols": [],
             }
 
-        with st.expander("⚙️ 设置", expanded=False):
-            s = st.session_state.rag_chat_settings
-            s["query_type"] = st.selectbox(
-                "问题类型",
-                ["general", "technical", "fundamental", "news", "risk"],
-                index=["general", "technical", "fundamental", "news", "risk"].index(
-                    s["query_type"]
-                ),
-            )
-            c1, c2 = st.columns(2)
-            with c1:
-                s["top_k"] = int(st.slider("Top K", 1, 10, int(s["top_k"])))
-            with c2:
-                s["relevance_threshold"] = float(
-                    st.slider(
-                        "相关性阈值", 0.0, 1.0, float(s["relevance_threshold"]), 0.05
-                    )
-                )
-            symbols_raw = st.text_input(
-                "相关证券（逗号分隔，可选）", value=",".join(s.get("symbols") or [])
-            )
-            s["symbols"] = [x.strip() for x in symbols_raw.split(",") if x.strip()]
-
-            # 对话角色（生成模型绑定）
-            try:
-                from tradingagents.config.provider_models import model_provider_manager
-                all_roles = [
-                    rk
-                    for rk, rc in model_provider_manager.role_definitions.items()
-                    if getattr(rc, "enabled", True)
-                ]
-            except Exception:
-                all_roles = [
-                    "fundamental_expert",
-                    "technical_analyst",
-                    "chief_writer",
-                    "news_hunter",
-                    "risk_manager",
-                ]
-            default_role = (
-                s.get("agent_role") or os.getenv("RAG_CHAT_AGENT_ROLE") or "fundamental_expert"
-            )
-            if all_roles and default_role not in all_roles:
-                default_role = all_roles[0]
-            role_index = all_roles.index(default_role) if default_role in all_roles else 0
-            s["agent_role"] = st.selectbox(
-                "对话角色（生成模型绑定）",
-                options=all_roles,
-                index=role_index,
-                help="与‘角色中心’绑定的模型联动，用该角色的锁定/首选模型生成答案",
-            )
-
-        # 使用 Streamlit 聊天组件渲染历史（若不可用则回退到简易表单）
-        if CHAT_AVAILABLE:
-            if "rag_chat_messages" not in st.session_state:
-                st.session_state.rag_chat_messages = (
-                    []
-                )  # [{role:'user'|'assistant', content:str, sources?:list}]
-
+        # 初始化消息历史
+        if "rag_chat_messages" not in st.session_state:
+            st.session_state.rag_chat_messages = []
+        
+        CHAT_AVAILABLE = all(hasattr(st, name) for name in ("chat_input", "chat_message"))
+        
+        # 聊天消息显示区域
+        if not st.session_state.rag_chat_messages:
+            st.caption("🤖 我是您的智能金融助手，请提问任何股票、投资相关的问题")
+        else:
+            # 简化消息显示
             for msg in st.session_state.rag_chat_messages:
                 with st.chat_message(msg.get("role", "assistant")):
                     st.markdown(msg.get("content", ""))
                     if msg.get("sources"):
-                        st.caption("引用来源：")
-                        for s in msg["sources"]:
-                            st.write(f"- {s}")
+                        with st.expander("📚 引用来源", expanded=False):
+                            for source in msg["sources"]:
+                                st.caption(f"• {source}")
 
-            # 输入框（回车发送）
-            user_input = st.chat_input("请输入你的问题…")
+        # 聊天输入
+        if CHAT_AVAILABLE:
+            user_input = st.chat_input("请输入您的问题...")
             if user_input:
-                # 先回显用户消息
-                st.session_state.rag_chat_messages.append(
-                    {"role": "user", "content": user_input}
-                )
-                with st.chat_message("user"):
-                    st.markdown(user_input)
-
-                # 调用后端 RAG 问答
+                # 添加用户消息
+                st.session_state.rag_chat_messages.append({"role": "user", "content": user_input})
+                
+                # 调用RAG
                 s = st.session_state.rag_chat_settings
                 try:
-                    # 传递最近对话历史以启用多轮检索
-                    history = st.session_state.get("rag_chat_messages") or []
                     res = client.kb_query(
                         query_text=user_input.strip(),
                         query_type=s.get("query_type", "general"),
-                        symbols=(s.get("symbols") or None),
-                        top_k=int(s.get("top_k", 5)),
-                        relevance_threshold=float(s.get("relevance_threshold", 0.7)),
-                        history=history,
-                        conversation_id=None,
-                        agent_role=(s.get("agent_role") or os.getenv('RAG_CHAT_AGENT_ROLE') or 'fundamental_expert'),
+                        symbols=s.get("symbols"),
+                        top_k=s.get("top_k", 5),
+                        relevance_threshold=s.get("relevance_threshold", 0.7),
+                        history=st.session_state.rag_chat_messages,
+                        agent_role=s.get("agent_role", "fundamental_expert"),
+                        agent_model=s.get("agent_model"),
                     )
-                    if not res.get("success"):
-                        answer = f"❌ 出错：{res}"
-                        sources = []
-                    else:
-                        answer = res.get("answer") or "（未生成回答）"
-                        sources = res.get("sources") or []
-                    # 展示助手消息
-                    with st.chat_message("assistant"):
-                        st.markdown(answer)
-                        if sources:
-                            st.caption("引用来源：")
-                            for s in sources:
-                                st.write(f"- {s}")
-                    # 存入历史
-                    st.session_state.rag_chat_messages.append(
-                        {"role": "assistant", "content": answer, "sources": sources}
-                    )
+                    
+                    answer = res.get("answer", "未获取到回答") if res.get("success") else f"错误: {res}"
+                    sources = res.get("sources", [])
+                    
+                    # 添加AI回复
+                    st.session_state.rag_chat_messages.append({
+                        "role": "assistant", 
+                        "content": answer, 
+                        "sources": sources
+                    })
+                    
                 except Exception as e:
-                    err = f"调用失败：{e}"
-                    with st.chat_message("assistant"):
-                        st.error(err)
-                    st.session_state.rag_chat_messages.append(
-                        {"role": "assistant", "content": err}
-                    )
+                    st.session_state.rag_chat_messages.append({
+                        "role": "assistant",
+                        "content": f"系统错误: {e}"
+                    })
+                
+                st.rerun()
         else:
-            # 兼容旧版Streamlit：回退到一次一问一答表单
-            with st.form("rag_chat_form_compat", clear_on_submit=True):
-                q = st.text_area("请输入你的问题", placeholder="输入问题后提交")
-                submitted = st.form_submit_button("发送")
-            if submitted and q and len(q.strip()) >= 3:
-                s = st.session_state.rag_chat_settings
-                try:
-                    history = st.session_state.get("rag_chat_messages") or []
-                    res = client.kb_query(
-                        query_text=q.strip(),
-                        query_type=s.get("query_type", "general"),
-                        symbols=(s.get("symbols") or None),
-                        top_k=int(s.get("top_k", 5)),
-                        relevance_threshold=float(s.get("relevance_threshold", 0.7)),
-                        history=history,
-                        conversation_id=None,
-                        agent_role=(s.get("agent_role") or os.getenv('RAG_CHAT_AGENT_ROLE') or 'fundamental_expert'),
-                    )
-                    ans = res.get("answer") if res.get("success") else str(res)
-                    st.write(ans)
-                except Exception as e:
-                    st.error(f"调用失败：{e}")
+            # 简单表单备用
+            with st.form("rag_form"):
+                q = st.text_area("您的问题:", height=100)
+                if st.form_submit_button("发送"):
+                    if q.strip():
+                        st.write("您的问题:", q)
+                        # 处理问题...
+                        st.info("正在处理...")
+
+    # --- 知识库 ---
+    with tab_kb:
+        try:
+            stats = client.kb_stats()
+            kb = stats.get("knowledge_base", {})
+            
+            # 紧凑指标
+            cols = st.columns(3)
+            with cols[0]:
+                st.metric("文档数", kb.get("total_documents", 0))
+            with cols[1]:
+                st.metric("向量库", "✅" if kb.get("vector_db_available") else "❌")
+            with cols[2]:
+                st.metric("片段数", kb.get("total_chunks", 0))
+            
+            # 类型分布
+            if kb.get("documents_by_type"):
+                with st.expander("📂 文档类型分布"):
+                    st.json(kb["documents_by_type"])
+                    
+        except Exception as e:
+            st.error(f"无法获取状态: {e}")
+
+    # --- 索引管理 ---
+    with tab_index:
+        # 基础配置
+        col1, col2 = st.columns(2)
+        with col1:
+            root_dir = st.text_input("根目录", os.getenv("LIBRARY_ROOT", "./data/library"))
+            dry_run = st.checkbox("测试模式")
+        with col2:
+            uploads = st.file_uploader("上传文件", accept_multiple_files=True)
+            
+        # 嵌入配置
+        emb_col1, emb_col2 = st.columns(2) 
+        with emb_col1:
+            emb_model = st.text_input("嵌入模型", "Qwen/Qwen3-Embedding-8B")
+        with emb_col2:
+            emb_dim = st.number_input("维度", 512, 4096, 4096, 512)
+        
+        # 上传处理
+        if uploads:
+            from pathlib import Path as _Path
+            try:
+                troot = _Path(root_dir)
+                troot.mkdir(parents=True, exist_ok=True)
+                for f in uploads:
+                    (troot / f.name).write_bytes(f.read())
+                st.success(f"上传了 {len(uploads)} 个文件")
+            except Exception as e:
+                st.error(f"上传失败: {e}")
+        
+        # 重建索引
+        if st.button("🔄 重建索引", type="primary"):
+            try:
+                res = client.kb_reindex(
+                    root_dir=root_dir,
+                    embedding_dim=emb_dim,
+                    embedding_model=emb_model,
+                    embedding_provider="siliconflow",
+                    dry_run=dry_run,
+                )
+                if res.get("success"):
+                    st.success(f"完成: 新增{res.get('added',0)}, 跳过{res.get('skipped',0)}")
+                else:
+                    st.error(str(res))
+            except Exception as e:
+                st.error(f"失败: {e}")
+
+

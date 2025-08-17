@@ -138,6 +138,37 @@ def build_markdown_sections_from_demo(data: dict[str, Any]) -> dict[str, str]:
     ]
     invest_report = "\n".join(invest_md)
 
+    # 政策/合规/工程（若存在）
+    policy = data.get("policy_events", [])
+    policy_report = "## 🏛 政策与产业事件\n" + ("\n".join(
+        [f"- {it.get('date','')}: {it.get('title','')} — {it.get('summary','')} (相关性: {it.get('relevance','')})" for it in policy[:5]]
+    ) if policy else "- 暂无近期政策事件")
+
+    compliance = data.get("compliance_risks", [])
+    compliance_report = "## ⚖️ 合规风险要点\n" + ("\n".join(
+        [f"- [{it.get('risk_type','')}] 严重度: {it.get('severity','')}\n  描述: {it.get('description','')}\n  缓解: {it.get('mitigation','')}" for it in compliance[:6]]
+    ) if compliance else "- 暂无合规风险摘要")
+
+    roadmap = data.get("tech_roadmap", {})
+    engineering_report = ["## 🔧 工程/技术路线要点"]
+    if roadmap:
+        brands = ", ".join(roadmap.get("brands", []))
+        jvs = ", ".join(roadmap.get("jvs", []))
+        fa = ", ".join(roadmap.get("focus_areas", []))
+        engineering_report.append(f"- 品牌: {brands}")
+        if jvs:
+            engineering_report.append(f"- 合资: {jvs}")
+        if fa:
+            engineering_report.append(f"- 重点方向: {fa}")
+        mls = roadmap.get("milestones", [])
+        if mls:
+            for m in mls[:5]:
+                engineering_report.append(f"- {m.get('year','')}: {m.get('item','')}")
+        if roadmap.get("source_note"):
+            engineering_report.append(f"- 来源: {roadmap.get('source_note')}")
+    else:
+        engineering_report.append("- 暂无技术路线信息")
+
     return {
         "market_report": market_report,
         "fundamentals_report": fundamentals_report,
@@ -145,6 +176,9 @@ def build_markdown_sections_from_demo(data: dict[str, Any]) -> dict[str, str]:
         "news_report": news_report,
         "risk_assessment": risk_report,
         "investment_plan": invest_report,
+        "policy_report": policy_report,
+        "compliance_report": compliance_report,
+        "engineering_report": "\n".join(engineering_report),
     }
 
 

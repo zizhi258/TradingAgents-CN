@@ -3,7 +3,47 @@
     "chief_writer": {
       "model": "gemini-api/gemini-2.5-pro",
       "is_locked": true
+    },
+    "bear_researcher": {
+      "model": "deepseek-reasoner",
+      "is_locked": true
+    },
+    "bull_researcher": {
+      "model": "gemini-2.5-pro",
+      "is_locked": true
+    },
+    "chief_decision_officer": {
+      "model": "gemini-2.5-pro",
+      "is_locked": true
+    },
+    "compliance_officer": {
+      "model": "gemini-2.5-pro",
+      "is_locked": true
+    },
+    "fundamental_expert": {
+      "model": "gemini-2.5-pro",
+      "is_locked": true
+    },
+    "news_hunter": {
+      "model": "gemini-2.5-flash",
+      "is_locked": true
+    },
+    "policy_researcher": {
+      "model": "zai-org/GLM-4.5",
+      "is_locked": true
+    },
+    "risk_manager": {
+      "model": "deepseek-reasoner",
+      "is_locked": true
+    },
+    "sentiment_analyst": {
+      "model": "deepseek-chat",
+      "is_locked": true
+    },
+    "technical_analyst": {
+      "model": "deepseek-chat",
+      "is_locked": true
     }
   },
-  "last_modified": "2025-08-15T02:19:46.690365"
+  "last_modified": "2025-08-17T21:35:53.337119"
 }

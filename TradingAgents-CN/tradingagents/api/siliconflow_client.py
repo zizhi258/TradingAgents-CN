@@ -31,20 +31,7 @@ class SiliconFlowClient(BaseMultiModelAdapter):
     # 支持的模型配置 (2025年最新)
     SUPPORTED_MODELS = {
         # DeepSeek 系列
-        "deepseek-ai/DeepSeek-R1": {
-            "type": "reasoning",
-            "cost_per_1k": 0.016,
-            "max_tokens": 8192,
-            "context_window": 160000,
-            "description": "DeepSeek-R1 强化学习推理模型，MoE 671B参数，媲美OpenAI-o1",
-        },
-        "Pro/deepseek-ai/DeepSeek-R1": {
-            "type": "reasoning",
-            "cost_per_1k": 0.016,
-            "max_tokens": 8192,
-            "context_window": 160000,
-            "description": "DeepSeek-R1 Pro版本，强化学习推理模型，顶级性能",
-        },
+        # deepseek-ai/DeepSeek-R1 及 Pro 版本在当前环境不可用，已移除
         "deepseek-ai/DeepSeek-V3": {
             "type": "general",
             "cost_per_1k": 0.008,
@@ -52,13 +39,7 @@ class SiliconFlowClient(BaseMultiModelAdapter):
             "context_window": 128000,
             "description": "DeepSeek-V3-0324，MoE 671B参数，超越GPT-4.5性能",
         },
-        "Pro/deepseek-ai/DeepSeek-V3": {
-            "type": "general",
-            "cost_per_1k": 0.008,
-            "max_tokens": 8192,
-            "context_window": 128000,
-            "description": "DeepSeek-V3 Pro版本，工具调用、角色扮演全面提升",
-        },
+        # Pro/deepseek-ai/DeepSeek-V3 已移除
         # 千问 Qwen 系列
         "Qwen/Qwen3-Coder-480B-A35B-Instruct": {
             "type": "coder",
@@ -67,13 +48,7 @@ class SiliconFlowClient(BaseMultiModelAdapter):
             "context_window": 256000,
             "description": "千问3代码480B，最强代理编程能力，MoE 480B参数",
         },
-        "Qwen/Qwen3-235B-A22B-Thinking-2507": {
-            "type": "thinking",
-            "cost_per_1k": 0.010,
-            "max_tokens": 8192,
-            "context_window": 256000,
-            "description": "千问3思考模型235B，专注复杂推理，开源思考模型顶尖",
-        },
+        # Qwen/Qwen3-235B-A22B-Thinking-2507 已移除
         "Qwen/Qwen3-235B-A22B-Instruct-2507": {
             "type": "instruct",
             "cost_per_1k": 0.010,
@@ -97,13 +72,7 @@ class SiliconFlowClient(BaseMultiModelAdapter):
             "description": "GLM-4.5-Air，轻量级智能体模型，MoE 106B参数",
         },
         # Step 系列
-        "stepfun-ai/step3": {
-            "type": "multimodal",
-            "cost_per_1k": 0.010,
-            "max_tokens": 8192,
-            "context_window": 64000,
-            "description": "Step3多模态推理模型，MoE 321B参数，视觉语言推理顶级",
-        },
+        # stepfun-ai/step3 已移除
         # Kimi 系列
         "moonshotai/Kimi-K2-Instruct": {
             "type": "agent",
@@ -112,13 +81,7 @@ class SiliconFlowClient(BaseMultiModelAdapter):
             "context_window": 128000,
             "description": "Kimi K2，超强代码和Agent能力，MoE 1T参数",
         },
-        "Pro/moonshotai/Kimi-K2-Instruct": {
-            "type": "agent",
-            "cost_per_1k": 0.016,
-            "max_tokens": 8192,
-            "context_window": 128000,
-            "description": "Kimi K2 Pro版本，顶级代码和智能体能力",
-        },
+        # Pro/moonshotai/Kimi-K2-Instruct 已移除
         # 百度文心系列
         "baidu/ERNIE-4.5-300B-A47B": {
             "type": "chinese",
@@ -128,20 +91,7 @@ class SiliconFlowClient(BaseMultiModelAdapter):
             "description": "文心4.5，MoE 300B参数，专为中文优化",
         },
         # 兼容旧版本模型
-        "Qwen/Qwen2.5-7B-Instruct": {
-            "type": "balanced",
-            "cost_per_1k": 0.0005,
-            "max_tokens": 4096,
-            "context_window": 32768,
-            "description": "千问2.5 7B指令模型，平衡性能",
-        },
-        "Qwen/Qwen2.5-72B-Instruct": {
-            "type": "premium",
-            "cost_per_1k": 0.0015,
-            "max_tokens": 4096,
-            "context_window": 131072,
-            "description": "千问2.5 72B指令模型，高性能大模型",
-        },
+        # 已移除 Qwen2.5 旧系列（7B/72B）
     }
 
     def __init__(self, config: dict[str, Any]):

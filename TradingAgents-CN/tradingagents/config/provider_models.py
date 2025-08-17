@@ -90,16 +90,6 @@ MODEL_CATALOG = {
         latency_ms=1200,
         quality_score=0.94,
     ),
-    "gemini-api/gemini-2.0-flash": ModelInfo(
-        name="gemini-api/gemini-2.0-flash",
-        provider=ProviderType.GEMINI_API,
-        context_length=1048576,
-        supports_function_calling=True,
-        cost_per_1k_input=0.0020,
-        cost_per_1k_output=0.0020,
-        latency_ms=700,
-        quality_score=0.83,
-    ),
     "gemini-2.5-flash": ModelInfo(
         name="gemini-2.5-flash",
         provider=ProviderType.GOOGLE,
@@ -110,16 +100,7 @@ MODEL_CATALOG = {
         latency_ms=800,
         quality_score=0.85,
     ),
-    "gemini-2.0-flash": ModelInfo(
-        name="gemini-2.0-flash",
-        provider=ProviderType.GOOGLE,
-        context_length=1048576,
-        supports_function_calling=True,
-        cost_per_1k_input=0.000075,
-        cost_per_1k_output=0.0003,
-        latency_ms=800,
-        quality_score=0.83,
-    ),
+    # 已移除过期模型（2.0/1.5 系列）以避免误选
     # DeepSeek
     "deepseek-chat": ModelInfo(
         name="deepseek-chat",
@@ -151,16 +132,6 @@ MODEL_CATALOG = {
         cost_per_1k_output=0.00028,
         latency_ms=1200,
         quality_score=0.88,
-    ),
-    "deepseek-ai/DeepSeek-R1": ModelInfo(
-        name="deepseek-ai/DeepSeek-R1",
-        provider=ProviderType.SILICONFLOW,
-        context_length=163840,
-        supports_function_calling=True,
-        cost_per_1k_input=0.00055,
-        cost_per_1k_output=0.0022,
-        latency_ms=2000,
-        quality_score=0.92,
     ),
     "zai-org/GLM-4.5": ModelInfo(
         name="zai-org/GLM-4.5",
@@ -210,7 +181,6 @@ ROLE_DEFINITIONS = {
         allowed_models=[
             "gemini-2.5-pro",
             "deepseek-reasoner",
-            "deepseek-ai/DeepSeek-R1",
         ],
         preferred_model="gemini-2.5-pro",
     ),
@@ -227,7 +197,7 @@ ROLE_DEFINITIONS = {
     "sentiment_analyst": RoleConfig(
         name="情绪分析师",
         description="负责市场情绪和投资者心理分析",
-        allowed_models=["deepseek-chat", "zai-org/GLM-4.5", "gemini-2.0-flash"],
+        allowed_models=["deepseek-chat", "zai-org/GLM-4.5", "gemini-2.5-flash"],
         preferred_model="deepseek-chat",
     ),
     # 研究员角色
@@ -258,14 +228,13 @@ ROLE_DEFINITIONS = {
         allowed_models=[
             "deepseek-reasoner",
             "gemini-2.5-pro",
-            "deepseek-ai/DeepSeek-R1",
         ],
         preferred_model="deepseek-reasoner",
     ),
     "chief_decision_officer": RoleConfig(
         name="首席决策官",
         description="负责最终投资决策和裁决",
-        allowed_models=["gemini-2.5-pro", "deepseek-ai/DeepSeek-R1"],
+        allowed_models=["gemini-2.5-pro"],
         preferred_model="gemini-2.5-pro",
         locked_model="gemini-2.5-pro",  # CDO模型锁定，确保决策质量
     ),
@@ -295,7 +264,7 @@ ROLE_DEFINITIONS = {
             # Google AI
             "gemini-2.5-pro",
             "gemini-2.5-flash",
-            "gemini-2.0-flash",
+            # 移除 2.0 系列
             # DeepSeek 原生
             "deepseek-chat",
             "deepseek-reasoner",
@@ -306,7 +275,7 @@ ROLE_DEFINITIONS = {
             "deepseek-ai/DeepSeek-R1",
             # Gemini-API 兼容渠道（OpenAI协议反代）
             "gemini-api/gemini-2.5-pro",
-            "gemini-api/gemini-2.0-flash",
+            # 移除 2.0 系列
         ],
         preferred_model="gemini-2.5-pro",
         locked_model=None,

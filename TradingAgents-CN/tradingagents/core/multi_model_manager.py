@@ -1035,11 +1035,10 @@ class MultiModelManager:
 
         # 定义模型优先级（按稳定性和通用性排序）- 使用实际可用的模型名称
         fallback_priorities = [
-            "gemini-2.5-pro",  # Google 最强模型优先
+            "gemini-2.5-pro",  # Google 最新高质量模型优先
+            "gemini-2.5-flash",  # Google 最新快速模型
             "deepseek-ai/DeepSeek-V3",  # SiliconFlow 稳定模型
             "Qwen/Qwen3-235B-A22B-Instruct-2507",  # 通用中文强模型
-            "gemini-2.0-flash",  # Google 快速模型
-            "gemini-1.5-flash",  # Google 轻量模型
             "zai-org/GLM-4.5",  # GLM 通用模型
         ]
         # 按优先级选择

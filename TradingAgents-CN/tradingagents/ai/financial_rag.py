@@ -68,6 +68,7 @@ class RAGQuery:
     query_text: str
     query_type: str = "general"  # "general", "technical", "fundamental", "news", "risk"
     symbols: list[str] | None = None
+    user_id: str | None = None
     date_range: tuple[datetime, datetime] | None = None
     doc_types: list[str] | None = None
     top_k: int = 5
@@ -273,23 +274,30 @@ class FinancialEmbedding:
         return enhanced_embedding / np.linalg.norm(enhanced_embedding)
 
     def _fallback_embedding(self, text: str) -> np.ndarray:
-        """Fallback embedding method using simple hashing"""
+        """Fallback embedding method using simple hashing.
+
+        Pads/truncates to the target dimension to avoid Chroma dimension mismatch.
+        """
         # Simple hash-based embedding as fallback
         text_hash = hashlib.md5(text.encode()).hexdigest()
 
-        # Convert hash to numeric vector
-        embedding = np.array(
+        # Base vector from hash (up to 32 dims)
+        base = np.array(
             [
                 int(text_hash[i : i + 2], 16) / 255.0
                 for i in range(0, min(len(text_hash), 64), 2)
             ]
         )
 
-        # Pad or truncate to fixed size
-        if len(embedding) < 32:
-            embedding = np.pad(embedding, (0, 32 - len(embedding)))
+        # Target dimension: use remote_dim if set, else 32
+        target_dim = int(self.remote_dim) if self.remote_dim else 32
+        if target_dim <= 0:
+            target_dim = 32
+
+        if len(base) < target_dim:
+            embedding = np.pad(base, (0, target_dim - len(base)))
         else:
-            embedding = embedding[:32]
+            embedding = base[:target_dim]
 
         return embedding
 
@@ -407,14 +415,33 @@ class FinancialKnowledgeBase:
     def _initialize_vector_db(self):
         """Initialize ChromaDB vector database"""
         try:
-            if CHROMADB_AVAILABLE:
-                # Initialize persistent ChromaDB client
-                db_path = str(self.storage_path / "chromadb")
-                self.vector_db = chromadb.PersistentClient(
-                    path=db_path,
-                    settings=Settings(anonymized_telemetry=False, allow_reset=True),
-                )
+            # Allow disabling vector DB via env (fallback to in-memory similarity)
+            mem_flag = os.getenv("MEMORY_ENABLED", "true").strip().lower()
+            if mem_flag in {"0", "false", "no", "off"}:
+                logger.warning("Vector DB disabled by MEMORY_ENABLED=false; using in-memory search")
+                self.vector_db = None
+                self.collection = None
+                return
 
+            if CHROMADB_AVAILABLE:
+                # Initialize persistent ChromaDB client (Windows/WSL friendly)
+                db_path = str(self.storage_path / "chromadb")
+                client = None
+                try:
+                    from tradingagents.agents.utils.chromadb_win11_config import (
+                        get_optimal_chromadb_client,
+                    )
+
+                    client = get_optimal_chromadb_client(db_path)
+                except Exception:
+                    client = chromadb.PersistentClient(
+                        path=db_path,
+                        settings=Settings(
+                            anonymized_telemetry=False, allow_reset=True
+                        ),
+                    )
+
+                self.vector_db = client
                 # Create or get collection
                 self.collection = self.vector_db.get_or_create_collection(
                     name="financial_knowledge",
@@ -461,6 +488,9 @@ class FinancialKnowledgeBase:
                             "sector": document.sector or "",
                             "market": document.market or "",
                             "timestamp": document.timestamp.isoformat(),
+                            "path": (document.metadata or {}).get("path"),
+                            "user_id": (document.metadata or {}).get("user_id"),
+                            "url": (document.metadata or {}).get("url"),
                         }
                     ],
                     ids=[document.doc_id],
@@ -499,13 +529,27 @@ class FinancialKnowledgeBase:
 
             if self.collection is not None:
                 # Query vector database
-                results = self.collection.query(
-                    query_embeddings=[query_embedding.tolist()],
-                    n_results=min(
-                        query.top_k * 2, 20
-                    ),  # Get more results for filtering
-                    include=["documents", "metadatas", "distances"],
-                )
+                where: dict[str, Any] = {}
+                if query.symbols:
+                    # Chroma where $in is supported for exact values
+                    where["symbol"] = {"$in": query.symbols}
+                if query.user_id:
+                    where["user_id"] = query.user_id
+
+                try:
+                    results = self.collection.query(
+                        query_embeddings=[query_embedding.tolist()],
+                        n_results=min(query.top_k * 2, 20),
+                        include=["documents", "metadatas", "distances"],
+                        where=where if where else None,
+                    )
+                except TypeError:
+                    # For older chroma versions without where arg
+                    results = self.collection.query(
+                        query_embeddings=[query_embedding.tolist()],
+                        n_results=min(query.top_k * 2, 20),
+                        include=["documents", "metadatas", "distances"],
+                    )
 
                 # Convert results to documents
                 for i in range(len(results["ids"][0])):
@@ -523,8 +567,17 @@ class FinancialKnowledgeBase:
             # Apply filters
             filtered_docs = self._apply_filters(retrieved_docs, query)
 
-            # Sort by relevance and return top k
+            # Sort by relevance
             filtered_docs.sort(key=lambda x: x.relevance_score, reverse=True)
+
+            # Backoff: if threshold filtered out everything but we had candidates, relax threshold
+            if not filtered_docs and retrieved_docs:
+                try:
+                    retrieved_docs.sort(key=lambda x: x.relevance_score, reverse=True)
+                except Exception:
+                    pass
+                return retrieved_docs[: query.top_k]
+
             return filtered_docs[: query.top_k]
 
         except Exception as e:
@@ -548,6 +601,14 @@ class FinancialKnowledgeBase:
                 doc
                 for doc in filtered
                 if doc.symbol is None or doc.symbol in query.symbols
+            ]
+
+        # User filter
+        if query.user_id:
+            filtered = [
+                doc
+                for doc in filtered
+                if (doc.metadata or {}).get("user_id") in {query.user_id}
             ]
 
         # Document type filter
@@ -792,8 +853,16 @@ Data Points: {len(data)}
 
     def get_stats(self) -> dict[str, Any]:
         """Get knowledge base statistics"""
+        vectors = None
+        try:
+            if self.collection is not None and hasattr(self.collection, "count"):
+                vectors = int(self.collection.count())
+        except Exception:
+            vectors = None
         return {
             "total_documents": len(self.documents),
+            "total_chunks": len(self.documents),
+            "vector_count": vectors,
             "documents_by_type": {
                 doc_type: len(doc_ids) for doc_type, doc_ids in self.type_index.items()
             },
@@ -897,17 +966,55 @@ Please provide risk assessment including potential downside scenarios, volatilit
             # Retrieve relevant documents
             retrieved_docs = self.knowledge_base.query_documents(rag_query)
 
+            # If no docs are found, still try to answer via LLM directly (non-RAG fallback)
             if not retrieved_docs:
                 logger.warning(
-                    f"No relevant documents found for query: {query_text[:50]}..."
+                    f"No relevant documents found for query: {query_text[:50]}... (invoking LLM direct fallback)"
                 )
+                direct_prompt = (
+                    "You are a helpful financial analysis assistant.\n"
+                    "The knowledge base has no indexed documents for this question right now.\n"
+                    "Answer using your general knowledge and reasoning.\n\n"
+                    f"Question: {query_text}\n\n"
+                    "Provide a clear, concise answer with any useful context."
+                )
+                generated_response = None
+                if self.llm_orchestrator:
+                    try:
+                        result = await self.llm_orchestrator.execute_task(
+                            agent_role=agent_role,
+                            task_prompt=direct_prompt,
+                            task_type=query_type,
+                            context={
+                                "rag_enhanced": False,
+                                "symbols": symbols,
+                                "doc_count": 0,
+                                "query_type": query_type,
+                                **(kwargs.get("context", {}) or {}),
+                            },
+                        )
+                        if result.success:
+                            generated_response = result.result
+                    except Exception as e:
+                        logger.error(f"Direct LLM fallback failed: {e}")
+
+                if not generated_response:
+                    generated_response = (
+                        "I can’t find relevant items in the knowledge base yet, "
+                        "but here is a general analysis based on the question:\n\n"
+                        f"{query_text}"
+                    )
+
                 return RAGResponse(
                     query=rag_query,
                     retrieved_documents=[],
-                    generated_response="I don't have sufficient relevant information to answer this question accurately. Please provide more context or try a different query.",
-                    confidence_score=0.0,
+                    generated_response=generated_response,
+                    confidence_score=0.5,
                     sources=[],
-                    metadata={"no_documents_found": True},
+                    metadata={
+                        "no_documents_found": True,
+                        "llm_direct_fallback": True,
+                    },
                 )
 
             # Prepare context from retrieved documents
@@ -916,7 +1023,7 @@ Please provide risk assessment including potential downside scenarios, volatilit
             # Generate response using LLM
             if self.llm_orchestrator:
                 generated_response = await self._generate_response(
-                    rag_query, context, agent_role
+                    rag_query, context, agent_role, doc_count=len(retrieved_docs)
                 )
             else:
                 generated_response = self._fallback_response(rag_query, context)
@@ -937,6 +1044,7 @@ Please provide risk assessment including potential downside scenarios, volatilit
                 sources=sources,
                 metadata={
                     "num_documents_retrieved": len(retrieved_docs),
+                    "doc_count": len(retrieved_docs),
                     "avg_relevance_score": np.mean(
                         [doc.relevance_score for doc in retrieved_docs]
                     ),
@@ -954,6 +1062,234 @@ Please provide risk assessment including potential downside scenarios, volatilit
                 sources=[],
                 metadata={"error": str(e)},
             )
+
+    # ---------------- Library ingestion (files -> KB) ----------------
+    def _read_file_text(self, path: Path) -> tuple[str | None, str | None]:
+        """Read supported file types into plain text.
+
+        Returns (text, warn). Warn is a short message when downgraded parsing happens.
+        """
+        try:
+            ext = path.suffix.lower()
+            if ext in {".txt", ".md"}:
+                return path.read_text(encoding="utf-8", errors="ignore"), None
+            if ext in {".csv"}:
+                # Lightweight CSV preview: join first ~200 lines
+                lines = []
+                with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                    for i, line in enumerate(f):
+                        if i > 2000:
+                            lines.append("...")
+                            break
+                        lines.append(line.rstrip("\n"))
+                return "\n".join(lines), "csv_preview"
+            if ext in {".html", ".htm"}:
+                import re
+
+                raw = path.read_text(encoding="utf-8", errors="ignore")
+                # naive tag strip
+                txt = re.sub(r"<script[\s\S]*?</script>", " ", raw, flags=re.I)
+                txt = re.sub(r"<style[\s\S]*?</style>", " ", txt, flags=re.I)
+                txt = re.sub(r"<[^>]+>", " ", txt)
+                return txt, "html_stripped"
+            if ext in {".docx"}:
+                # Prefer python-docx; fallback to pypandoc
+                try:
+                    from docx import Document  # type: ignore
+
+                    doc = Document(str(path))
+                    paras = [p.text for p in doc.paragraphs if p.text and p.text.strip()]
+                    return "\n".join(paras), "docx_parsed"
+                except Exception:
+                    try:
+                        import pypandoc  # type: ignore
+
+                        out = pypandoc.convert_file(str(path), to="plain")
+                        return out, "docx_pandoc"
+                    except Exception:
+                        return None, "unsupported_or_parse_failed"
+            if ext in {".xlsx"}:
+                # Use pandas if available
+                try:
+                    import pandas as _pd
+
+                    x = _pd.ExcelFile(str(path))
+                    parts: list[str] = []
+                    for name in x.sheet_names[:5]:  # cap sheets for safety
+                        df = x.parse(name)
+                        # limit rows/cols for readability
+                        df = df.iloc[:200, :20]
+                        parts.append(f"### Sheet: {name}\n{df.to_csv(index=False)}")
+                    return "\n\n".join(parts), "xlsx_parsed"
+                except Exception:
+                    return None, "unsupported_or_parse_failed"
+            if ext in {".pdf"}:
+                # Prefer PyMuPDF; fallback to pandoc
+                try:
+                    import fitz  # type: ignore
+
+                    text_parts: list[str] = []
+                    with fitz.open(str(path)) as doc:
+                        for i, page in enumerate(doc):
+                            if i >= 50:  # cap pages
+                                text_parts.append("...")
+                                break
+                            text_parts.append(page.get_text())
+                    return "\n".join(text_parts), "pdf_extracted"
+                except Exception:
+                    try:
+                        import pypandoc  # type: ignore
+
+                        out = pypandoc.convert_file(str(path), to="plain")
+                        return out, "pdf_pandoc"
+                    except Exception:
+                        return None, "unsupported_or_parse_failed"
+        except Exception:
+            pass
+        return None, "unsupported_or_parse_failed"
+
+    def _chunk_text(self, text: str, chunk_size: int = 1000, overlap: int = 200) -> list[str]:
+        if chunk_size <= 0:
+            chunk_size = 1000
+        if overlap < 0:
+            overlap = 0
+        res: list[str] = []
+        n = len(text)
+        i = 0
+        while i < n:
+            j = min(i + chunk_size, n)
+            seg = text[i:j].strip()
+            if seg:
+                res.append(seg)
+            if j >= n:
+                break
+            i = j - overlap if overlap > 0 else j
+            if i < 0:
+                i = 0
+        return res
+
+    def ingest_library(
+        self,
+        root_dir: str,
+        user_id: str | None = None,
+        symbol: str | None = None,
+        chunk_size: int = 1000,
+        overlap: int = 200,
+        files: list[str] | None = None,
+        dry_run: bool = False,
+    ) -> dict[str, Any]:
+        """Ingest files under root_dir into the knowledge base.
+
+        Minimal implementation: supports txt/md/csv/html; others are skipped with warnings.
+        Creates chunked FinancialDocuments and persists KB.
+        """
+        root = Path(root_dir)
+        if not root.exists() or not root.is_dir():
+            raise ValueError(f"Library root not found: {root}")
+
+        added = 0
+        skipped = 0
+        warnings: list[str] = []
+
+        exts = {".txt", ".md", ".csv", ".html", ".htm", ".pdf", ".docx", ".xlsx"}
+
+        candidates: list[Path]
+        if files:
+            candidates = []
+            for f in files:
+                fp = Path(f)
+                if not fp.is_absolute():
+                    fp = root / fp
+                if fp.exists() and fp.is_file():
+                    candidates.append(fp)
+        else:
+            candidates = [p for p in sorted(root.rglob("*")) if p.is_file()]
+
+        for p in candidates:
+            if not p.is_file():
+                continue
+            if p.suffix.lower() not in exts:
+                skipped += 1
+                continue
+            text, warn = self._read_file_text(p)
+            if warn == "unsupported_or_parse_failed" or not text:
+                warnings.append(f"Parse skipped: {p}")
+                skipped += 1
+                continue
+            if warn and warn != "unsupported_or_parse_failed":
+                warnings.append(f"{warn}: {p}")
+
+            chunks = self._chunk_text(text, chunk_size=chunk_size, overlap=overlap)
+            if not chunks:
+                skipped += 1
+                continue
+
+            # document metadata
+            title = p.stem
+            doc_type = "library"
+            try:
+                ts = datetime.fromtimestamp(p.stat().st_mtime)
+            except Exception:
+                ts = datetime.now()
+            # stable file hash
+            try:
+                h = hashlib.md5(p.read_bytes()).hexdigest()
+            except Exception:
+                h = hashlib.md5(str(p).encode("utf-8")).hexdigest()
+
+            for idx, seg in enumerate(chunks):
+                doc_id = f"lib_{h}_{idx}"
+                if doc_id in self.knowledge_base.documents:
+                    skipped += 1
+                    continue
+                if dry_run:
+                    added += 1  # count as would-add
+                    continue
+
+                # Build file URL when static serving is enabled and the path is under root_dir
+                file_url = None
+                try:
+                    serve_static = str(os.getenv("SERVE_LIBRARY_STATIC", "true")).lower() in {
+                        "1",
+                        "true",
+                        "yes",
+                        "on",
+                    }
+                    if serve_static:
+                        rel = p.resolve().relative_to(root.resolve())
+                        prefix = os.getenv("LIBRARY_URL_PREFIX", "/library").rstrip("/")
+                        rel_url = "/".join(str(rel).split(os.sep))
+                        file_url = f"{prefix}/{rel_url}"
+                except Exception:
+                    file_url = None
+
+                doc = FinancialDocument(
+                    doc_id=doc_id,
+                    title=title,
+                    content=seg,
+                    doc_type=doc_type,
+                    symbol=symbol,
+                    timestamp=ts,
+                    metadata={
+                        "path": str(p),
+                        "ext": p.suffix.lower(),
+                        "user_id": user_id,
+                        "url": file_url,
+                    },
+                )
+                if self.knowledge_base.add_document(doc):
+                    added += 1
+                else:
+                    skipped += 1
+
+        # Persist KB
+        if not dry_run:
+            try:
+                self.knowledge_base.save_knowledge_base()
+            except Exception as e:
+                warnings.append(f"save_kb_failed: {e}")
+
+        return {"added": added, "skipped": skipped, "warnings": warnings}
 
     def _prepare_context(self, documents: list[FinancialDocument]) -> str:
         """Prepare context string from retrieved documents"""
@@ -976,7 +1312,7 @@ Content:
         return "\n\n" + "\n\n".join(context_parts)
 
     async def _generate_response(
-        self, query: RAGQuery, context: str, agent_role: str
+        self, query: RAGQuery, context: str, agent_role: str, doc_count: int | None = None
     ) -> str:
         """Generate response using LLM orchestrator"""
         try:
@@ -996,7 +1332,7 @@ Content:
                 context={
                     "rag_enhanced": True,
                     "symbols": query.symbols,
-                    "doc_count": len(query.context.get("retrieved_docs", [])),
+                    "doc_count": int(doc_count or 0),
                     "query_type": query.query_type,
                 },
             )
@@ -1093,23 +1429,90 @@ Note: This is a document-based response. For more detailed analysis, please ensu
         logger.info(f"Ingested data for {symbol}: {stats}")
         return stats
 
+    def _detect_parsers(self) -> dict[str, bool]:
+        """Detect optional parsing dependencies for PDF/DOCX/XLSX and pandoc."""
+        out = {
+            "pypandoc": False,
+            "pandoc_binary": False,
+            "python_docx": False,
+            "pymupdf": False,
+            "pandas": False,
+            "openpyxl": False,
+        }
+        try:
+            import pypandoc  # type: ignore  # noqa: F401
+
+            out["pypandoc"] = True
+            try:
+                import shutil, subprocess  # noqa: E401
+
+                if shutil.which("pandoc"):
+                    subprocess.run(["pandoc", "--version"], capture_output=True, timeout=3)
+                    out["pandoc_binary"] = True
+            except Exception:
+                pass
+        except Exception:
+            pass
+        try:
+            import docx  # type: ignore  # noqa: F401
+
+            out["python_docx"] = True
+        except Exception:
+            pass
+        try:
+            import fitz  # type: ignore  # noqa: F401
+
+            out["pymupdf"] = True
+        except Exception:
+            pass
+        try:
+            import pandas  # noqa: F401
+
+            out["pandas"] = True
+            try:
+                import openpyxl  # noqa: F401
+
+                out["openpyxl"] = True
+            except Exception:
+                pass
+        except Exception:
+            pass
+        return out
+
     def get_system_stats(self) -> dict[str, Any]:
-        """Get comprehensive system statistics"""
+        """Get comprehensive system statistics including parser detection."""
         kb_stats = self.knowledge_base.get_stats()
+        serve_static = str(os.getenv("SERVE_LIBRARY_STATIC", "true")).lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        emb_avail = False
+        try:
+            emb = self.knowledge_base.embedding_system
+            emb_avail = bool(getattr(emb, "siliconflow_api_key", None)) or bool(
+                getattr(emb, "model", None)
+            )
+        except Exception:
+            emb_avail = False
 
         return {
             "knowledge_base": kb_stats,
             "rag_system": {
                 "prompt_templates": len(self.prompt_templates),
                 "llm_orchestrator_available": self.llm_orchestrator is not None,
-                "embedding_system_available": self.knowledge_base.embedding_system.model
-                is not None,
+                "embedding_system_available": emb_avail,
                 "vector_db_available": self.knowledge_base.collection is not None,
+                "parsers": self._detect_parsers(),
+                "library_root": os.getenv("LIBRARY_ROOT", "./data/library"),
+                "library_url_prefix": os.getenv("LIBRARY_URL_PREFIX", "/library"),
+                "serve_library_static": serve_static,
             },
         }
 
-    # =============== Library ingestion (MVP) ===============
-    def parse_file_to_text(self, path: str | Path) -> str | None:
+    # =============== Library ingestion (MVP, obsolete – kept for backward-compat) ===============
+    def parse_file_to_text_obsolete(self, path: str | Path) -> str | None:
         """Parse file to plain text (MVP): supports .txt/.md/.csv/.html minimal.
 
         For other formats, return None to skip (keeps compatibility minimal).
@@ -1142,7 +1545,7 @@ Note: This is a document-based response. For more detailed analysis, please ensu
             logger.warning(f"parse_file_to_text failed for {path}: {e}")
             return None
 
-    def chunk_text(
+    def chunk_text_obsolete(
         self, text: str, max_len: int = 1000, overlap: int = 100
     ) -> list[str]:
         """Simple text chunking by characters with overlap (MVP)."""
@@ -1159,7 +1562,7 @@ Note: This is a document-based response. For more detailed analysis, please ensu
             start = max(end - overlap, start + 1)
         return chunks
 
-    def ingest_library(
+    def ingest_library_obsolete(
         self,
         root_dir: str | Path,
         default_doc_type: str = "library",

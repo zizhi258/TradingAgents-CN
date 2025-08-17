@@ -113,24 +113,85 @@ def _display_role_card(
             else "该角色未设置允许模型"
         )
 
-        # 选择器
-        options = ["(不锁定)"] + allowed_models
+        # 根据允许模型分组到提供商，若有多个提供商则先选择提供商，再筛选模型
+        # 与“主笔人模型绑定”保持一致的交互体验
+        provider_to_models: dict[str, list[str]] = {}
         try:
-            index = options.index(current_value) if current_value in options else 0
+            for m in allowed_models:
+                info = model_provider_manager.get_model_info(m)
+                if info:
+                    provider_to_models.setdefault(info.provider.value, []).append(m)
         except Exception:
-            index = 0
+            provider_to_models = {}
 
-        selection = st.selectbox(
-            label=f"绑定模型 - {display_name}",
-            options=options,
-            index=index,
-            key=f"bind_{role_key}",
-            help=(f"推荐: {recommended}" if recommended else None),
-        )
+        provider_labels = {
+            "google": "Google AI (Gemini)",
+            "deepseek": "DeepSeek",
+            "siliconflow": "SiliconFlow 聚合",
+            "openai": "OpenAI",
+            "ollama": "Ollama",
+        }
+
+        selected_model: str = "(不锁定)"
+
+        if allowed_models and len(provider_to_models.keys()) > 1:
+            # 推断当前值对应的提供商
+            def _infer_provider(model_name: str) -> str:
+                info = (
+                    model_provider_manager.get_model_info(model_name)
+                    if model_name and model_name not in ("(不锁定)", None)
+                    else None
+                )
+                return info.provider.value if info else next(iter(provider_to_models.keys()))
+
+            default_provider = _infer_provider(current_value)
+            provider = st.selectbox(
+                label=f"选择提供商 - {display_name}",
+                options=list(provider_to_models.keys()),
+                index=(
+                    list(provider_to_models.keys()).index(default_provider)
+                    if default_provider in provider_to_models
+                    else 0
+                ),
+                format_func=lambda k: provider_labels.get(k, k),
+                key=f"provider_{role_key}",
+            )
+
+            models_in_provider = provider_to_models.get(provider, [])
+            options = ["(不锁定)"] + models_in_provider
+            try:
+                index = options.index(current_value) if current_value in options else 0
+            except Exception:
+                index = 0
+            selected_model = st.selectbox(
+                label=f"绑定模型 - {display_name}",
+                options=options,
+                index=index,
+                # 关键：当供应商切换时，改变控件key，强制Streamlit重建控件并重置非法值
+                key=f"bind_{role_key}_{provider}",
+                help=(f"推荐: {recommended}" if recommended else None),
+            )
+            # 再次校验：若当前选择不在该供应商模型内，回退为(不锁定)
+            if selected_model not in options:
+                selected_model = "(不锁定)"
+        else:
+            # 单一提供商或无法解析提供商：回退为简单下拉
+            options = ["(不锁定)"] + allowed_models
+            try:
+                index = options.index(current_value) if current_value in options else 0
+            except Exception:
+                index = 0
+            selected_model = st.selectbox(
+                label=f"绑定模型 - {display_name}",
+                options=options,
+                index=index,
+                key=f"bind_{role_key}",
+                help=(f"推荐: {recommended}" if recommended else None),
+            )
 
         st.markdown("</div>", unsafe_allow_html=True)
 
-    return selection
+    return selected_model
 
 
 def render_role_model_binding() -> None:
@@ -254,57 +315,8 @@ def render_role_model_binding() -> None:
     )
     st.json({role_key: active_model})
 
-    # ========= 高级：按角色模型绑定（原页面） =========
-    with st.expander("高级设置：按角色模型绑定（可选）", expanded=False):
-        roles = _get_all_roles()
-        with st.form("role_model_binding_form", clear_on_submit=False):
-            st.markdown("### 全角色绑定设置")
-
-            cols = st.columns(3)
-            selections: dict[str, str] = {}
-            for idx, rk in enumerate(roles):
-                col = cols[idx % 3]
-                with col:
-                    selected = _display_role_card(
-                        role_key=rk,
-                        default_value="(不锁定)",
-                        session_overrides=session_overrides,
-                        persistent_overrides=persistent_overrides,
-                    )
-                    selections[rk] = selected
-
-            st.markdown("---")
-            btn_c1, btn_c2, btn_c3, _ = st.columns([2, 2, 2, 6])
-            save_session = btn_c1.form_submit_button("💾 保存本次会话")
-            save_permanent = btn_c2.form_submit_button("📌 永久保存")
-            reset_all = btn_c3.form_submit_button("🧹 重置所有")
-
-            if save_session:
-                overrides = {
-                    k: v for k, v in selections.items() if v and v != "(不锁定)"
-                }
-                st.session_state.model_overrides = overrides
-                st.success("✅ 已保存到本次会话。")
-
-            if save_permanent:
-                any_changed = False
-                for rk, value in selections.items():
-                    if value and value != "(不锁定)":
-                        if save_persistent_role_config(rk, value):
-                            any_changed = True
-                    else:
-                        if clear_role_config(rk):
-                            any_changed = True
-                if any_changed:
-                    st.success("✅ 永久配置已更新。")
-                else:
-                    st.info("ℹ️ 没有需要更新的项目。")
-
-            if reset_all:
-                for rk in roles:
-                    try:
-                        clear_role_config(rk)
-                    except Exception:
-                        pass
-                st.session_state.model_overrides = {}
-                st.success("✅ 已重置所有绑定。")
+    # 提示：全局角色绑定入口迁移至“角色库”
+    st.markdown("---")
+    st.info(
+        "全局角色绑定已移动至 ‘🧭 角色中心 > 🧰 角色库’ 页面下的『🔗 全局角色绑定（所有角色）』分区。此处仅保留主笔人模型绑定。"
+    )

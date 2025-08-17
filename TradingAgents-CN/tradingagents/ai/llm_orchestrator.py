@@ -454,8 +454,19 @@ class AIOrchestrator:
         task.started_at = datetime.now()
 
         try:
-            # Check circuit breaker
-            selected_model = await self._intelligent_model_selection(task)
+            # Model override from context (e.g., RAG chat temporary override)
+            selected_model = None
+            try:
+                override = task.context.get("model_override") if task.context else None
+                if isinstance(override, str) and override.strip():
+                    selected_model = override.strip()
+                    logger.info(f"Model override applied from context: {selected_model}")
+            except Exception:
+                selected_model = None
+
+            # Check circuit breaker / or select if not overridden
+            if not selected_model:
+                selected_model = await self._intelligent_model_selection(task)
             if self._is_circuit_open(selected_model):
                 # Try fallback model
                 fallback_models = self._get_fallback_models(
@@ -524,7 +535,7 @@ class AIOrchestrator:
             # Apply orchestrator intelligence
             if task.priority == TaskPriority.CRITICAL:
                 # For critical tasks, prefer highest quality models
-                quality_models = ["gemini-2.5-pro", "deepseek-ai/DeepSeek-R1"]
+                quality_models = ["gemini-2.5-pro", "deepseek-ai/DeepSeek-V3"]
                 for model in quality_models:
                     if not self._is_circuit_open(model):
                         return model

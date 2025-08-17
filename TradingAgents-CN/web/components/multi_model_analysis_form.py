@@ -348,14 +348,28 @@ def render_multi_model_progress_display(analysis_id: str):
     try:
         from tradingagents.graph.multi_model_extension import get_multi_model_progress
 
-        # 获取进度数据
+        # 获取进度数据（若扩展不可用，则回退到统一进度跟踪器）
         progress_data = get_multi_model_progress(analysis_id)
 
         if progress_data:
-            # 显示总体进度
-            total_progress = progress_data.get("total_progress", 0)
-            st.progress(total_progress / 100)
-            st.write(f"总体进度: {total_progress}%")
+            # 显示总体进度：尝试统一跟踪器值并采用封顶余量
+            try:
+                from web.utils.async_progress_tracker import get_progress_by_id
+
+                unified = get_progress_by_id(analysis_id) or {}
+                pct = float(unified.get("progress_percentage", progress_data.get("total_progress", 0)))
+                status = unified.get("status", "running")
+            except Exception:
+                pct = float(progress_data.get("total_progress", 0))
+                status = "running"
+
+            if status != "completed" and pct > 95:
+                pct_display = 95.0
+            else:
+                pct_display = pct
+
+            st.progress(pct_display / 100.0)
+            st.write(f"总体进度: {pct_display:.1f}%")
 
             # 显示各智能体状态
             agents_status = progress_data.get("agents_status", {})

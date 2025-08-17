@@ -105,15 +105,15 @@ html {
   background: var(--zen-text-secondary);
 }
 
-/* 容器留白与可读性 - 优化布局 */
+/* 容器留白与可读性 - 紧凑布局 */
 .main .block-container {
-  padding-top: 2rem !important;
-  padding-bottom: 2rem !important;
-  padding-left: 1.5rem !important;
-  padding-right: 1.5rem !important;
+  padding-top: 0.5rem !important;
+  padding-bottom: 1rem !important;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
   max-width: 1200px !important;
   margin: 0 auto !important;
-  min-height: calc(100vh - 4rem) !important;
+  min-height: calc(100vh - 2rem) !important;
 }
 
 /* 优化页面整体布局 */
@@ -130,25 +130,25 @@ section.main {
 
 /* 顶部导航区域优化 */
 .stTabs {
-  margin-bottom: 1.5rem !important;
+  margin-bottom: 0.5rem !important;
   background: var(--zen-surface) !important;
-  border-radius: 16px !important;
-  padding: 0.5rem !important;
+  border-radius: 12px !important;
+  padding: 0.25rem !important;
   box-shadow: var(--zen-shadow-sm) !important;
 }
 
-/* 现代化卡片系统 - 优化布局 */
+/* 现代化卡片系统 - 紧凑布局 */
 .ta-card,
 .ta-section,
 [data-testid="stExpander"] {
   background: var(--zen-gradient-surface) !important;
   border: 1px solid var(--zen-border) !important;
-  border-radius: 16px !important;
+  border-radius: 12px !important;
   box-shadow: var(--zen-shadow-sm) !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
   overflow: hidden !important;
-  margin-bottom: 1.5rem !important;
-  padding: 1.5rem !important;
+  margin-bottom: 0.75rem !important;
+  padding: 0.75rem !important;
 }
 
 .ta-card:hover,
@@ -160,17 +160,17 @@ section.main {
 
 /* 优化展开器样式 */
 [data-testid="stExpander"] {
-  margin-bottom: 1rem !important;
+  margin-bottom: 0.5rem !important;
 }
 
 [data-testid="stExpander"] > div:first-child {
-  padding: 1rem 1.5rem !important;
+  padding: 0.5rem 1rem !important;
   background: var(--zen-surface-hover) !important;
   border-bottom: 1px solid var(--zen-border) !important;
 }
 
 [data-testid="stExpander"] > div:last-child {
-  padding: 1.5rem !important;
+  padding: 0.75rem !important;
 }
 
 /* 毛玻璃效果 */
@@ -1131,3 +1131,40 @@ hr {
   height: 1px !important;
   background: var(--zen-border) !important;
 }
+
+/* ========== 简化聊天界面样式 ========== */
+
+/* 聊天输入优化 */
+[data-testid="stChatInput"] > div > div {
+  border-radius: 20px !important;
+  border: 1px solid var(--zen-border) !important;
+  box-shadow: var(--zen-shadow-sm) !important;
+}
+
+[data-testid="stChatInput"] input {
+  padding: 0.75rem 1rem !important;
+  font-size: 0.9rem !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+/* ========== 简化聊天界面样式 ========== */
+
+/* 聊天消息优化 */
+[data-testid="stChatMessage"] {
+  margin-bottom: 0.5rem !important;
+  padding: 0.5rem !important;
+  border-radius: 12px !important;
+}
+
+[data-testid="stChatMessage"][data-testid*="user"] {
+  background: var(--zen-accent-light) !important;
+  margin-left: 2rem !important;
+}
+
+[data-testid="stChatMessage"][data-testid*="assistant"] {
+  background: var(--zen-surface) !important;
+  border: 1px solid var(--zen-border) !important;
+  margin-right: 2rem !important;
+}
+

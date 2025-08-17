@@ -38,6 +38,21 @@ class AsyncProgressDisplay:
             f"📊 [异步显示] 初始化: {analysis_id}, 刷新间隔: {refresh_interval}s"
         )
 
+    @staticmethod
+    def _should_bind_mm_results() -> bool:
+        """仅在多模型个股分析页面下，才写入多模型结果到 session_state。
+
+        目的：避免其它页面（单模型、市场分析等）完成后把结果注入到多模型页面的
+        占位变量，造成跨页面信息串场。
+        """
+        try:
+            return (
+                st.session_state.get("analysis_mode") == "多模型"
+                and bool(st.session_state.get("multi_model_current_analysis_id"))
+            )
+        except Exception:
+            return False
+
     def update_display(self) -> bool:
         """更新显示，返回是否需要继续刷新"""
         now = time.time()
@@ -66,8 +81,11 @@ class AsyncProgressDisplay:
             progress_percentage = progress_data.get("progress_percentage", 0.0)
             status = progress_data.get("status", "running")
 
-            # 进度条
-            self.progress_bar.progress(min(progress_percentage / 100.0, 1.0))
+            # 进度条（封顶余量：未完成前不显示超过95%）
+            display_pct = progress_percentage
+            if status != "completed" and display_pct > 95:
+                display_pct = 95.0
+            self.progress_bar.progress(min(display_pct / 100.0, 1.0))
 
             # 文本信息
             step_name = progress_data.get("current_step_name", "未知")
@@ -102,19 +120,19 @@ class AsyncProgressDisplay:
                                     if formatted:
                                         st.session_state.analysis_results = formatted
                                         st.session_state.analysis_running = False
-                                    # 兼容多模型页面：同时写入多模型结果与跳转标记
-                                    if isinstance(raw_results, dict) and (
-                                        "results" in raw_results
-                                        or "agents_used" in raw_results
-                                        or raw_results.get("collaboration_mode")
+                                    # 仅在多模型上下文中写入对应结果键
+                                    if (
+                                        AsyncProgressDisplay._should_bind_mm_results()
+                                        and isinstance(raw_results, dict)
+                                        and (
+                                            "results" in raw_results
+                                            or "agents_used" in raw_results
+                                            or raw_results.get("collaboration_mode")
+                                        )
                                     ):
-                                        st.session_state.multi_model_analysis_results = (
-                                            raw_results
-                                        )
+                                        st.session_state.multi_model_analysis_results = raw_results
                                         st.session_state.show_multi_model_results = True
-                                        st.session_state.multi_model_current_analysis_id = (
-                                            analysis_id
-                                        )
+                                        st.session_state.multi_model_current_analysis_id = analysis_id
                             except Exception as e:  # noqa: BLE001
                                 st.error(f"恢复分析结果失败: {e}")
 
@@ -213,7 +231,11 @@ def streamlit_auto_refresh_progress(
     step_description = progress_data.get("current_step_description", "")
     last_message = progress_data.get("last_message", "")
 
-    st.progress(min(progress_percentage / 100.0, 1.0))
+    # 未完成前封顶95%
+    display_pct = progress_percentage
+    if status != "completed" and display_pct > 95:
+        display_pct = 95.0
+    st.progress(min(display_pct / 100.0, 1.0))
 
     status_icon = {"running": "🔄", "completed": "✅", "failed": "❌"}.get(status, "🔄")
     st.info(f"{status_icon} **当前状态**: {last_message}")
@@ -238,17 +260,19 @@ def streamlit_auto_refresh_progress(
                         if formatted:
                             st.session_state.analysis_results = formatted
                             st.session_state.analysis_running = False
-                        # 兼容多模型页面
-                        if isinstance(raw_results, dict) and (
-                            "results" in raw_results
-                            or "agents_used" in raw_results
-                            or raw_results.get("collaboration_mode")
+                        # 仅在多模型上下文中写入对应结果键
+                        if (
+                            AsyncProgressDisplay._should_bind_mm_results()
+                            and isinstance(raw_results, dict)
+                            and (
+                                "results" in raw_results
+                                or "agents_used" in raw_results
+                                or raw_results.get("collaboration_mode")
+                            )
                         ):
                             st.session_state.multi_model_analysis_results = raw_results
                             st.session_state.show_multi_model_results = True
-                            st.session_state.multi_model_current_analysis_id = (
-                                analysis_id
-                            )
+                            st.session_state.multi_model_current_analysis_id = analysis_id
                 except Exception as e:  # noqa: BLE001
                     st.error(f"恢复分析结果失败: {e}")
     else:
@@ -297,11 +321,16 @@ def display_static_progress(analysis_id: str) -> bool:
     step_description = progress_data.get("current_step_description", "正在处理...")
     last_message = progress_data.get("last_message", "")
 
+    # 未完成前封顶95%，与其它进度展示函数保持一致
+    display_pct = progress_percentage
+    if status != "completed" and display_pct > 95:
+        display_pct = 95.0
+
     col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
     with col1:
         st.write(f"**当前步骤**: {step_name}")
     with col2:
-        st.metric("进度", f"{progress_percentage:.1f}%")
+        st.metric("进度", f"{display_pct:.1f}%")
     with col3:
         start_time = progress_data.get("start_time", 0.0)
         if status == "completed":
@@ -322,7 +351,8 @@ def display_static_progress(analysis_id: str) -> bool:
         else:
             st.metric("预计剩余", "计算中...")
 
-    st.progress(min(progress_percentage / 100.0, 1.0))
+    # 进度条亦采用封顶后的百分比，避免未完成态显示 100%
+    st.progress(min(display_pct / 100.0, 1.0))
     st.write(f"**当前任务**: {step_description}")
 
     status_icon = {"running": "🔄", "completed": "✅", "failed": "❌"}.get(status, "🔄")
@@ -343,9 +373,11 @@ def display_static_progress(analysis_id: str) -> bool:
                         if formatted:
                             st.session_state.analysis_results = formatted
                             st.session_state.analysis_running = False
-                        # 兼容多模型：同步写入多模型结果与标记
-                        if isinstance(raw, dict) and (
-                            "results" in raw or "agents_used" in raw or raw.get("collaboration_mode")
+                        # 仅在多模型上下文中同步写入多模型结果与标记
+                        if (
+                            AsyncProgressDisplay._should_bind_mm_results()
+                            and isinstance(raw, dict)
+                            and ("results" in raw or "agents_used" in raw or raw.get("collaboration_mode"))
                         ):
                             st.session_state.multi_model_analysis_results = raw
                             st.session_state.show_multi_model_results = True

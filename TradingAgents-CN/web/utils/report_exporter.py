@@ -6,6 +6,7 @@
 
 import logging
 import os
+import re
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -36,6 +37,7 @@ try:
         get_docker_status_info,
         is_docker_environment,
         setup_xvfb_display,
+        get_docker_pdf_extra_args,
     )
 
     DOCKER_ADAPTER_AVAILABLE = True
@@ -48,6 +50,9 @@ try:
     import os
     import tempfile
     from pathlib import Path
+    from urllib.parse import unquote, urlparse
+    import base64
+    import mimetypes
 
     import markdown
 
@@ -95,8 +100,104 @@ class ReportExporter:
         # Docker环境初始化
         if self.is_docker:
             logger.info("🐳 检测到Docker环境，初始化PDF支持...")
-            logger.info("🐳 检测到Docker环境，初始化PDF支持...")
             setup_xvfb_display()
+
+        # 统一设置运行时环境，降低wkhtmltopdf/Qt运行异常概率
+        try:
+            self._ensure_runtime_env()
+        except Exception as _e:
+            logger.debug(f"运行时环境设置警告: {_e}")
+
+    def _ensure_runtime_env(self) -> None:
+        """确保转换所需的关键环境变量有效。
+
+        - 设置 XDG_RUNTIME_DIR 到可写目录（避免 Qt 警告/崩溃）
+        - 设置 QT_QPA_PLATFORM=offscreen 以无头渲染
+        - 统一 LANG/LC_ALL 为 UTF-8
+        """
+        # XDG_RUNTIME_DIR
+        xdg = os.environ.get("XDG_RUNTIME_DIR")
+        if not xdg or not os.path.isdir(xdg):
+            # 构造安全可写路径
+            uid = None
+            try:
+                uid = os.getuid()
+            except Exception:
+                pass
+            base = f"/tmp/runtime-{uid if uid is not None else 'user'}"
+            try:
+                os.makedirs(base, mode=0o700, exist_ok=True)
+                os.environ["XDG_RUNTIME_DIR"] = base
+                logger.info(f"🔧 设置XDG_RUNTIME_DIR: {base}")
+            except Exception as e:
+                logger.debug(f"无法创建XDG_RUNTIME_DIR目录: {e}")
+
+        # 无头渲染平台
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        # 编码
+        os.environ.setdefault("LANG", "C.UTF-8")
+        os.environ.setdefault("LC_ALL", "C.UTF-8")
+
+    def _inline_local_images_in_html(self, html: str) -> str:
+        """将HTML中的本地<img>资源内联为data URI，避免本地文件访问限制。
+
+        支持 src 为 file://、绝对路径 或相对路径的常见情形。
+        """
+        if not html:
+            return html
+
+        def to_data_uri(path: str) -> str | None:
+            try:
+                # 解析 file:// URI 或普通路径
+                if path.startswith("file://"):
+                    parsed = urlparse(path)
+                    local_path = unquote(parsed.path)
+                else:
+                    local_path = path
+                if not os.path.isabs(local_path):
+                    # 相对路径按当前工作目录解析
+                    local_path = os.path.abspath(local_path)
+                if not os.path.exists(local_path):
+                    return None
+                mime, _ = mimetypes.guess_type(local_path)
+                if not mime:
+                    mime = "application/octet-stream"
+                with open(local_path, "rb") as f:
+                    b64 = base64.b64encode(f.read()).decode("ascii")
+                return f"data:{mime};base64,{b64}"
+            except Exception:
+                return None
+
+        replaced = 0
+
+        def repl(m: re.Match) -> str:
+            nonlocal replaced
+            pre, src, post = m.group(1), m.group(2), m.group(3)
+            data = None
+            # 常见图片扩展名才尝试内联
+            lower = src.lower()
+            if (
+                lower.startswith("file://")
+                or lower.startswith("/")
+                or lower.startswith("./")
+                or lower.startswith("../")
+                or lower.endswith(".png")
+                or lower.endswith(".jpg")
+                or lower.endswith(".jpeg")
+                or lower.endswith(".gif")
+                or lower.endswith(".svg")
+            ) and not lower.startswith("data:") and not lower.startswith("http"):
+                data = to_data_uri(src)
+            if data:
+                replaced += 1
+                return f"{pre}{data}{post}"
+            return m.group(0)
+
+        pattern = r"(<img\s+[^>]*src=\")([^\"]+)(\"[^>]*>)"
+        new_html = re.sub(pattern, repl, html, flags=re.IGNORECASE)
+        if replaced:
+            logger.info(f"🖼️ 已内联本地图片: {replaced} 张")
+        return new_html
 
     def _clean_text_for_markdown(self, text: str) -> str:
         """清理文本中可能导致YAML解析问题的字符"""
@@ -370,6 +471,12 @@ class ReportExporter:
         html_content = self.generate_html_report(results)
         logger.info(f"✅ HTML内容生成完成，长度: {len(html_content)} 字符")
 
+        # 处理本地图片为内联，避免wkhtmltopdf的本地访问限制/编码问题
+        try:
+            html_content = self._inline_local_images_in_html(html_content)
+        except Exception as _e:
+            logger.debug(f"内联图片失败（忽略继续）: {_e}")
+
         # 简化的PDF引擎列表，优先使用最可能成功的
         pdf_engines = [
             ("wkhtmltopdf", "HTML转PDF引擎，推荐安装"),
@@ -398,11 +505,36 @@ class ReportExporter:
                 else:
                     logger.info("🔧 使用默认PDF引擎")
 
+                # Docker/无头环境优化参数
+                try:
+                    if DOCKER_ADAPTER_AVAILABLE:
+                        extra_args.extend(get_docker_pdf_extra_args())
+                except Exception as _e:
+                    logger.debug(f"获取Docker PDF参数失败: {_e}")
+
+                # wkhtmltopdf 常见必要参数（允许访问本地文件等）
+                if engine == "wkhtmltopdf":
+                    extra_args.extend(
+                        [
+                            "--pdf-engine-opt=--enable-local-file-access",
+                            "--pdf-engine-opt=--encoding=utf-8",
+                            "--pdf-engine-opt=--load-error-handling=ignore",
+                            "--pdf-engine-opt=--print-media-type",
+                            "--pdf-engine-opt=--quiet",
+                        ]
+                    )
+
                 logger.info(f"🔧 PDF参数: {extra_args}")
 
-                # 直接将HTML转换为PDF
-                pypandoc.convert_text(
-                    html_content,
+                # 为Pandoc提供实际HTML文件，利于相对路径/基路径解析
+                with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8") as html_tmp:
+                    html_tmp.write(html_content)
+                    html_input = html_tmp.name
+                logger.info(f"📝 临时HTML: {html_input}")
+
+                # 通过文件进行转换（比直接传文本更稳健）
+                pypandoc.convert_file(
+                    html_input,
                     "pdf",
                     format="html",
                     outputfile=output_file,
@@ -416,7 +548,14 @@ class ReportExporter:
                         pdf_content = f.read()
 
                     # 清理临时文件
-                    os.unlink(output_file)
+                    try:
+                        os.unlink(output_file)
+                    except Exception:
+                        pass
+                    try:
+                        os.unlink(html_input)
+                    except Exception:
+                        pass
 
                     logger.info(f"✅ PDF生成成功，使用引擎: {engine or '默认'}")
                     return pdf_content
@@ -431,6 +570,11 @@ class ReportExporter:
                 try:
                     if "output_file" in locals() and os.path.exists(output_file):
                         os.unlink(output_file)
+                except Exception:
+                    pass
+                try:
+                    if "html_input" in locals() and os.path.exists(html_input):
+                        os.unlink(html_input)
                 except Exception:
                     pass
 

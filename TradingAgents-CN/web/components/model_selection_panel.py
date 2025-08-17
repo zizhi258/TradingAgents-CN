@@ -353,7 +353,8 @@ def render_model_selection_panel(
         st.session_state.llm_provider = llm_provider
         # 提供商变更时清空模型选择
         st.session_state.llm_model = ""
-        st.session_state.model_category = "google"  # 重置为默认类别
+        # 关键：category 与 provider 对齐，避免混搭
+        st.session_state.model_category = llm_provider
         logger.info("🔄 [Persistence] 清空模型选择")
 
         # 保存到持久化存储
@@ -668,19 +669,18 @@ def _render_openrouter_models(location: str, preset: str) -> tuple:
     # 预设：优先Gemini系列
     if preset == "低成本":
         default_quick, default_deep = (
-            "google/gemini-2.0-flash",
-            "google/gemini-2.0-flash",
+            "google/gemini-2.5-flash",
+            "google/gemini-2.5-flash",
         )
     elif preset == "高质量":
-        default_quick, default_deep = "google/gemini-2.0-flash", "google/gemini-2.5-pro"
+        default_quick, default_deep = "google/gemini-2.5-flash", "google/gemini-2.5-pro"
     else:
-        default_quick, default_deep = "google/gemini-2.0-flash", "google/gemini-2.5-pro"
+        default_quick, default_deep = "google/gemini-2.5-flash", "google/gemini-2.5-pro"
 
     def _fmt(name: str) -> str:
         mapping = {
             "google/gemini-2.5-pro": "Gemini 2.5 Pro (OpenRouter)",
-            "google/gemini-2.0-flash": "Gemini 2.0 Flash (OpenRouter)",
-            "google/gemini-1.5-pro": "Gemini 1.5 Pro (OpenRouter)",
+            "google/gemini-2.5-flash": "Gemini 2.5 Flash (OpenRouter)",
             "anthropic/claude-3.5-sonnet": "Claude 3.5 Sonnet (OpenRouter)",
             "anthropic/claude-3.5-haiku": "Claude 3.5 Haiku (OpenRouter)",
             "openai/o4-mini-high": "OpenAI o4-mini-high (OpenRouter)",
@@ -724,7 +724,7 @@ def _render_openrouter_models(location: str, preset: str) -> tuple:
                 if st.session_state.llm_quick_model not in options
                 else ""
             ),
-            placeholder="例如: google/gemini-2.0-flash 或 anthropic/claude-3.5-sonnet",
+            placeholder="例如: google/gemini-2.5-flash 或 anthropic/claude-3.5-sonnet",
             key=f"{location}_openrouter_custom_input_quick",
         )
         if custom_model:
@@ -784,18 +784,16 @@ def _render_gemini_api_models(location: str, preset: str) -> tuple:
 
     # 预设：与 Google 家族保持一致的默认
     if preset == "低成本":
-        default_quick, default_deep = "gemini-2.0-flash", "gemini-2.0-flash"
+        default_quick, default_deep = "gemini-2.5-flash", "gemini-2.5-flash"
     elif preset == "高质量":
-        default_quick, default_deep = "gemini-2.0-flash", "gemini-2.5-pro"
+        default_quick, default_deep = "gemini-2.5-flash", "gemini-2.5-pro"
     else:
-        default_quick, default_deep = "gemini-2.0-flash", "gemini-2.5-pro"
+        default_quick, default_deep = "gemini-2.5-flash", "gemini-2.5-pro"
 
     def _fmt(name: str) -> str:
         mapping = {
             "gemini-2.5-pro": "Gemini 2.5 Pro (Gemini-API)",
-            "gemini-2.0-flash": "Gemini 2.0 Flash (Gemini-API)",
-            "gemini-1.5-pro": "Gemini 1.5 Pro (Gemini-API)",
-            "gemini-1.5-flash": "Gemini 1.5 Flash (Gemini-API)",
+            "gemini-2.5-flash": "Gemini 2.5 Flash (Gemini-API)",
             "💡 自定义模型": "💡 自定义模型",
         }
         return mapping.get(name, name)
@@ -833,7 +831,7 @@ def _render_gemini_api_models(location: str, preset: str) -> tuple:
                 if st.session_state.llm_quick_model not in options
                 else ""
             ),
-            placeholder="例如: gemini-2.0-flash, gemini-2.5-pro",
+            placeholder="例如: gemini-2.5-flash, gemini-2.5-pro",
             key=f"{location}_gemini_api_custom_input_quick",
         )
         llm_quick_model = custom_model or default_quick
@@ -867,7 +865,7 @@ def _render_google_models(location: str, preset: str) -> tuple:
     elif preset == "高质量":
         default_quick, default_deep = "gemini-2.5-flash", "gemini-2.5-pro"
     else:
-        default_quick, default_deep = "gemini-2.0-flash", "gemini-2.5-pro"
+        default_quick, default_deep = "gemini-2.5-flash", "gemini-2.5-pro"
 
     model_choice_quick = st.selectbox(
         "快速模型 (Quick)",
@@ -880,7 +878,6 @@ def _render_google_models(location: str, preset: str) -> tuple:
         format_func=lambda x: {
             "gemini-2.5-pro": "Gemini 2.5 Pro - 深度推理",
             "gemini-2.5-flash": "Gemini 2.5 Flash - 快速",
-            "gemini-2.0-flash": "Gemini 2.0 Flash - 均衡",
             "💡 自定义模型": "💡 自定义模型",
         }.get(x, x),
         key=f"{location}_google_quick_model_select",
@@ -897,7 +894,6 @@ def _render_google_models(location: str, preset: str) -> tuple:
         format_func=lambda x: {
             "gemini-2.5-pro": "Gemini 2.5 Pro - 深度推理优选",
             "gemini-2.5-flash": "Gemini 2.5 Flash - 快速",
-            "gemini-2.0-flash": "Gemini 2.0 Flash - 均衡",
             "💡 自定义模型": "💡 自定义模型",
         }.get(x, x),
         key=f"{location}_google_deep_model_select",
@@ -1044,7 +1040,7 @@ def _render_siliconflow_models(location: str, preset: str) -> tuple:
                 if st.session_state.llm_quick_model not in siliconflow_options
                 else ""
             ),
-            placeholder="例如: deepseek-ai/DeepSeek-R1, gemini-1.5-pro 等",
+            placeholder="例如: deepseek-ai/DeepSeek-R1",
             key=f"{location}_siliconflow_custom_input_quick",
         )
 

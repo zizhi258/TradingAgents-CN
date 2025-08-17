@@ -25,6 +25,14 @@ from tradingagents.utils.logging_manager import get_logger  # noqa: E402
 
 logger = get_logger("web")
 
+# 安装全局Python侧错误钩子，捕获未处理异常/异步异常/警告
+try:
+    from utils.error_hooks import install_global_error_hooks  # type: ignore
+
+    install_global_error_hooks(logger)
+except Exception:
+    pass
+
 # 加载环境变量：在 Docker 中优先使用容器环境，避免 .env 覆盖
 load_dotenv(project_root / ".env", override=False)
 
@@ -44,6 +52,7 @@ from utils.analysis_runner import (  # noqa: E402
 )
 from utils.api_checker import check_api_keys  # noqa: E402
 from utils.plotly_theme import apply_plotly_theme  # noqa: E402
+from tradingagents.utils.http_instrumentation import install_requests_debug_logging  # noqa: E402
 
 try:
     from utils.ui_utils import inject_back_to_top_button, inject_top_anchor  # 新版函数
@@ -117,11 +126,45 @@ st.set_page_config(
     menu_items=None,
 )
 
-# 注入主题CSS + 应用Plotly主题
-st.markdown(
-    '<link rel="stylesheet" href="/app/static/theme.css">', unsafe_allow_html=True
-)
+# 注入主题CSS + 应用Plotly主题（Docker兼容）
+try:
+    css_file = Path(__file__).parent / "static" / "theme.css"
+    if css_file.exists():
+        with open(css_file, 'r', encoding='utf-8') as f:
+            css_content = f.read()
+        st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
+    else:
+        logger.warning("主题CSS文件未找到，使用内联样式")
+        # 基础样式备用
+        st.markdown("""
+        <style>
+        .stApp { background: #fafbfc !important; }
+        .rag-chat-container { 
+            background: white !important; 
+            border-radius: 16px !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+except Exception as e:
+    logger.error(f"CSS加载失败: {e}")
+
 apply_plotly_theme()
+
+# 可选：开启 Python 侧 HTTP 调试（记录 requests 出入参概况）
+try:
+    install_requests_debug_logging()
+except Exception:
+    pass
+
+# 可选：注入浏览器调试器（F12 console 可见 API 日志/错误）
+try:
+    from web.utils.browser_debug import inject_browser_debug  # type: ignore
+
+    # 传入None以便内部优先选择 MARKET_API_PUBLIC_BASE_URL（对浏览器可达）
+    inject_browser_debug(None)
+except Exception as _e:
+    logger.debug(f"browser_debug 注入失败(可忽略): {_e}")
 
 # 解析URL参数（用于跳转到配置页/角色绑定页）
 try:
@@ -607,13 +650,15 @@ def render_multi_model_collaboration_page(config: dict | None = None):
             st.subheader("📋 多模型协作分析报告")
 
             try:
-                from components.multi_model_analysis_form import (
-                    render_multi_model_results,
-                )
+                # 若结果已在增强面板的“结果”页签内联渲染，则不再重复渲染
+                if not st.session_state.get("_multi_model_results_rendered_inline"):
+                    from components.multi_model_analysis_form import (
+                        render_multi_model_results,
+                    )
 
-                render_multi_model_results(
-                    st.session_state.multi_model_analysis_results
-                )
+                    render_multi_model_results(
+                        st.session_state.multi_model_analysis_results
+                    )
 
                 # 清除显示状态
                 if st.session_state.get("show_multi_model_results", False):
@@ -749,93 +794,40 @@ def main():
     except Exception:
         pass
 
-    # 优化布局CSS - 简化并移除冲突样式
-    st.markdown(
-        """
+    # 紧凑布局CSS
+    st.markdown("""
     <style>
-    /* --- 自定义按钮 Radio --- */
-    /* 容器 */
-    div[data-testid="stHorizontalBlock"] > div[data-testid="stVerticalBlock"] > div[data-testid="stButton"] {
-        margin-top: 0 !important;
-    }
-    /* 选中的按钮 (Primary) */
-    button[data-testid="stButton"][kind="primary"] {
-        background-color: var(--zen-accent, #17a2b8) !important;
-        color: #ffffff !important;
-        border: 1px solid var(--zen-accent, #17a2b8) !important;
-        box-shadow: 0 0 10px rgba(23, 162, 184, 0.5); /* 添加辉光效果 */
-    }
-    /* 未选中的按钮 (Secondary) */
-    button[data-testid="stButton"][kind="secondary"] {
-        background-color: var(--zen-surface, #ffffff) !important;
-        color: var(--zen-text, #31333F) !important;
-        border: 1px solid var(--zen-border, #d1d1d1) !important;
-    }
-    /* 禁用所有按钮的Hover效果，避免干扰 */
-    button[data-testid="stButton"][kind="primary"]:hover,
-    button[data-testid="stButton"][kind="secondary"]:hover {
-        border: 1px solid var(--zen-border, #d1d1d1) !important;
-        transform: none !important;
-    }
-    button[data-testid="stButton"][kind="primary"]:hover {
-        background-color: var(--zen-accent, #17a2b8) !important;
-        color: #ffffff !important;
-        border: 1px solid var(--zen-accent, #17a2b8) !important;
-    }
-    /* --- END --- */
-
     /* 隐藏侧边栏 */
-    section[data-testid="stSidebar"] {
-        display: none !important;
+    section[data-testid="stSidebar"] { display: none !important; }
+    
+    /* 紧凑容器 */
+    .main .block-container {
+        padding: 0.25rem 0.75rem !important;
+        max-width: 1200px !important;
     }
-
-    /* 隐藏侧边栏控制按钮 */
-    button[kind="header"],
-    button[data-testid="collapsedControl"],
-    button[aria-label="Close sidebar"],
-    button[aria-label="Open sidebar"],
-    [data-testid="collapsedControl"] {
-        display: none !important;
-    }
-
-    /* 优化表单布局 */
-    .stForm {
-        background: var(--zen-surface) !important;
-        border-radius: 16px !important;
-        padding: 1.5rem !important;
-        margin-bottom: 1.5rem !important;
-        box-shadow: var(--zen-shadow-sm) !important;
-        border: 1px solid var(--zen-border) !important;
-    }
-
-    /* 优化标签页布局 */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 0.5rem !important;
-    }
-
-    .stTabs [data-baseweb="tab"] {
-        padding: 0.75rem 1.5rem !important;
-        border-radius: 12px !important;
-        font-weight: 500 !important;
-    }
-
-    /* 优化按钮布局 */
-    .stButton {
-        margin-top: 1rem !important;
-    }
-
-    /* 优化指标卡片 */
-    div[data-testid="metric-container"] {
-        background: var(--zen-surface) !important;
-        border: 1px solid var(--zen-border) !important;
-        border-radius: 12px !important;
-        padding: 1rem !important;
-        box-shadow: var(--zen-shadow-sm) !important;
+    
+    /* 紧凑按钮 */
+    .stButton { margin: 0.25rem 0 !important; }
+    
+    /* 紧凑标签页 */
+    .stTabs { margin-bottom: 0.25rem !important; padding: 0.15rem !important; }
+    
+    /* 紧凑表单 */
+    .stForm { padding: 1rem !important; margin-bottom: 1rem !important; }
+    
+    /* 紧凑指标 */
+    div[data-testid="metric-container"] { padding: 0.75rem !important; }
+    
+    /* 紧凑展开器 */
+    [data-testid="stExpander"] { margin-bottom: 0.5rem !important; }
+    
+    /* 美化聊天输入 */
+    [data-testid="stChatInput"] > div > div {
+        border-radius: 20px !important;
+        border: 1px solid #e2e8f0 !important;
     }
     </style>
-    """,
-        unsafe_allow_html=True,
-    )
+    """, unsafe_allow_html=True)
 
     # 添加调试按钮（仅在调试模式下显示）
     if os.getenv("DEBUG_MODE") == "true":
@@ -1238,6 +1230,14 @@ def main():
                                     routing_strategy=model_cfg.get("routing_strategy"),
                                     fallbacks=model_cfg.get("fallbacks"),
                                     max_budget=model_cfg.get("max_budget") or 0.0,
+                                    # 传递扩展角色用于兼容展示与后处理
+                                    extended_roles=(
+                                        (st.session_state.get("form_config") or {}).get(
+                                            "extended_roles"
+                                        )
+                                        or form_data.get("extended_roles")
+                                        or []
+                                    ),
                                 )
                                 async_tracker.mark_completed(
                                     "✅ 分析成功完成！", results=results
@@ -1296,6 +1296,30 @@ def main():
                                 st.session_state.analysis_results = formatted_results
                                 st.session_state.analysis_running = False
                                 st.success("📊 分析完成，结果已就绪。")
+
+                                # 在后台触发：将本次分析离线写入知识库并向量化
+                                # 通过环境变量可关闭：KB_INGEST_ON_COMPLETE=false
+                                try:
+                                    ingest_flag = os.getenv("KB_INGEST_ON_COMPLETE", "true").lower() in ("1","true","yes","on")
+                                except Exception:
+                                    ingest_flag = True
+                                if ingest_flag:
+                                    import threading as _th
+
+                                    def _bg_ingest(_results: dict):
+                                        try:
+                                            from utils.kb_ingestor import ingest_analysis_results as _ing
+
+                                            r = _ing(_results)
+                                            ok = r.get("index", {}).get("success", False)
+                                            if ok:
+                                                logger.info("📚 已完成离线KB索引（基于本次分析）")
+                                            else:
+                                                logger.warning(f"⚠️ 离线KB索引未完成: {r.get('index')}")
+                                        except Exception as _e:
+                                            logger.warning(f"⚠️ KB离线索引后台任务失败: {_e}")
+
+                                    _th.Thread(target=_bg_ingest, args=(formatted_results,), daemon=True).start()
                         except Exception as e:
                             logger.warning(f"⚠️ [结果同步] 恢复失败: {e}")
 

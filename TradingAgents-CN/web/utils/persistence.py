@@ -4,6 +4,7 @@
 """
 
 import logging
+import os
 
 import streamlit as st
 
@@ -38,9 +39,12 @@ class ModelPersistence:
         try:
             query_params = st.query_params
             if "provider" in query_params:
+                prov = query_params.get("provider") or os.getenv("DEFAULT_PROVIDER", "deepseek")
+                # 若未提供或出现不一致，直接以provider为准
+                cat = query_params.get("category") or prov
                 config = {
-                    "provider": query_params.get("provider", "google"),
-                    "category": query_params.get("category", "openai"),
+                    "provider": prov,
+                    "category": cat,
                     "model": query_params.get("model", ""),
                 }
                 logger.debug(f"📥 [Persistence] 从URL加载配置: {config}")
@@ -54,8 +58,13 @@ class ModelPersistence:
             logger.debug(f"📥 [Persistence] 从Session State加载配置: {config}")
             return config
 
-        # 返回默认配置
-        default_config = {"provider": "google", "category": "openai", "model": ""}
+        # 返回默认配置（provider 与 category 对齐）
+        default_provider = os.getenv("DEFAULT_PROVIDER", "deepseek")
+        default_config = {
+            "provider": default_provider,
+            "category": default_provider,
+            "model": "",
+        }
         logger.debug(f"📥 [Persistence] 使用默认配置: {default_config}")
         return default_config
 

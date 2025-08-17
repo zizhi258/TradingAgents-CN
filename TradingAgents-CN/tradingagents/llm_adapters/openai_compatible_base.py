@@ -220,10 +220,7 @@ OPENAI_COMPATIBLE_PROVIDERS = {
         "base_url": "https://api.siliconflow.cn/v1",
         "api_key_env": "SILICONFLOW_API_KEY",
         "models": {
-            "deepseek-ai/DeepSeek-R1": {
-                "context_length": 163840,
-                "supports_function_calling": True,
-            },  # R1 推理模型
+            # 移除 deepseek-ai/DeepSeek-R1
             "deepseek-ai/DeepSeek-V3": {
                 "context_length": 131072,
                 "supports_function_calling": True,
@@ -240,10 +237,7 @@ OPENAI_COMPATIBLE_PROVIDERS = {
                 "context_length": 131072,
                 "supports_function_calling": True,
             },  # Kimi K2
-            "Qwen/Qwen3-235B-A22B-Thinking-2507": {
-                "context_length": 262144,
-                "supports_function_calling": True,
-            },  # Qwen3 Thinking
+            # 移除 Qwen/Qwen3-235B-A22B-Thinking-2507
             "Qwen/Qwen3-235B-A22B-Instruct-2507": {
                 "context_length": 262144,
                 "supports_function_calling": True,

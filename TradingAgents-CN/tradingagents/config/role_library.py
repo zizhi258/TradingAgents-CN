@@ -102,13 +102,31 @@ def get_role(role_key: str) -> dict[str, Any] | None:
     return load_role_library().get("roles", {}).get(role_key)
 
 
+def _append_no_excuses_clause(text: str) -> str:
+    """在提示词末尾追加统一的“禁止免责声明”约束（若未包含）。"""
+    try:
+        if not isinstance(text, str):
+            return text
+        if "[重要约束]" in text or "禁止出现如“无法获取数据" in text:
+            return text
+        clause = (
+            "\n\n[重要约束]\n"
+            "- 请严格基于以上提供的数据与上下文进行分析；"
+            "禁止出现如“无法获取数据/无法实时获取/数据不可用”之类的免责声明。"
+            "如需提示不确定性，请使用“需进一步验证”表述，不得以无法获取为理由。"
+        )
+        return text + clause
+    except Exception:
+        return text
+
+
 def get_prompt(role_key: str, field: str = "system_prompt") -> str | None:
     """获取角色的提示词字段（system_prompt 或 analysis_prompt_template）。"""
     role = get_role(role_key) or {}
     prompts = role.get("prompts") or {}
     value = prompts.get(field)
     if value and isinstance(value, str) and value.strip():
-        return value
+        return _append_no_excuses_clause(value)
     return None
 
 

@@ -73,9 +73,17 @@ services:
       FINNHUB_API_KEY: ${FINNHUB_API_KEY}
       CHARTING_ARTIST_ENABLED: ${CHARTING_ARTIST_ENABLED:-true}
       CHARTING_ARTIST_API_URL: http://api:8000/api
+      # Server-side API base (used by Python in container)
       MARKET_API_BASE_URL: http://api:8000
+      # Browser-facing API base (used by injected JS in user's browser)
+      MARKET_API_PUBLIC_BASE_URL: http://localhost:8000
       TRADINGAGENTS_DATA_DIR: /app/data
       LIBRARY_ROOT: /app/data/library
+      # Optional debug toggles (enable when troubleshooting)
+      WEB_DEBUG_CONSOLE: ${WEB_DEBUG_CONSOLE:-false}
+      HTTP_DEBUG: ${HTTP_DEBUG:-false}
+      # Enable Chroma vector DB inside container for better RAG recall
+      MEMORY_ENABLED: "true"
       KB_INPROC_FALLBACK: "false"
     dns:
       - 8.8.8.8
@@ -252,8 +260,6 @@ services:
     image: tradingagents-cn-api:latest
     container_name: tradingagents-api
     restart: unless-stopped
-    ports:
-      - "8899:8000"
     volumes:
       - .env:/app/.env
       - ./tradingagents:/app/tradingagents
@@ -267,6 +273,7 @@ services:
       PYTHONUNBUFFERED: "1"
       PYTHONDONTWRITEBYTECODE: "1"
       TZ: Asia/Shanghai
+      DOCKER_CONTAINER: "true"
       # MongoDB配置（URL供旧组件；以下开关供DatabaseManager）
       TRADINGAGENTS_MONGODB_URL: mongodb://admin:tradingagents123@mongodb:27017/tradingagents?authSource=admin
       MONGODB_ENABLED: "true"
@@ -299,6 +306,8 @@ services:
       TRADINGAGENTS_LOG_FILE: "/app/logs/api.log"
       TRADINGAGENTS_DATA_DIR: /app/data
       LIBRARY_ROOT: /app/data/library
+      # Enable Chroma vector DB for API service
+      MEMORY_ENABLED: "true"
     # DNS 配置
     dns:
       - 8.8.8.8      # Google Public DNS
@@ -321,6 +330,8 @@ services:
       options:
         max-size: "50m"
         max-file: "3"
+    ports:
+      - "8000:8000"
 
 # 数据卷定义
 volumes:

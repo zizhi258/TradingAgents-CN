@@ -3,6 +3,7 @@
 """
 
 import datetime
+import os
 
 import streamlit as st
 
@@ -149,63 +150,165 @@ def render_analysis_form(simple_mode: bool | None = None):
                 help="选择分析的深度级别，级别越高分析越详细但耗时更长",
             )
 
-        # 分析师团队选择（简单模式下收敛为默认推荐）
-        selected_analysts = []
-        if (
-            simple_mode is None and st.session_state.get("SIMPLE_MODE_DEFAULT") is True
-        ) or simple_mode is True:
-            # 简单模式：给出最小可用组合
+        # 统一：单模型页与多模型/市场分析使用同一套专业智能体角色
+        # 选择角色 → 自动映射为单模型可识别的基础分析师键，并记录扩展角色用于结果展示
+        selected_agents: list[str] = []
+        chosen_ext: list[str] = []
+        try:
+            # 动态加载角色定义（优先后端定义）
+            try:
+                from tradingagents.config.provider_models import model_provider_manager
+
+                _defs = model_provider_manager.role_definitions
+                roles_config = []
+                for rk, rc in _defs.items():
+                    if getattr(rc, "enabled", True):
+                        roles_config.append(
+                            (rk, rc.name or rk, rc.description or rc.name or rk)
+                        )
+                roles_config.sort(key=lambda x: x[1])
+            except Exception:
+                # 回退：静态角色定义；按环境变量控制“绘图师”是否展示
+                roles_config = [
+                    ("news_hunter", "📰 快讯猎手", "实时新闻收集与分析"),
+                    ("fundamental_expert", "💰 基本面专家", "财务数据与估值分析"),
+                    ("technical_analyst", "📈 技术分析师", "技术指标与图表分析"),
+                    ("sentiment_analyst", "💭 情绪分析师", "市场情绪与社媒分析"),
+                    ("risk_manager", "⚠️ 风控经理", "风险评估与管理"),
+                    ("compliance_officer", "📋 合规官", "合规性检查"),
+                    ("policy_researcher", "📋 政策研究员", "政策法规解读分析"),
+                    ("tool_engineer", "🔧 工具工程师", "量化工具与代码生成"),
+                    ("chief_decision_officer", "👔 首席决策官", "最终决策仲裁"),
+                ]
+                try:
+                    if os.getenv("CHARTING_ARTIST_ENABLED", "false").lower() in (
+                        "1",
+                        "true",
+                        "yes",
+                        "on",
+                    ):
+                        roles_config.append(
+                            ("charting_artist", "🎨 绘图师", "生成可交互金融图表")
+                        )
+                except Exception:
+                    pass
+
+            st.markdown("### 👥 专业智能体团队")
+            st.caption("单模型/多模型/市场分析统一使用同一套角色标签。")
+
+            cached_agents = (
+                cached_config.get("selected_agents", []) if cached_config else []
+            )
+            if (
+                (simple_mode is None and st.session_state.get("SIMPLE_MODE_DEFAULT"))
+                or simple_mode is True
+            ) and not cached_agents:
+                cached_agents = ["news_hunter", "fundamental_expert", "risk_manager"]
+                st.info("已按简化模式预选：快讯猎手/基本面专家/风控经理。")
+
+            col1, col2, col3 = st.columns(3)
+            roles_per_col = len(roles_config) // 3 + (1 if len(roles_config) % 3 else 0)
+            for col_idx, col in enumerate([col1, col2, col3]):
+                start_idx = col_idx * roles_per_col
+                end_idx = min(start_idx + roles_per_col, len(roles_config))
+                with col:
+                    for role_key, role_label, role_desc in roles_config[start_idx:end_idx]:
+                        checked = st.checkbox(
+                            role_label,
+                            value=(role_key in cached_agents),
+                            key=f"single_role_{role_key}",
+                            help=role_desc,
+                        )
+                        if checked:
+                            selected_agents.append(role_key)
+
+            # 将选择的专业角色映射为单模型可识别分析师键
+            from web.utils.roles_registry import map_role_to_single_model_key
+
+            mapped_needed: set[str] = set()
+            mapping_origins: dict[str, set[str]] = {
+                "market": set(),
+                "fundamentals": set(),
+                "news": set(),
+                "social": set(),
+            }
+            for r in selected_agents:
+                mapped = map_role_to_single_model_key(r)
+                if mapped in {"market", "fundamentals", "news", "social"}:
+                    mapped_needed.add(mapped)
+                    try:
+                        mapping_origins[mapped].add(r)
+                    except Exception:
+                        pass
+                else:
+                    pass
+
+            # 构造用于后端的分析师键+显示名称
+            key_to_label = {
+                "market": "市场分析师",
+                "fundamentals": "基本面分析师",
+                "news": "新闻分析师",
+                "social": "社交媒体分析师",
+            }
+            # 标注“（兼容）”：当基础分析师键仅因扩展角色映射而被加入时
+            base_direct_role_for = {
+                "market": "technical_analyst",
+                "fundamentals": "fundamental_expert",
+                "news": "news_hunter",
+                "social": "sentiment_analyst",
+            }
+            compat_added: set[str] = set()
+            try:
+                for k in list(mapped_needed):
+                    direct_role = base_direct_role_for.get(k)
+                    # 若未直接勾选对应基础角色，但存在其它角色映射到该基础键，则标记为兼容
+                    if direct_role and (direct_role not in selected_agents):
+                        origins = mapping_origins.get(k) or set()
+                        # origins 中若存在非 direct_role 的来源，则认为是兼容映射加入
+                        if any(o != direct_role for o in origins):
+                            compat_added.add(k)
+            except Exception:
+                pass
+
+            selected_analysts = []
+            for k in sorted(mapped_needed):
+                label = key_to_label[k] + ("（兼容）" if k in compat_added else "")
+                selected_analysts.append((k, label))
+
+            # 统一记录扩展角色（含会映射到基础分析师的角色如政策/工具），用于展示与后处理
+            try:
+                base_role_keys = {
+                    "news_hunter",
+                    "fundamental_expert",
+                    "technical_analyst",
+                    "sentiment_analyst",
+                }
+                chosen_ext = [r for r in selected_agents if r not in base_role_keys]
+            except Exception:
+                pass
+
+            if selected_agents:
+                st.success(
+                    f"✅ 已选择 {len(selected_agents)} 个专业智能体: {', '.join(selected_agents)}"
+                )
+                try:
+                    if compat_added:
+                        _auto = ", ".join(
+                            [key_to_label[k] + "（兼容）" for k in sorted(compat_added)]
+                        )
+                        st.info(f"已自动包含基础分析师用于兼容展示：{_auto}")
+                except Exception:
+                    pass
+            else:
+                st.warning("请至少选择一个角色")
+        except Exception:
+            # 降级为原始四类
             selected_analysts = [
                 ("market", "市场分析师"),
                 ("fundamentals", "基本面分析师"),
                 ("news", "新闻分析师"),
             ]
-            st.info("已按简化模式预选：市场/基本面/新闻。可在高级设置中微调。")
-        else:
-            st.markdown("### 👥 选择分析师团队")
-            st.caption("建议至少选择技术面与基本面两个分析师，获得更均衡的结论。")
-            col1, col2 = st.columns(2)
-            cached_analysts = (
-                cached_config.get("selected_analysts", ["market", "fundamentals"])
-                if cached_config
-                else ["market", "fundamentals"]
-            )
-            with col1:
-                market_analyst = st.checkbox(
-                    "📈 市场分析师",
-                    value="market" in cached_analysts,
-                    help="专注于技术面分析、价格趋势、技术指标",
-                )
-                social_analyst = st.checkbox(
-                    "💭 社交媒体分析师",
-                    value="social" in cached_analysts,
-                    help="分析社交媒体情绪、投资者情绪指标",
-                )
-            with col2:
-                news_analyst = st.checkbox(
-                    "📰 新闻分析师",
-                    value="news" in cached_analysts,
-                    help="分析相关新闻事件、市场动态影响",
-                )
-                fundamentals_analyst = st.checkbox(
-                    "💰 基本面分析师",
-                    value="fundamentals" in cached_analysts,
-                    help="分析财务数据、公司基本面、估值水平",
-                )
-            if market_analyst:
-                selected_analysts.append(("market", "市场分析师"))
-            if social_analyst:
-                selected_analysts.append(("social", "社交媒体分析师"))
-            if news_analyst:
-                selected_analysts.append(("news", "新闻分析师"))
-            if fundamentals_analyst:
-                selected_analysts.append(("fundamentals", "基本面分析师"))
-            if selected_analysts:
-                st.success(
-                    f"已选择 {len(selected_analysts)} 个分析师: {', '.join([a[1] for a in selected_analysts])}"
-                )
-            else:
-                st.warning("请至少选择一个分析师")
+            chosen_ext = []
 
         # 高级选项
         with st.expander("🔧 高级选项（可选）"):
@@ -281,9 +384,13 @@ def render_analysis_form(simple_mode: bool | None = None):
             "market_type": market_type,
             "research_depth": research_depth,
             "selected_analysts": [a[0] for a in selected_analysts],
+            # 统一角色选择（用于跨页面共享与展示）
+            "selected_agents": selected_agents,
             "include_sentiment": include_sentiment,
             "include_risk_assessment": include_risk_assessment,
             "custom_prompt": custom_prompt,
+            # 额外：扩展角色（用于结果展示与轻量补齐）
+            "extended_roles": chosen_ext,
         }
 
         # 如果配置发生变化，立即保存（即使没有提交）
@@ -335,10 +442,12 @@ def render_analysis_form(simple_mode: bool | None = None):
             "market_type": market_type,
             "analysis_date": str(analysis_date),
             "analysts": [a[0] for a in selected_analysts],
+            "selected_agents": selected_agents,
             "research_depth": research_depth,
             "include_sentiment": include_sentiment,
             "include_risk_assessment": include_risk_assessment,
             "custom_prompt": custom_prompt,
+            "extended_roles": chosen_ext,
         }
 
         # 保存表单配置到缓存和持久化存储
@@ -347,9 +456,11 @@ def render_analysis_form(simple_mode: bool | None = None):
             "market_type": market_type,
             "research_depth": research_depth,
             "selected_analysts": [a[0] for a in selected_analysts],
+            "selected_agents": selected_agents,
             "include_sentiment": include_sentiment,
             "include_risk_assessment": include_risk_assessment,
             "custom_prompt": custom_prompt,
+            "extended_roles": chosen_ext,
         }
         st.session_state.form_config = form_config
 

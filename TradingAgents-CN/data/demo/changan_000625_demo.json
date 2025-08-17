@@ -94,5 +94,54 @@
     "sector_peers": [{"ticker": "601633.SH", "name": "长城汽车", "pct_change_5d": 2.4}]
   },
   "units_notes": {"price": "CNY", "price_symbol": "¥", "volume": "shares", "amount": "CNY"}
+,
+  "policy_events": [
+    {
+      "date": "2025-07-29",
+      "source": "Reuters",
+      "title": "Changan restructured as independent state‑owned automaker",
+      "summary": "央视报道，长安汽车从中国兵器装备集团剥离，成为由中央政府控股的独立汽车企业，重点发展智能汽车、机器人和飞行汽车，并计划拓展海外市场。",
+      "relevance": "治理与国资属性调整，利好国际化与投融资治理效率",
+      "source_url": "https://www.reuters.com/"
+    },
+    {
+      "date": "2025-07-02",
+      "source": "Reuters",
+      "title": "Changan plans European factory",
+      "summary": "长安汽车计划在欧洲建设制造基地并进入多个欧洲市场，海外销量目标提升至100万辆，属于国家新能源汽车“出海”背景下的重要布局。",
+      "relevance": "与欧盟市场政策、贸易壁垒相关，影响关税/本地化合规",
+      "source_url": "https://www.reuters.com/"
+    }
+  ],
+  "compliance_risks": [
+    {
+      "risk_type": "贸易与关税",
+      "description": "欧盟对来自中国的电动汽车进行补贴调查与关税动态，存在成本与价格体系不确定性。",
+      "severity": "high",
+      "mitigation": "加速欧洲本地化（建厂/供应链）、优化定价与产品结构"
+    },
+    {
+      "risk_type": "数据与隐私(GDPR)",
+      "description": "欧洲市场对车辆数据、用户隐私与网络安全要求严格，需要完成跨境数据、车端采集与云端合规设计。",
+      "severity": "medium",
+      "mitigation": "采用隐私分层与数据最小化、在欧盟区内部署数据与日志审计"
+    },
+    {
+      "risk_type": "ESG/电池合规",
+      "description": "电池碳足迹、回收与溯源要求趋严，需满足电池护照/回收利用等规则。",
+      "severity": "medium",
+      "mitigation": "建立供应链碳核算与回收体系，提升材料可追溯性"
+    }
+  ],
+  "tech_roadmap": {
+    "brands": ["Changan", "Deepal", "Avatr", "Kaicene"],
+    "jvs": ["Changan Ford", "Changan Mazda"],
+    "focus_areas": ["智能电动平台", "辅助/高阶驾驶(ADAS/NOA)", "智能座舱", "出海本地化"],
+    "milestones": [
+      {"year": 2025, "item": "欧洲市场渠道与本地化能力建设（规划建厂/CKD）"},
+      {"year": 2025, "item": "深蓝/阿维塔车型迭代，城区NOA等功能持续下沉"},
+      {"year": 2026, "item": "强化三电与电子电气架构，降本与平台化"}
+    ],
+    "source_note": "品牌与合资信息参考维基百科 Changan Automobile 条目（公开资料）"
+  }
 }
-

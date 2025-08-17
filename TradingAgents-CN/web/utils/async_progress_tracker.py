@@ -291,7 +291,16 @@ class AsyncProgressTracker:
             {
                 "name": "📊 生成报告",
                 "description": "整理所有分析结果，生成最终投资报告",
-                "weight": 0.04,
+                "weight": 0.03,
+            }
+        )
+
+        # 新增收尾与落盘阶段，保证真正完成前仍有明显进度空间
+        steps.append(
+            {
+                "name": "🗂 收尾与落盘",
+                "description": "导出/写盘/缓存更新/注销进度等收尾操作",
+                "weight": 0.05,
             }
         )
 
@@ -418,6 +427,9 @@ class AsyncProgressTracker:
 
         # 计算进度
         progress_percentage = self._calculate_weighted_progress() * 100
+        # 在未显式完成前，封顶95%，避免UI早于真实收尾
+        if not self._explicitly_completed:
+            progress_percentage = min(progress_percentage, 95.0)
         remaining_time = self._estimate_remaining_time(
             progress_percentage / 100, elapsed_time
         )

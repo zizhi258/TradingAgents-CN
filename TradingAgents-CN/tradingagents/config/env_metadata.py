@@ -167,7 +167,7 @@ ENV_FIELDS = [
         "type": "string",
         "group": "Google AI",
         "label": "Google AI 默认模型",
-        "desc": "例如 gemini-2.5-pro 或 gemini-2.0-flash。",
+        "desc": "例如 gemini-2.5-pro 或 gemini-2.5-flash。",
         "placeholder": "gemini-2.5-pro",
         "example": "gemini-2.5-pro",
     },

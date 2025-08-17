@@ -56,47 +56,20 @@ class GeminiOpenAICompatClient(BaseMultiModelAdapter):
             "context_window": 1048576,
             "description": "Gemini 2.5 Pro (Gemini-API 兼容渠道)",
         },
-        "gemini-2.0-flash": {
+        # 最新快速模型（如服务端已提供）
+        "gemini-2.5-flash": {
             "type": "speed",
-            "cost_per_1k": 0.0020,
+            "cost_per_1k": 0.0003,
             "max_tokens": 8192,
             "context_window": 1048576,
-            "description": "Gemini 2.0 Flash (OpenAI兼容渠道)",
+            "description": "Gemini 2.5 Flash (OpenAI兼容渠道)",
         },
-        "gemini-api/gemini-2.0-flash": {
+        "gemini-api/gemini-2.5-flash": {
             "type": "speed",
-            "cost_per_1k": 0.0020,
+            "cost_per_1k": 0.0003,
             "max_tokens": 8192,
             "context_window": 1048576,
-            "description": "Gemini 2.0 Flash (Gemini-API 兼容渠道)",
-        },
-        "gemini-1.5-pro": {
-            "type": "general",
-            "cost_per_1k": 0.0075,
-            "max_tokens": 8192,
-            "context_window": 2097152,
-            "description": "Gemini 1.5 Pro (OpenAI兼容渠道)",
-        },
-        "gemini-api/gemini-1.5-pro": {
-            "type": "general",
-            "cost_per_1k": 0.0075,
-            "max_tokens": 8192,
-            "context_window": 2097152,
-            "description": "Gemini 1.5 Pro (Gemini-API 兼容渠道)",
-        },
-        "gemini-1.5-flash": {
-            "type": "speed",
-            "cost_per_1k": 0.0015,
-            "max_tokens": 8192,
-            "context_window": 1048576,
-            "description": "Gemini 1.5 Flash (OpenAI兼容渠道)",
-        },
-        "gemini-api/gemini-1.5-flash": {
-            "type": "speed",
-            "cost_per_1k": 0.0015,
-            "max_tokens": 8192,
-            "context_window": 1048576,
-            "description": "Gemini 1.5 Flash (Gemini-API 兼容渠道)",
+            "description": "Gemini 2.5 Flash (Gemini-API 兼容渠道)",
         },
     }
 
@@ -130,12 +103,40 @@ class GeminiOpenAICompatClient(BaseMultiModelAdapter):
     def initialize_client(self) -> None:
         # 初始化 OpenAI 客户端（指向自建反代）
         self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
-        # 初始化模型规格
+        # 初始化模型规格（支持动态检测 /v1/models 可用列表）
+        declared = self.SUPPORTED_MODELS
+        available: set[str] | None = None
+        try:
+            resp = self.client.models.list()
+            # OpenAI SDK: resp.data -> list of model objects with id
+            ids = []
+            try:
+                ids = [getattr(m, "id", None) for m in getattr(resp, "data", [])]
+            except Exception:
+                ids = []
+            available = {i for i in ids if isinstance(i, str) and i}
+        except Exception:
+            available = None
+
+        selected: dict[str, dict[str, Any]] = {}
+        if available:
+            # 仅保留服务端实际提供的模型（支持 gemini-api/<name> 与 <name> 两种写法）
+            for name, info in declared.items():
+                plain = name.split("/", 1)[1] if name.startswith("gemini-api/") else name
+                if plain in available:
+                    selected[name] = info
+        else:
+            # 无法动态获取 → 回退到2.5系列（避免调用已淘汰的1.5/2.0）
+            for name, info in declared.items():
+                if name.startswith("gemini-2.5") or "/gemini-2.5" in name:
+                    selected[name] = info
+
+        # 构建规格表
         self._supported_models = {}
-        for model_name, info in self.SUPPORTED_MODELS.items():
+        for model_name, info in selected.items():
             self._supported_models[model_name] = ModelSpec(
                 name=model_name,
-                provider=ModelProvider.OPENAI,  # 协议为 OpenAI 兼容
+                provider=ModelProvider.OPENAI,
                 model_type=info["type"],
                 cost_per_1k_tokens=info["cost_per_1k"],
                 max_tokens=info["max_tokens"],
@@ -143,7 +144,7 @@ class GeminiOpenAICompatClient(BaseMultiModelAdapter):
                 supports_streaming=True,
             )
         logger.info(
-            f"Gemini-API(兼容) 客户端初始化完成，base_url={self.base_url}, 支持 {len(self._supported_models)} 个模型"
+            f"Gemini-API(兼容) 客户端初始化完成，base_url={self.base_url}, 可用模型: {list(self._supported_models.keys())}"
         )
 
     def get_supported_models(self) -> dict[str, ModelSpec]:

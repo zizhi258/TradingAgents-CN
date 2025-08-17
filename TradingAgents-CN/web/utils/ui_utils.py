@@ -577,6 +577,14 @@ def get_available_agents_for_ui() -> dict[str, Any]:
         "compliance_officer",
         "chief_decision_officer",
     ]
+    # 若启用了绘图师，则追加
+    import os as _os
+    try:
+        if _os.getenv("CHARTING_ARTIST_ENABLED", "false").lower() == "true":
+            if "charting_artist" not in fallback_roles:
+                fallback_roles.append("charting_artist")
+    except Exception:
+        pass
     return {
         "available_agents": fallback_roles,
         "collaboration_modes": ["sequential", "parallel", "debate"],

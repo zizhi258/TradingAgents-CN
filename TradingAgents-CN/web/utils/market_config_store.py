@@ -92,7 +92,7 @@ class MarketConfigStore:
             "stock_limit": 100,
             "time_range": "1月",
             "ai_model_config": {
-                "model": "gemini-2.0-flash",
+                "model": "gemini-2.5-flash",
                 "use_ensemble": False,
                 "temperature": 0.3,
                 "max_tokens": 4000,

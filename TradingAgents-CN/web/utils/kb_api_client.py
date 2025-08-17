@@ -12,9 +12,18 @@ class KBApiClient:
     """
 
     def __init__(self, base_url: str | None = None, timeout: float = 15.0):
-        self.base_url = (
-            base_url or os.getenv("MARKET_API_BASE_URL") or "http://localhost:8000"
-        ).rstrip("/")
+        # 优先使用显式配置；区分本地与Docker场景：
+        # - 本地: 允许将 http://api:8000 回退到 localhost:8000 以便直连
+        # - Docker: 保留 http://api:8000 以便通过容器网络访问 api 服务
+        env_base = os.getenv("MARKET_API_BASE_URL")
+        default_base = "http://localhost:8000"
+        chosen = base_url or env_base or default_base
+        in_docker = os.getenv("DOCKER_CONTAINER", "").lower() == "true"
+        if (not in_docker) and isinstance(chosen, str) and (
+            "://api:" in chosen or chosen.startswith("http://api:") or chosen.startswith("https://api:")
+        ):
+            chosen = default_base
+        self.base_url = chosen.rstrip("/")
         self.timeout = timeout
         self.session = requests.Session()
         self._inproc = None  # fallback in-process KB handler
@@ -98,15 +107,22 @@ class KBApiClient:
         if best:
             self.base_url = best
             return
-        # No reachable API; optionally enable in-process fallback (disabled in Docker by default)
-        fallback_enabled = os.getenv("KB_INPROC_FALLBACK", "true").lower() in (
+        # No reachable API; enable in-process fallback for local dev, or when explicitly allowed
+        fallback_env = os.getenv("KB_INPROC_FALLBACK", "true").lower() in (
             "1",
             "true",
             "yes",
             "on",
         )
-        if fallback_enabled:
-            self._enable_inproc_fallback()
+        try:
+            in_docker = os.getenv("DOCKER_CONTAINER", "").lower() == "true"
+        except Exception:
+            in_docker = False
+        if (not in_docker) or fallback_env:
+            try:
+                self._enable_inproc_fallback()
+            except Exception:
+                self._inproc = None
         # Final fallback to localhost when only service hostname was provided (for logs/visibility)
         if "://api:" in self.base_url:
             self.base_url = "http://localhost:8000"
@@ -116,9 +132,18 @@ class KBApiClient:
         if self._inproc is not None:
             return
         try:
-            # Lazy import to avoid heavy deps until needed
-            from tradingagents.ai.financial_rag import FinancialRAGSystem
-            from tradingagents.ai.llm_orchestrator import AIOrchestrator
+            # Lazy, file-path import to avoid heavy package-level __init__ side effects
+            from importlib.util import module_from_spec, spec_from_file_location
+            from pathlib import Path as _Path
+
+            fr_path = _Path(__file__).resolve().parents[2] / "tradingagents" / "ai" / "financial_rag.py"
+            spec = spec_from_file_location("ta_financial_rag", fr_path)
+            if not spec or not spec.loader:
+                raise ImportError("Cannot locate financial_rag module")
+            _mod = module_from_spec(spec)
+            spec.loader.exec_module(_mod)  # type: ignore
+            FinancialRAGSystem = getattr(_mod, "FinancialRAGSystem")
+
             try:
                 import yaml  # type: ignore
             except Exception:
@@ -179,15 +204,24 @@ class KBApiClient:
                 def __init__(self) -> None:
                     kb_path = os.getenv("TRADINGAGENTS_DATA_DIR", "./data")
                     kb_dir = os.path.join(kb_path, "financial_kb")
-                    orc = None
-                    cfg = _build_mm_config_safe()
-                    if cfg:
-                        try:
-                            orc = AIOrchestrator(cfg)
-                        except Exception:
-                            orc = None
+                    # Try to build a lightweight orchestrator if possible so LLM fallback works
+                    orchestrator = None
+                    try:
+                        mm_cfg = _build_mm_config_safe()
+                        if mm_cfg:
+                            from importlib.util import module_from_spec, spec_from_file_location
+                            # Import orchestrator by file path to avoid package-level side effects
+                            _orc_path = _Path(__file__).resolve().parents[2] / "tradingagents" / "ai" / "llm_orchestrator.py"
+                            _spec = spec_from_file_location("ta_llm_orchestrator", _orc_path)
+                            if _spec and _spec.loader:
+                                _mod_orc = module_from_spec(_spec)
+                                _spec.loader.exec_module(_mod_orc)  # type: ignore
+                                AIOrchestrator = getattr(_mod_orc, "AIOrchestrator")
+                                orchestrator = AIOrchestrator(mm_cfg)
+                    except Exception:
+                        orchestrator = None
                     self.rag = FinancialRAGSystem(
-                        knowledge_base_path=kb_dir, llm_orchestrator=orc
+                        knowledge_base_path=kb_dir, llm_orchestrator=orchestrator
                     )
 
                 def kb_stats(self) -> dict[str, Any]:
@@ -201,33 +235,44 @@ class KBApiClient:
                     embedding_dim: int | None = None,
                     embedding_model: str | None = None,
                     embedding_provider: str | None = None,
+                    files: list[str] | None = None,
+                    dry_run: bool = False,
                 ) -> dict[str, Any]:
+                    # Normalize root_dir to a valid local path
+                    try:
+                        from pathlib import Path as _Path
+                        _root = root_dir or os.getenv("LIBRARY_ROOT") or "./data/library"
+                        rp = _Path(_root)
+                        if not rp.exists():
+                            # if container-style absolute path, fallback to local default
+                            _root = os.getenv("LIBRARY_ROOT") or "./data/library"
+                            rp2 = _Path(_root)
+                            if not rp2.exists():
+                                _root = "./data/library"
+                    except Exception:
+                        _root = root_dir or os.getenv("LIBRARY_ROOT") or "./data/library"
+
                     # Recreate RAG if embedding overrides provided
                     if any([embedding_dim, embedding_model, embedding_provider]):
                         kb_path = os.getenv("TRADINGAGENTS_DATA_DIR", "./data")
                         kb_dir = os.path.join(kb_path, "financial_kb")
-                        cfg = _build_mm_config_safe()
-                        orc = None
-                        if cfg:
-                            try:
-                                orc = AIOrchestrator(cfg)
-                            except Exception:
-                                orc = None
-                        from tradingagents.ai.financial_rag import (
-                            FinancialRAGSystem as _FRS,
-                        )
-
-                        self.rag = _FRS(
+                        # Recreate with overrides; keep orchestrator None
+                        self.rag = FinancialRAGSystem(
                             knowledge_base_path=kb_dir,
-                            llm_orchestrator=orc,
+                            llm_orchestrator=None,
                             embedding_config={
                                 "provider": embedding_provider or None,
                                 "model": embedding_model or None,
                                 "dim": embedding_dim or None,
                             },
                         )
-                    root = root_dir or os.getenv("LIBRARY_ROOT") or "./data/library"
-                    res = self.rag.ingest_library(root, user_id=user_id, symbol=symbol)
+                    res = self.rag.ingest_library(
+                        _root,
+                        user_id=user_id,
+                        symbol=symbol,
+                        files=files,
+                        dry_run=bool(dry_run),
+                    )
                     return {"success": True, **res}
 
                 def kb_query(
@@ -235,11 +280,13 @@ class KBApiClient:
                     query_text: str,
                     query_type: str = "general",
                     symbols: list[str] | None = None,
+                    user_id: str | None = None,
                     top_k: int = 5,
                     relevance_threshold: float = 0.7,
                     history: list[dict[str, Any]] | None = None,
                     conversation_id: str | None = None,
                     agent_role: str | None = None,
+                    agent_model: str | None = None,
                 ) -> dict[str, Any]:
                     # Build standalone query (reuse simple server-side logic)
                     def _rewrite(q: str, hist: list[dict[str, Any]] | None) -> str:
@@ -271,12 +318,14 @@ class KBApiClient:
                             query_text=q2,
                             query_type=query_type,
                             symbols=symbols,
+                            user_id=user_id,
                             top_k=top_k,
                             relevance_threshold=relevance_threshold,
                             agent_role=(agent_role or os.getenv('RAG_CHAT_AGENT_ROLE') or 'fundamental_expert'),
                             context={
                                 'history_len': len(history) if history else 0,
                                 'conversation_id': conversation_id,
+                                'model_override': agent_model,
                             }
                         )
 
@@ -290,6 +339,11 @@ class KBApiClient:
                     docs = []
                     try:
                         for d in resp.retrieved_documents or []:
+                            raw_url = (d.metadata or {}).get('url')
+                            if isinstance(raw_url, str) and raw_url.startswith('/'):
+                                url = f"{self.base_url}{raw_url}"
+                            else:
+                                url = raw_url
                             docs.append({
                                 'doc_id': d.doc_id,
                                 'title': d.title,
@@ -298,7 +352,7 @@ class KBApiClient:
                                 'timestamp': d.timestamp.isoformat() if d.timestamp else None,
                                 'relevance': d.relevance_score,
                                 'preview': (d.content[:300] + '...') if d.content and len(d.content) > 300 else (d.content or ''),
-                                'url': (d.metadata or {}).get('url'),
+                                'url': url,
                             })
                     except Exception:
                         pass
@@ -316,12 +370,35 @@ class KBApiClient:
         except Exception:
             self._inproc = None
 
+    def _ensure_inproc_if_down(self) -> None:
+        """If remote API is unreachable, enable in-process fallback on demand."""
+        if self._inproc is not None:
+            return
+        try:
+            r = self.session.get(f"{self.base_url}/health", timeout=1.0)
+            if r.status_code < 400:
+                return
+        except requests.exceptions.RequestException:
+            pass
+        # Try to enable fallback
+        try:
+            self._enable_inproc_fallback()
+        except Exception:
+            self._inproc = None
+
     def kb_stats(self) -> dict[str, Any]:
         if self._inproc:
             return self._inproc.kb_stats()
-        r = self.session.get(f"{self.base_url}/api/kb/stats", timeout=self.timeout)
-        r.raise_for_status()
-        return r.json()
+        try:
+            r = self.session.get(f"{self.base_url}/api/kb/stats", timeout=self.timeout)
+            r.raise_for_status()
+            return r.json()
+        except requests.exceptions.RequestException:
+            # On connection issues, switch to in-proc fallback
+            self._ensure_inproc_if_down()
+            if self._inproc:
+                return self._inproc.kb_stats()
+            raise
 
     def kb_reindex(
         self,
@@ -331,6 +408,8 @@ class KBApiClient:
         embedding_dim: int | None = None,
         embedding_model: str | None = None,
         embedding_provider: str | None = None,
+        files: list[str] | None = None,
+        dry_run: bool | None = None,
         agent_role: str | None = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {}
@@ -346,6 +425,10 @@ class KBApiClient:
             payload["embedding_model"] = embedding_model
         if embedding_provider:
             payload["embedding_provider"] = embedding_provider
+        if files:
+            payload["files"] = files
+        if dry_run is not None:
+            payload["dry_run"] = bool(dry_run)
         if self._inproc:
             return self._inproc.kb_reindex(
                 root_dir=root_dir,
@@ -354,21 +437,42 @@ class KBApiClient:
                 embedding_dim=embedding_dim,
                 embedding_model=embedding_model,
                 embedding_provider=embedding_provider,
+                files=files,
+                dry_run=bool(dry_run) if dry_run is not None else False,
             )
-        r = self.session.post(f"{self.base_url}/api/kb/reindex", json=payload, timeout=self.timeout)
-        r.raise_for_status()
-        return r.json()
+        try:
+            r = self.session.post(
+                f"{self.base_url}/api/kb/reindex", json=payload, timeout=self.timeout
+            )
+            r.raise_for_status()
+            return r.json()
+        except requests.exceptions.RequestException:
+            self._ensure_inproc_if_down()
+            if self._inproc:
+                return self._inproc.kb_reindex(
+                    root_dir=root_dir,
+                    user_id=user_id,
+                    symbol=symbol,
+                    embedding_dim=embedding_dim,
+                    embedding_model=embedding_model,
+                    embedding_provider=embedding_provider,
+                    files=files,
+                    dry_run=bool(dry_run) if dry_run is not None else False,
+                )
+            raise
 
     def kb_query(
         self,
         query_text: str,
         query_type: str = "general",
         symbols: list[str] | None = None,
+        user_id: str | None = None,
         top_k: int = 5,
         relevance_threshold: float = 0.7,
         history: list[dict[str, Any]] | None = None,
         conversation_id: str | None = None,
         agent_role: str | None = None,
+        agent_model: str | None = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "query_text": query_text,
@@ -378,6 +482,8 @@ class KBApiClient:
         }
         if symbols:
             payload["symbols"] = symbols
+        if user_id:
+            payload["user_id"] = user_id
         if history:
             # Keep only role/content for safety
             safe_hist: list[dict[str, Any]] = []
@@ -388,17 +494,40 @@ class KBApiClient:
             payload["conversation_id"] = conversation_id
         if agent_role:
             payload["agent_role"] = agent_role
+        if agent_model:
+            payload["agent_model"] = agent_model
         if self._inproc:
             return self._inproc.kb_query(
                 query_text=query_text,
                 query_type=query_type,
                 symbols=symbols,
+                user_id=user_id,
                 top_k=top_k,
                 relevance_threshold=relevance_threshold,
                 history=history,
                 conversation_id=conversation_id,
                 agent_role=agent_role,
+                agent_model=agent_model,
             )
-        r = self.session.post(f"{self.base_url}/api/kb/query", json=payload, timeout=self.timeout)
-        r.raise_for_status()
-        return r.json()
+        try:
+            r = self.session.post(
+                f"{self.base_url}/api/kb/query", json=payload, timeout=self.timeout
+            )
+            r.raise_for_status()
+            return r.json()
+        except requests.exceptions.RequestException:
+            self._ensure_inproc_if_down()
+            if self._inproc:
+                return self._inproc.kb_query(
+                    query_text=query_text,
+                    query_type=query_type,
+                    symbols=symbols,
+                    user_id=user_id,
+                    top_k=top_k,
+                    relevance_threshold=relevance_threshold,
+                    history=history,
+                    conversation_id=conversation_id,
+                    agent_role=agent_role,
+                    agent_model=agent_model,
+                )
+            raise

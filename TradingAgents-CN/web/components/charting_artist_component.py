@@ -69,9 +69,16 @@ class ChartingArtistAPIClient:
         )
 
     def is_api_available(self) -> bool:
-        """检查API是否可用"""
+        """检查API是否可用
+
+        注意: 健康检查在根路径 `/health`，而非 `/api/health`。
+        因此需要从 `base_url` 去掉尾部 `/api` 再探测。
+        """
         try:
-            response = self.session.get(f"{self.base_url}/health", timeout=5)
+            base = self.base_url.rstrip("/")
+            if base.endswith("/api"):
+                base = base[:-4]
+            response = self.session.get(f"{base}/health", timeout=5)
             return response.status_code == 200
         except Exception:
             return False

@@ -101,16 +101,12 @@ def get_deepseek_models() -> list[str]:
 
 
 def get_google_models() -> list[str]:
-    """Return Google Gemini models for UI, from backend or minimal defaults."""
-    try:
-        from tradingagents.api.google_ai_client import GoogleAIClient  # type: ignore
+    """Return Google Gemini models for UI.
 
-        names = list(GoogleAIClient.SUPPORTED_MODELS.keys())
-    except Exception:
-        names = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"]
-    return _dedupe_preserve_order(
-        [n for n in names if isinstance(n, str) and n.strip()]
-    )
+    当前环境中 Google 官方通道不可用，统一返回空列表，避免UI误选。
+    如需启用，请在环境变量中开启后改为动态读取。
+    """
+    return []
 
 
 def get_gemini_api_models() -> list[str]:
@@ -121,9 +117,7 @@ def get_gemini_api_models() -> list[str]:
     """
     names = [
         "gemini-2.5-pro",
-        "gemini-2.0-flash",
-        "gemini-1.5-pro",
-        "gemini-1.5-flash",
+        "gemini-2.5-flash",
     ]
     return _dedupe_preserve_order(names)
 
@@ -139,8 +133,7 @@ def get_openrouter_models() -> list[str]:
     defaults = [
         # Google Gemini family (via OpenRouter)
         "google/gemini-2.5-pro",
-        "google/gemini-2.0-flash",
-        "google/gemini-1.5-pro",
+        "google/gemini-2.5-flash",
         # Anthropic Claude family
         "anthropic/claude-3.5-sonnet",
         "anthropic/claude-3.5-haiku",

@@ -39,7 +39,7 @@ class TradingAgentsGraph:
         """Get model-specific parameters for Gemini models.
 
         Args:
-            model_name: The Gemini model name (e.g., 'gemini-2.5-pro', 'gemini-2.0-flash')
+            model_name: The Gemini model name (e.g., 'gemini-2.5-pro', 'gemini-2.5-flash')
             is_deep_thinking: Whether this is for deep thinking tasks (affects parameters)
 
         Returns:
@@ -62,50 +62,7 @@ class TradingAgentsGraph:
                     "top_p": 0.7,
                 }
 
-        # Gemini 2.0 Flash models - optimized for speed and efficiency
-        elif "2.0-flash" in model_name_lower or "gemini-2.0-flash" in model_name_lower:
-            if is_deep_thinking:
-                return {
-                    "temperature": 0.2,  # Balanced temperature
-                    "max_tokens": 4000,  # Adequate for most analysis tasks
-                    "top_p": 0.7,
-                }
-            else:
-                return {
-                    "temperature": 0.1,  # Lower temperature for quick, focused responses
-                    "max_tokens": 2000,  # Standard limit for quick tasks
-                    "top_p": 0.6,
-                }
-
-        # Gemini 1.5 Pro models
-        elif "1.5-pro" in model_name_lower or "gemini-1.5-pro" in model_name_lower:
-            if is_deep_thinking:
-                return {
-                    "temperature": 0.25,
-                    "max_tokens": 6000,
-                    "top_p": 0.75,
-                }
-            else:
-                return {
-                    "temperature": 0.15,
-                    "max_tokens": 3000,
-                    "top_p": 0.65,
-                }
-
-        # Gemini 1.5 Flash models
-        elif "1.5-flash" in model_name_lower or "gemini-1.5-flash" in model_name_lower:
-            if is_deep_thinking:
-                return {
-                    "temperature": 0.2,
-                    "max_tokens": 4000,
-                    "top_p": 0.7,
-                }
-            else:
-                return {
-                    "temperature": 0.1,
-                    "max_tokens": 2000,
-                    "top_p": 0.6,
-                }
+        # 已移除 1.5/2.0 系列分支，统一落到默认或 2.5 配置
 
         # Legacy Gemini Pro models (fallback)
         elif "gemini-pro" in model_name_lower:

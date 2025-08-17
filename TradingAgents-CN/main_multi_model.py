@@ -16,6 +16,14 @@ sys.path.insert(0, str(project_root))
 
 from tradingagents.graph.trading_graph import TradingAgentsGraph  # noqa: E402
 
+# 确保CLI模式下也能读取项目根目录的 .env（与Web行为一致）
+try:  # noqa: E402
+    from dotenv import load_dotenv  # type: ignore
+
+    load_dotenv(project_root / ".env", override=False)
+except Exception:
+    pass
+
 # 尝试导入多模型扩展
 try:
     from tradingagents.graph.multi_model_extension import MultiModelExtension

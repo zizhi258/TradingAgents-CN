@@ -68,31 +68,13 @@ class EnhancedGeminiConfigManager:
                 cost_limit_usd=50.00,  # $50 daily limit
                 adaptive_scaling=True,
             ),
-            "gemini-2.0-flash": TokenLimitConfig(
-                model_name="gemini-2.0-flash",
-                base_max_tokens=32000,
-                deep_thinking_max_tokens=65536,
-                quick_thinking_max_tokens=32000,
-                daily_token_limit=2000000,  # Flash is cheaper, allow more
-                cost_limit_usd=20.00,
-                adaptive_scaling=True,
-            ),
-            "gemini-1.5-pro": TokenLimitConfig(
-                model_name="gemini-1.5-pro",
-                base_max_tokens=32000,
-                deep_thinking_max_tokens=65536,
-                quick_thinking_max_tokens=32000,
-                daily_token_limit=1000000,
-                cost_limit_usd=40.00,
-                adaptive_scaling=True,
-            ),
-            "gemini-1.5-flash": TokenLimitConfig(
-                model_name="gemini-1.5-flash",
+            "gemini-2.5-flash": TokenLimitConfig(
+                model_name="gemini-2.5-flash",
                 base_max_tokens=32000,
                 deep_thinking_max_tokens=65536,
                 quick_thinking_max_tokens=32000,
                 daily_token_limit=2000000,
-                cost_limit_usd=15.00,
+                cost_limit_usd=20.00,
                 adaptive_scaling=True,
             ),
         }
@@ -416,12 +398,10 @@ class EnhancedGeminiConfigManager:
         """Get optimal temperature based on model and thinking type"""
         base_temps = {
             "gemini-2.5-pro": {"deep": 0.3, "medium": 0.2, "quick": 0.1},
-            "gemini-2.0-flash": {"deep": 0.2, "medium": 0.15, "quick": 0.1},
-            "gemini-1.5-pro": {"deep": 0.25, "medium": 0.2, "quick": 0.15},
-            "gemini-1.5-flash": {"deep": 0.2, "medium": 0.15, "quick": 0.1},
+            "gemini-2.5-flash": {"deep": 0.2, "medium": 0.15, "quick": 0.1},
         }
 
-        model_temps = base_temps.get(model_name, base_temps["gemini-1.5-pro"])
+        model_temps = base_temps.get(model_name, base_temps["gemini-2.5-pro"])
         return model_temps.get(thinking_type, 0.2)
 
     def _is_market_hours(self) -> bool:
@@ -569,8 +549,7 @@ if __name__ == "__main__":
     # Test different scenarios
     scenarios = [
         ("gemini-2.5-pro", "stock_analysis", "high"),
-        ("gemini-2.0-flash", "news_analysis", "medium"),
-        ("gemini-1.5-pro", "risk_assessment", "high"),
+        ("gemini-2.5-flash", "news_analysis", "medium"),
     ]
 
     for model, task, complexity in scenarios:

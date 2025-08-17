@@ -333,6 +333,88 @@ def render_role_library():
                 except Exception as e:
                     st.error(f"操作失败: {e}")
 
+    # ===== 全局角色绑定（所有角色） =====
+    st.markdown("---")
+    with st.expander("🔗 全局角色绑定（所有角色）", expanded=False):
+        try:
+            from utils.ui_utils import (
+                load_persistent_role_configs,
+                save_persistent_role_config,
+                clear_role_config,
+            )
+        except Exception:
+            st.warning("依赖未就绪，暂无法编辑全局绑定。")
+            return
+
+        roles = _load_all_roles()
+        persisted = load_persistent_role_configs() or {"role_overrides": {}}
+        persisted_overrides = persisted.get("role_overrides", {})
+
+        # 三列自适应网格
+        cols = st.columns(3)
+        selections: dict[str, str] = {}
+        for idx, rk in enumerate(sorted(roles.keys())):
+            cfg = roles[rk]
+            allowed = cfg.get("allowed_models") or []
+            preferred = (
+                cfg.get("locked_model") or cfg.get("preferred_model") or None
+            )
+            current = (
+                persisted_overrides.get(rk, {}).get("model")
+                if isinstance(persisted_overrides.get(rk), dict)
+                else persisted_overrides.get(rk)
+            ) or preferred or "(不锁定)"
+
+            with cols[idx % 3]:
+                st.markdown(f"**{cfg.get('name') or rk}**")
+                options = ["(不锁定)"] + allowed
+                try:
+                    index = options.index(current) if current in options else 0
+                except Exception:
+                    index = 0
+                selected = st.selectbox(
+                    "绑定模型",
+                    options=options,
+                    index=index,
+                    key=f"global_role_bind_{rk}",
+                    help=(f"推荐: {preferred}" if preferred else None),
+                )
+                selections[rk] = selected
+
+        st.markdown("---")
+        gc1, gc2, gc3, _ = st.columns([2, 2, 2, 6])
+        if gc1.button("💾 保存本次会话（写入session_state）"):
+            st.session_state.setdefault("model_overrides", {})
+            st.session_state.model_overrides = {
+                k: v for k, v in selections.items() if v and v != "(不锁定)"
+            }
+            st.success("✅ 已保存到本次会话。")
+
+        if gc2.button("📌 永久保存（写入覆盖配置）"):
+            any_changed = False
+            for rk, value in selections.items():
+                if value and value != "(不锁定)":
+                    if save_persistent_role_config(rk, value):
+                        any_changed = True
+                else:
+                    if clear_role_config(rk):
+                        any_changed = True
+            if any_changed:
+                model_provider_manager.reload_role_library()
+                st.success("✅ 永久配置已更新。")
+            else:
+                st.info("ℹ️ 没有需要更新的项目。")
+
+        if gc3.button("🧹 重置所有（清空永久与会话）"):
+            for rk in roles.keys():
+                try:
+                    clear_role_config(rk)
+                except Exception:
+                    pass
+            st.session_state["model_overrides"] = {}
+            model_provider_manager.reload_role_library()
+            st.success("✅ 已重置所有绑定。")
+
     # ===== 导入 / 导出 =====
     with st.expander("📦 导入 / 导出", expanded=False):
         sub_c1, sub_c2 = st.columns(2)

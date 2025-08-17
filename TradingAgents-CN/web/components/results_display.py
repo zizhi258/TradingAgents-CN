@@ -13,6 +13,7 @@ from utils.markdown_sanitizer import sanitize_markdown_for_streamlit
 
 # 导入导出功能和邮件发送功能
 from utils.report_exporter import render_export_buttons
+from utils.kb_ingestor import ingest_analysis_results
 
 # 导入ChartingArtist相关组件
 try:
@@ -94,7 +95,7 @@ def render_results(results):
 
     # 置顶操作区（导出/订阅/再次分析）
     with st.container():
-        cols = st.columns([2, 1, 1, 1])
+        cols = st.columns([2, 1, 1, 1, 1])
         with cols[0]:
             st.caption("操作")
             render_export_buttons(results)
@@ -232,6 +233,23 @@ def render_results(results):
                 st.session_state.show_analysis_results = False
                 st.rerun()
 
+        with cols[4]:
+            st.caption("知识库索引")
+            if st.button("📚 仅索引本次分析", use_container_width=True):
+                try:
+                    with st.spinner("正在将本次分析写入文库并重建索引…"):
+                        res = ingest_analysis_results(results)
+                    export_dir = (res.get("export") or {}).get("target_dir")
+                    idx = res.get("index") or {}
+                    if idx.get("success"):
+                        st.success(
+                            f"索引完成：新增 {idx.get('added',0)}，跳过 {idx.get('skipped',0)}\n目录: {export_dir}"
+                        )
+                    else:
+                        st.warning(f"索引未完成：{idx}")
+                except Exception as _e:
+                    st.error(f"索引失败：{_e}")
+
     # 风险提示
     render_risk_warning(is_demo)
 
@@ -259,9 +277,8 @@ def render_analysis_info(results):
             llm_model = results.get("llm_model", "N/A")
             logger.debug(f"🔍 [DEBUG] llm_model from results: {llm_model}")
             model_display = {
-                "gemini-2.0-flash": "Gemini 2.0 Flash",
-                "gemini-1.5-pro": "Gemini 1.5 Pro",
-                "gemini-1.5-flash": "Gemini 1.5 Flash",
+                "gemini-2.5-pro": "Gemini 2.5 Pro",
+                "gemini-2.5-flash": "Gemini 2.5 Flash",
                 "deepseek-chat": "DeepSeek Chat",
             }.get(llm_model, llm_model)
 

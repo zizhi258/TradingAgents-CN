@@ -48,6 +48,9 @@ ENV PYTHONUNBUFFERED=1 \
 # =============================================================================
 FROM base AS dependencies
 
+# Optional: speed up Python deps with configurable PyPI index
+ARG PIP_INDEX_URL=https://pypi.org/simple
+
 # Install build dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -60,7 +63,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install uv for faster dependency management (align with production Dockerfile)
-RUN pip install --no-cache-dir uv==0.1.45
+RUN pip install --no-cache-dir -i ${PIP_INDEX_URL} uv==0.1.45
 
 WORKDIR /tmp/build
 
@@ -70,8 +73,8 @@ COPY . .
 # 创建虚拟环境并安装项目依赖
 RUN python -m venv /opt/venv && \
     . /opt/venv/bin/activate && \
-    uv pip install --no-cache-dir -e . && \
-    uv pip install --no-cache-dir \
+    uv pip install --no-cache-dir -e . --index-url ${PIP_INDEX_URL} && \
+    uv pip install --no-cache-dir --index-url ${PIP_INDEX_URL} \
         fastapi>=0.104.0 \
         uvicorn[standard]>=0.24.0 \
         redis>=5.0.0 \
@@ -82,7 +85,10 @@ RUN python -m venv /opt/venv && \
         pyyaml>=6.0 \
         requests>=2.32.0 \
         plotly>=5.0.0 \
-        pandas>=2.3.0 && \
+        pandas>=2.3.0 \
+        pymupdf>=1.23.0 \
+        python-docx>=1.1.0 \
+        openpyxl>=3.1.0 && \
     pip uninstall -y uv || true
 
 # Clean up build dependencies
@@ -176,3 +182,15 @@ ENTRYPOINT ["/usr/bin/tini", "--"]
 
 # Default command - can be overridden for different services (api, worker, beat, scheduler)
 CMD ["/usr/local/bin/api-entrypoint.sh", "api"]
+# Install system tools needed for strong parsing (best-effort)
+USER root
+
+# NOTE: Pandoc is optional. Parsing of PDF/DOCX/XLSX works via PyMuPDF/python-docx/openpyxl
+# already included in the image. Pandoc improves coverage, but network issues may block it.
+# We try to install it; on failure we continue without blocking the build.
+RUN apt-get update || true && \
+    apt-get install -y --no-install-recommends pandoc || echo "⚠️ Skip pandoc install due to network/mirror issues" && \
+    rm -rf /var/lib/apt/lists/* || true && apt-get clean || true && apt-get autoremove -y || true
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends pandoc && \
+    rm -rf /var/lib/apt/lists/* && apt-get clean && apt-get autoremove -y
