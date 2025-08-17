@@ -1,10 +1,9 @@
 import tradingagents.default_config as default_config
-from typing import Dict, Optional
 from tradingagents.config.config_manager import config_manager
 
 # Use default config but allow it to be overridden
-_config: Optional[Dict] = None
-DATA_DIR: Optional[str] = None
+_config: dict | None = None
+DATA_DIR: str | None = None
 
 
 def initialize_config():
@@ -14,32 +13,32 @@ def initialize_config():
         # 优先使用配置管理器的设置
         settings = config_manager.load_settings()
         _config = default_config.DEFAULT_CONFIG.copy()
-        
+
         # 如果配置管理器中有数据目录设置，使用它
         if settings.get("data_dir"):
             _config["data_dir"] = settings["data_dir"]
-        
+
         DATA_DIR = _config["data_dir"]
-        
+
         # 确保目录存在
         config_manager.ensure_directories_exist()
 
 
-def set_config(config: Dict):
+def set_config(config: dict):
     """Update the configuration with custom values."""
     global _config, DATA_DIR
     if _config is None:
         _config = default_config.DEFAULT_CONFIG.copy()
-    
+
     _config.update(config)
     DATA_DIR = _config["data_dir"]
-    
+
     # 如果设置了数据目录，同时更新配置管理器
     if "data_dir" in config:
         config_manager.set_data_dir(config["data_dir"])
 
 
-def get_config() -> Dict:
+def get_config() -> dict:
     """Get the current configuration."""
     if _config is None:
         initialize_config()

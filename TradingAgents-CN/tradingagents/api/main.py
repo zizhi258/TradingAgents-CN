@@ -8,13 +8,17 @@ TradingAgents-CN API 主入口
 - /health 健康检查
 """
 
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Ensure .env is loaded when running API directly (uvicorn path)
 try:
     from pathlib import Path
+
     from dotenv import load_dotenv
+
     # project root: .../TradingAgents-CN
     _env_path = Path(__file__).resolve().parents[2] / ".env"
     # In containers, prefer environment provided by Docker over .env file
@@ -53,6 +57,7 @@ def create_app() -> FastAPI:
                 "/api/charts",
                 "/api/v1/market",
                 "/api/v1/visualization",
+                "/api/kb",
             ],
             "health": "ok",
         }
@@ -60,6 +65,7 @@ def create_app() -> FastAPI:
     # 路由聚合
     try:
         from .charting_endpoints import router as charting_router
+
         app.include_router(charting_router)
     except Exception as e:
         # 不中断服务，便于最小可用
@@ -67,6 +73,7 @@ def create_app() -> FastAPI:
 
     try:
         from .visualization_api import router as visualization_router
+
         app.include_router(visualization_router)
     except Exception as e:
         print(f"[API] 跳过加载 visualization_api: {e}")
@@ -74,9 +81,53 @@ def create_app() -> FastAPI:
     # 市场数据/扫描等统一后端接口
     try:
         from .market_data_endpoints import router as market_router
+
         app.include_router(market_router)
     except Exception as e:
         print(f"[API] 跳过加载 market_data_endpoints: {e}")
+
+    # 只读性能指标（辩论相关）
+    try:
+        from .performance_metrics import router as perf_router
+
+        app.include_router(perf_router)
+    except Exception as e:
+        print(f"[API] 跳过加载 performance_metrics: {e}")
+
+    # 知识库/KBRAG 端点（供智能对话使用）
+    try:
+        from .knowledge_endpoints import router as kb_router
+
+        app.include_router(kb_router)
+        print("[API] 已挂载知识库端点 /api/kb/*，用于智能对话的RAG查询")
+    except Exception as e:
+        print(f"[API] 跳过加载 knowledge_endpoints: {e}")
+
+    # 可选：挂载多模型协作的 v2 路由（供前端探测可用智能体等）
+    # 通过环境变量开启：ENABLE_MULTI_MODEL_API=true 或 MULTI_MODEL_ENABLED=true
+    try:
+        enable_flag = os.getenv(
+            "ENABLE_MULTI_MODEL_API", os.getenv("MULTI_MODEL_ENABLED", "false")
+        )
+        if str(enable_flag).lower() in {"1", "true", "yes", "on"}:
+            try:
+                from tradingagents.api.multi_model_api_extension import (
+                    extend_stock_api_with_multi_model,
+                )
+                from tradingagents.graph.trading_graph import TradingAgentsGraph
+
+                # 使用默认配置初始化 TradingAgentsGraph（内部会按环境变量选择可用提供商）
+                graph = TradingAgentsGraph(debug=False)
+                extend_stock_api_with_multi_model(app, graph)
+                print("[API] 已挂载多模型协作 v2 路由 (/api/v2)")
+            except Exception as e:
+                print(f"[API] 跳过加载 multi_model_api_extension: {e}")
+        else:
+            print(
+                "[API] 多模型协作 v2 路由未启用 (设置 ENABLE_MULTI_MODEL_API=true 可开启)"
+            )
+    except Exception as e:
+        print(f"[API] 检测多模型路由开关失败: {e}")
 
     return app
 
@@ -85,4 +136,5 @@ app = create_app()
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

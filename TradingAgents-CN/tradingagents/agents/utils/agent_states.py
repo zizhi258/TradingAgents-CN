@@ -1,13 +1,13 @@
-from typing import Annotated, Sequence
-from datetime import date, timedelta, datetime
-from typing_extensions import TypedDict, Optional
-from langchain_openai import ChatOpenAI
+from typing import Annotated, Any
+
+from langgraph.graph import MessagesState
+from typing_extensions import NotRequired, TypedDict
+
 from tradingagents.agents import *
-from langgraph.prebuilt import ToolNode
-from langgraph.graph import END, StateGraph, START, MessagesState
 
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
+
 logger = get_logger("default")
 
 
@@ -23,6 +23,11 @@ class InvestDebateState(TypedDict):
     current_response: Annotated[str, "Latest response"]  # Last response
     judge_decision: Annotated[str, "Final judge decision"]  # Last response
     count: Annotated[int, "Length of the current conversation"]  # Conversation length
+    # 兼容升级：以下为可选扩展字段（Feature Flag 控制写入）
+    tool_calls: NotRequired[list[dict[str, Any]]]
+    cross_question: NotRequired[str]
+    round_ranking: NotRequired[dict[str, Any]]
+    vote_weights: NotRequired[dict[str, float]]
 
 
 # Risk management team state
@@ -49,6 +54,11 @@ class RiskDebateState(TypedDict):
     ]  # Last response
     judge_decision: Annotated[str, "Judge's decision"]
     count: Annotated[int, "Length of the current conversation"]  # Conversation length
+    # 兼容升级：以下为可选扩展字段（Feature Flag 控制写入）
+    tool_calls: NotRequired[list[dict[str, Any]]]
+    cross_question: NotRequired[str]
+    round_ranking: NotRequired[dict[str, Any]]
+    vote_weights: NotRequired[dict[str, float]]
 
 
 class AgentState(MessagesState):

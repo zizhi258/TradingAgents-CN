@@ -5,16 +5,17 @@
 
 import os
 import shutil
-import sys
 
 # 导入日志模块
 from tradingagents.utils.logging_manager import get_logger
-logger = get_logger('default')
+
+logger = get_logger("default")
+
 
 def clear_all_caches():
     """清理所有缓存"""
-    logger.info(f"🧹 清理所有缓存...")
-    
+    logger.info("🧹 清理所有缓存...")
+
     cache_dirs = [
         "tradingagents/dataflows/data_cache",
         "web/results",
@@ -22,9 +23,9 @@ def clear_all_caches():
         "__pycache__",
         "tradingagents/__pycache__",
         "tradingagents/agents/__pycache__",
-        "tradingagents/dataflows/__pycache__"
+        "tradingagents/dataflows/__pycache__",
     ]
-    
+
     for cache_dir in cache_dirs:
         if os.path.exists(cache_dir):
             try:
@@ -36,13 +37,14 @@ def clear_all_caches():
                     logger.info(f"✅ 已删除文件: {cache_dir}")
             except Exception as e:
                 logger.error(f"⚠️ 清理 {cache_dir} 失败: {e}")
-    
-    logger.info(f"✅ 缓存清理完成")
+
+    logger.info("✅ 缓存清理完成")
+
 
 def add_stock_code_validation():
     """添加股票代码验证机制"""
-    logger.info(f"🔧 添加股票代码验证机制...")
-    
+    logger.info("🔧 添加股票代码验证机制...")
+
     validation_code = '''
 def validate_stock_code(original_code: str, processed_content: str) -> str:
     """
@@ -71,17 +73,18 @@ def validate_stock_code(original_code: str, processed_content: str) -> str:
     
     return processed_content
 '''
-    
+
     # 将验证代码写入文件
     with open("stock_code_validator.py", "w", encoding="utf-8") as f:
         f.write(validation_code)
-    
-    logger.info(f"✅ 股票代码验证机制已添加")
+
+    logger.info("✅ 股票代码验证机制已添加")
+
 
 def create_test_script():
     """创建专门的测试脚本"""
-    logger.info(f"📝 创建测试脚本...")
-    
+    logger.info("📝 创建测试脚本...")
+
     test_script = '''#!/usr/bin/env python3
 """
 002027 股票代码专项测试
@@ -161,33 +164,35 @@ def test_002027_specifically():
 if __name__ == "__main__":
     test_002027_specifically()
 '''
-    
+
     with open("test_002027_specific.py", "w", encoding="utf-8") as f:
         f.write(test_script)
-    
-    logger.info(f"✅ 测试脚本已创建: test_002027_specific.py")
+
+    logger.info("✅ 测试脚本已创建: test_002027_specific.py")
+
 
 def main():
     """主函数"""
-    logger.info(f"🚀 开始修复股票代码误判问题")
-    logger.info(f"=")
-    
+    logger.info("🚀 开始修复股票代码误判问题")
+    logger.info("=")
+
     # 1. 清理缓存
     clear_all_caches()
-    
+
     # 2. 添加验证机制
     add_stock_code_validation()
-    
+
     # 3. 创建测试脚本
     create_test_script()
-    
-    logger.info(f"\\n✅ 修复完成！")
-    logger.info(f"\\n📋 后续操作建议：")
-    logger.info(f"1. 重启Web应用")
-    logger.info(f"2. 清理浏览器缓存")
-    logger.info(f"3. 运行测试脚本: python test_002027_specific.py")
-    logger.info(f"4. 在Web界面重新测试002027")
-    logger.info(f"5. 如果问题仍然存在，请检查LLM模型配置")
+
+    logger.info("\\n✅ 修复完成！")
+    logger.info("\\n📋 后续操作建议：")
+    logger.info("1. 重启Web应用")
+    logger.info("2. 清理浏览器缓存")
+    logger.info("3. 运行测试脚本: python test_002027_specific.py")
+    logger.info("4. 在Web界面重新测试002027")
+    logger.info("5. 如果问题仍然存在，请检查LLM模型配置")
+
 
 if __name__ == "__main__":
     main()

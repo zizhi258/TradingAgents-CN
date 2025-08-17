@@ -8,14 +8,12 @@ Plotly 主题与字体统一设置
 
 from __future__ import annotations
 
-from typing import List
-
 import plotly.io as pio
 
 
 def apply_plotly_theme(
     default_font_family: str = "Microsoft YaHei, SimHei, 'Noto Sans CJK SC', 'Segoe UI', Arial, sans-serif",
-    colorway: List[str] | None = None,
+    colorway: list[str] | None = None,
 ) -> None:
     """应用全局 Plotly 主题。
 
@@ -66,5 +64,3 @@ def apply_plotly_theme(
     except Exception:
         # 非致命，静默失败
         pass
-
-

@@ -8,7 +8,7 @@ within logical namespaces, so pages/components avoid key collisions and
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 try:
     import streamlit as st  # type: ignore
@@ -23,7 +23,7 @@ def _ns_key(ns: str) -> str:
     return f"{NS_PREFIX}:{ns}"
 
 
-def ensure_ns(ns: str) -> Dict[str, Any]:
+def ensure_ns(ns: str) -> dict[str, Any]:
     """Ensure and return the namespace dict stored in session_state."""
     if st is None:
         # Fallback to a temporary in-memory store if Streamlit not available
@@ -63,7 +63,7 @@ def clear(ns: str) -> None:
             st.session_state[key] = {}
 
 
-def as_dict(ns: str) -> Dict[str, Any]:
+def as_dict(ns: str) -> dict[str, Any]:
     """Return a shallow copy of the namespace dict for inspection/logging."""
     return dict(ensure_ns(ns))
 
@@ -76,4 +76,3 @@ def move(ns_from: str, ns_to: str, *, overwrite: bool = False) -> None:
         if overwrite or k not in dst:
             dst[k] = v
     src.clear()
-

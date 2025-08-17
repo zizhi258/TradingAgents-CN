@@ -13,12 +13,11 @@ Scope:
 from __future__ import annotations
 
 import json
-import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from tradingagents.utils.logging_manager import get_logger
 from tradingagents.config.env_utils import parse_bool_env, parse_str_env
+from tradingagents.utils.logging_manager import get_logger
 
 logger = get_logger("agents")
 
@@ -37,14 +36,14 @@ def get_demo_file_path() -> str:
     return path or DEFAULT_DEMO_PATH
 
 
-def _load_demo_json() -> Dict[str, Any]:
+def _load_demo_json() -> dict[str, Any]:
     """Load the demo JSON payload from configured path.
 
     Raises if file cannot be read; caller should handle exceptions.
     """
     path = get_demo_file_path()
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         return data
     except Exception as e:
@@ -52,7 +51,9 @@ def _load_demo_json() -> Dict[str, Any]:
         raise
 
 
-def _filter_ohlcv_range(ohlcv: List[Dict[str, Any]], start_date: str, end_date: str) -> List[Dict[str, Any]]:
+def _filter_ohlcv_range(
+    ohlcv: list[dict[str, Any]], start_date: str, end_date: str
+) -> list[dict[str, Any]]:
     """Filter ohlcv rows by inclusive date range (YYYY-MM-DD)."""
     try:
         sd = datetime.strptime(start_date, "%Y-%m-%d").date()
@@ -60,7 +61,7 @@ def _filter_ohlcv_range(ohlcv: List[Dict[str, Any]], start_date: str, end_date: 
     except Exception:
         # best-effort if date parsing fails
         return ohlcv
-    out: List[Dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     for r in ohlcv:
         try:
             d = datetime.strptime(str(r.get("date")), "%Y-%m-%d").date()
@@ -71,7 +72,9 @@ def _filter_ohlcv_range(ohlcv: List[Dict[str, Any]], start_date: str, end_date: 
     return out
 
 
-def build_china_stock_data_from_demo(symbol: str, start_date: str, end_date: str) -> str:
+def build_china_stock_data_from_demo(
+    symbol: str, start_date: str, end_date: str
+) -> str:
     """Build a formatted China stock data report string from demo JSON.
 
     - Keeps the input `symbol` unchanged in output headers
@@ -95,7 +98,9 @@ def build_china_stock_data_from_demo(symbol: str, start_date: str, end_date: str
 
     if count > 0:
         latest_price = float(rows[-1].get("close", 0.0))
-        prev_close = float(rows[-2].get("close", latest_price)) if count > 1 else latest_price
+        prev_close = (
+            float(rows[-2].get("close", latest_price)) if count > 1 else latest_price
+        )
         change = latest_price - prev_close
         change_pct = (change / prev_close * 100.0) if prev_close else 0.0
 
@@ -122,7 +127,9 @@ def build_china_stock_data_from_demo(symbol: str, start_date: str, end_date: str
     if count > 0:
         preview = rows[-3:] if count >= 3 else rows
         tail_preview += "\n最新数据 (最多3日):\n"
-        tail_preview += "日期        开盘     最高     最低     收盘       成交量       成交额\n"
+        tail_preview += (
+            "日期        开盘     最高     最低     收盘       成交量       成交额\n"
+        )
         for r in preview:
             tail_preview += (
                 f"{str(r.get('date')):10s} "
@@ -159,24 +166,28 @@ def build_china_stock_info_from_demo(symbol: str) -> str:
     )
 
 
-def get_ohlc_json_from_demo(symbol: str, start_date: str, end_date: str) -> Dict[str, Any]:
+def get_ohlc_json_from_demo(
+    symbol: str, start_date: str, end_date: str
+) -> dict[str, Any]:
     """Return OHLC structure from demo JSON, aligning with get_stock_ohlc_json."""
     data = _load_demo_json()
     ohlcv = data.get("ohlcv_daily", [])
     rows = _filter_ohlcv_range(ohlcv, start_date, end_date)
     # Normalize fields and types
-    records: List[Dict[str, Any]] = []
+    records: list[dict[str, Any]] = []
     for r in rows:
         try:
-            records.append({
-                "date": str(r.get("date")),
-                "open": float(r.get("open", 0.0)),
-                "high": float(r.get("high", 0.0)),
-                "low": float(r.get("low", 0.0)),
-                "close": float(r.get("close", 0.0)),
-                "volume": float(r.get("volume", 0.0)),
-                "amount": float(r.get("amount", 0.0)),
-            })
+            records.append(
+                {
+                    "date": str(r.get("date")),
+                    "open": float(r.get("open", 0.0)),
+                    "high": float(r.get("high", 0.0)),
+                    "low": float(r.get("low", 0.0)),
+                    "close": float(r.get("close", 0.0)),
+                    "volume": float(r.get("volume", 0.0)),
+                    "amount": float(r.get("amount", 0.0)),
+                }
+            )
         except Exception:
             continue
 
@@ -196,4 +207,3 @@ __all__ = [
     "build_china_stock_info_from_demo",
     "get_ohlc_json_from_demo",
 ]
-

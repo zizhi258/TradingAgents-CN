@@ -29,9 +29,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Dict, Any, Optional
 import json
+from pathlib import Path
+from typing import Any
 
 # 计算项目根目录与配置目录
 _THIS_FILE = Path(__file__).resolve()
@@ -47,7 +47,7 @@ def _ensure_config_dir() -> None:
         pass
 
 
-def load_role_library() -> Dict[str, Any]:
+def load_role_library() -> dict[str, Any]:
     """加载角色库。
 
     Returns:
@@ -68,7 +68,7 @@ def load_role_library() -> Dict[str, Any]:
     return {"roles": {}}
 
 
-def save_role_library(data: Dict[str, Any]) -> None:
+def save_role_library(data: dict[str, Any]) -> None:
     """保存角色库到文件。"""
     _ensure_config_dir()
     try:
@@ -78,7 +78,7 @@ def save_role_library(data: Dict[str, Any]) -> None:
         pass
 
 
-def upsert_role(role_key: str, role_data: Dict[str, Any]) -> None:
+def upsert_role(role_key: str, role_data: dict[str, Any]) -> None:
     """新增或更新一个角色定义。"""
     lib = load_role_library()
     roles = lib.get("roles", {})
@@ -97,12 +97,12 @@ def delete_role(role_key: str) -> None:
         save_role_library(lib)
 
 
-def get_role(role_key: str) -> Optional[Dict[str, Any]]:
+def get_role(role_key: str) -> dict[str, Any] | None:
     """获取单个角色定义（若存在于库中）。"""
     return load_role_library().get("roles", {}).get(role_key)
 
 
-def get_prompt(role_key: str, field: str = "system_prompt") -> Optional[str]:
+def get_prompt(role_key: str, field: str = "system_prompt") -> str | None:
     """获取角色的提示词字段（system_prompt 或 analysis_prompt_template）。"""
     role = get_role(role_key) or {}
     prompts = role.get("prompts") or {}
@@ -112,7 +112,7 @@ def get_prompt(role_key: str, field: str = "system_prompt") -> Optional[str]:
     return None
 
 
-def format_prompt(template: str, context: Dict[str, Any]) -> str:
+def format_prompt(template: str, context: dict[str, Any]) -> str:
     """安全格式化提示词模板（忽略缺失字段）。"""
     if not template:
         return ""
@@ -123,7 +123,7 @@ def format_prompt(template: str, context: Dict[str, Any]) -> str:
         return template
 
 
-DEFAULT_ROLE_PROMPTS: Dict[str, Dict[str, str]] = {
+DEFAULT_ROLE_PROMPTS: dict[str, dict[str, str]] = {
     # 更实战、结构化、可执行的默认模板（可在UI中二次定制）
     "technical_analyst": {
         "system_prompt": (
@@ -232,7 +232,7 @@ DEFAULT_ROLE_PROMPTS: Dict[str, Dict[str, str]] = {
 }
 
 
-def get_default_prompt(role_key: str, field: str = "system_prompt") -> Optional[str]:
+def get_default_prompt(role_key: str, field: str = "system_prompt") -> str | None:
     prompts = DEFAULT_ROLE_PROMPTS.get(role_key) or {}
     val = prompts.get(field)
     if val and isinstance(val, str) and val.strip():
@@ -241,7 +241,7 @@ def get_default_prompt(role_key: str, field: str = "system_prompt") -> Optional[
 
 
 # 默认任务类型映射（供种子数据使用）
-DEFAULT_TASK_TYPES: Dict[str, str] = {
+DEFAULT_TASK_TYPES: dict[str, str] = {
     "news_hunter": "news_analysis",
     "fundamental_expert": "fundamental_analysis",
     "technical_analyst": "technical_analysis",
@@ -256,7 +256,9 @@ DEFAULT_TASK_TYPES: Dict[str, str] = {
 }
 
 
-def seed_role_library_if_absent(base_roles: Dict[str, Any], task_type_map: Optional[Dict[str, str]] = None) -> None:
+def seed_role_library_if_absent(
+    base_roles: dict[str, Any], task_type_map: dict[str, str] | None = None
+) -> None:
     """如果角色库文件不存在或为空，则用内置与默认提示词进行初始化。
 
     Args:
@@ -272,35 +274,39 @@ def seed_role_library_if_absent(base_roles: Dict[str, Any], task_type_map: Optio
         try:
             with _ROLE_LIBRARY_FILE.open("r", encoding="utf-8") as f:
                 existing = json.load(f) or {}
-            if isinstance(existing, dict) and isinstance(existing.get("roles"), dict) and existing["roles"]:
+            if (
+                isinstance(existing, dict)
+                and isinstance(existing.get("roles"), dict)
+                and existing["roles"]
+            ):
                 return
         except Exception:
             pass
 
     # 生成种子数据
-    roles_out: Dict[str, Any] = {}
+    roles_out: dict[str, Any] = {}
     for rk, cfg in (base_roles or {}).items():
         if not isinstance(cfg, dict):
             continue
         roles_out[rk] = {
-            'name': cfg.get('name') or rk,
-            'description': cfg.get('description') or '',
-            'allowed_models': cfg.get('allowed_models') or [],
-            'preferred_model': cfg.get('preferred_model'),
-            'locked_model': cfg.get('locked_model'),
-            'enabled': cfg.get('enabled', True),
-            'task_type': ttm.get(rk, ''),
-            'prompts': {}
+            "name": cfg.get("name") or rk,
+            "description": cfg.get("description") or "",
+            "allowed_models": cfg.get("allowed_models") or [],
+            "preferred_model": cfg.get("preferred_model"),
+            "locked_model": cfg.get("locked_model"),
+            "enabled": cfg.get("enabled", True),
+            "task_type": ttm.get(rk, ""),
+            "prompts": {},
         }
         # 填充默认Prompt（若有）
-        sys_p = get_default_prompt(rk, 'system_prompt')
+        sys_p = get_default_prompt(rk, "system_prompt")
         if sys_p:
-            roles_out[rk]['prompts']['system_prompt'] = sys_p
-        ana_p = get_default_prompt(rk, 'analysis_prompt_template')
+            roles_out[rk]["prompts"]["system_prompt"] = sys_p
+        ana_p = get_default_prompt(rk, "analysis_prompt_template")
         if ana_p:
-            roles_out[rk]['prompts']['analysis_prompt_template'] = ana_p
+            roles_out[rk]["prompts"]["analysis_prompt_template"] = ana_p
 
-    save_role_library({'roles': roles_out})
+    save_role_library({"roles": roles_out})
 
 
 def fill_missing_prompts_in_library() -> bool:
@@ -310,31 +316,31 @@ def fill_missing_prompts_in_library() -> bool:
         bool: 是否发生变更
     """
     lib = load_role_library()
-    roles = lib.get('roles', {}) if isinstance(lib.get('roles'), dict) else {}
+    roles = lib.get("roles", {}) if isinstance(lib.get("roles"), dict) else {}
     changed = False
     for rk, cfg in roles.items():
         if not isinstance(cfg, dict):
             continue
-        prompts = cfg.get('prompts') or {}
-        sys_p = prompts.get('system_prompt')
-        ana_p = prompts.get('analysis_prompt_template')
+        prompts = cfg.get("prompts") or {}
+        sys_p = prompts.get("system_prompt")
+        ana_p = prompts.get("analysis_prompt_template")
         if not sys_p:
-            d = get_default_prompt(rk, 'system_prompt')
+            d = get_default_prompt(rk, "system_prompt")
             if d:
-                prompts['system_prompt'] = d
+                prompts["system_prompt"] = d
                 changed = True
         if not ana_p:
-            d2 = get_default_prompt(rk, 'analysis_prompt_template')
+            d2 = get_default_prompt(rk, "analysis_prompt_template")
             if d2:
-                prompts['analysis_prompt_template'] = d2
+                prompts["analysis_prompt_template"] = d2
                 changed = True
-        cfg['prompts'] = prompts
+        cfg["prompts"] = prompts
     if changed:
-        save_role_library({'roles': roles})
+        save_role_library({"roles": roles})
     return changed
 
 
-def overwrite_prompts_with_defaults(role_keys: Optional[list[str]] = None) -> int:
+def overwrite_prompts_with_defaults(role_keys: list[str] | None = None) -> int:
     """用默认Prompt覆盖指定角色（或全部已知角色）的模板。
 
     Args:
@@ -344,22 +350,22 @@ def overwrite_prompts_with_defaults(role_keys: Optional[list[str]] = None) -> in
         int: 实际覆盖的数量
     """
     lib = load_role_library()
-    roles = lib.get('roles', {}) if isinstance(lib.get('roles'), dict) else {}
+    roles = lib.get("roles", {}) if isinstance(lib.get("roles"), dict) else {}
     targets = role_keys or list(DEFAULT_ROLE_PROMPTS.keys())
     count = 0
     for rk in targets:
         if rk not in roles:
             continue
         role_cfg = roles[rk] or {}
-        role_cfg.setdefault('prompts', {})
-        d_sys = get_default_prompt(rk, 'system_prompt')
-        d_ana = get_default_prompt(rk, 'analysis_prompt_template')
+        role_cfg.setdefault("prompts", {})
+        d_sys = get_default_prompt(rk, "system_prompt")
+        d_ana = get_default_prompt(rk, "analysis_prompt_template")
         if d_sys:
-            role_cfg['prompts']['system_prompt'] = d_sys
+            role_cfg["prompts"]["system_prompt"] = d_sys
         if d_ana:
-            role_cfg['prompts']['analysis_prompt_template'] = d_ana
+            role_cfg["prompts"]["analysis_prompt_template"] = d_ana
         roles[rk] = role_cfg
         count += 1
     if count:
-        save_role_library({'roles': roles})
+        save_role_library({"roles": roles})
     return count

@@ -3,14 +3,14 @@
 修复日志配置KeyError错误
 """
 
-import os
 from pathlib import Path
+
 
 def fix_logging_docker_config():
     """修复Docker日志配置文件"""
     print("🔧 修复Docker日志配置文件...")
-    
-    docker_config_content = '''# Docker环境专用日志配置 - 完整修复版
+
+    docker_config_content = """# Docker环境专用日志配置 - 完整修复版
 # 解决KeyError: 'file'错误
 
 [logging]
@@ -106,42 +106,43 @@ enabled = true
 log_analysis_events = true
 log_user_actions = true
 log_export_events = true
-'''
-    
+"""
+
     # 确保config目录存在
     config_dir = Path("config")
     config_dir.mkdir(exist_ok=True)
-    
+
     # 写入修复后的配置文件
     docker_config_file = config_dir / "logging_docker.toml"
-    with open(docker_config_file, 'w', encoding='utf-8') as f:
+    with open(docker_config_file, "w", encoding="utf-8") as f:
         f.write(docker_config_content)
-    
+
     print(f"✅ 修复Docker日志配置: {docker_config_file}")
+
 
 def fix_main_logging_config():
     """修复主日志配置文件"""
     print("🔧 检查主日志配置文件...")
-    
+
     main_config_file = Path("config/logging.toml")
     if main_config_file.exists():
-        with open(main_config_file, 'r', encoding='utf-8') as f:
+        with open(main_config_file, encoding="utf-8") as f:
             content = f.read()
-        
+
         # 检查是否包含file格式配置
         if 'file = "' not in content:
             print("⚠️ 主配置文件缺少file格式配置，正在修复...")
-            
+
             # 在format部分添加file配置
-            if '[logging.format]' in content:
+            if "[logging.format]" in content:
                 content = content.replace(
                     'console = "%(asctime)s | %(name)-20s | %(levelname)-8s | %(message)s"',
-                    'console = "%(asctime)s | %(name)-20s | %(levelname)-8s | %(message)s"\nfile = "%(asctime)s | %(name)-20s | %(levelname)-8s | %(module)s:%(funcName)s:%(lineno)d | %(message)s"'
+                    'console = "%(asctime)s | %(name)-20s | %(levelname)-8s | %(message)s"\nfile = "%(asctime)s | %(name)-20s | %(levelname)-8s | %(module)s:%(funcName)s:%(lineno)d | %(message)s"',
                 )
-                
-                with open(main_config_file, 'w', encoding='utf-8') as f:
+
+                with open(main_config_file, "w", encoding="utf-8") as f:
                     f.write(content)
-                
+
                 print("✅ 主配置文件已修复")
             else:
                 print("❌ 主配置文件格式异常")
@@ -150,10 +151,11 @@ def fix_main_logging_config():
     else:
         print("⚠️ 主配置文件不存在")
 
+
 def create_simple_test():
     """创建简单的日志测试"""
     print("📝 创建简单日志测试...")
-    
+
     test_content = '''#!/usr/bin/env python3
 """
 简单的日志测试 - 避免复杂导入
@@ -242,27 +244,28 @@ if __name__ == "__main__":
     success = simple_log_test()
     exit(0 if success else 1)
 '''
-    
+
     test_file = Path("simple_log_test.py")
-    with open(test_file, 'w', encoding='utf-8') as f:
+    with open(test_file, "w", encoding="utf-8") as f:
         f.write(test_content)
-    
+
     print(f"✅ 创建简单测试: {test_file}")
+
 
 def main():
     """主函数"""
     print("🚀 修复日志配置KeyError错误")
     print("=" * 60)
-    
+
     # 1. 修复Docker配置
     fix_logging_docker_config()
-    
+
     # 2. 修复主配置
     fix_main_logging_config()
-    
+
     # 3. 创建简单测试
     create_simple_test()
-    
+
     print("\n" + "=" * 60)
     print("🎉 日志配置修复完成！")
     print("\n💡 接下来的步骤:")
@@ -271,11 +274,14 @@ def main():
     print("3. 简单测试: docker exec TradingAgents-web python simple_log_test.py")
     print("4. 检查日志: ls -la logs/")
     print("5. 查看容器日志: docker-compose logs web")
-    
+
     print("\n🔧 如果还有问题:")
     print("- 检查容器启动日志: docker-compose logs web")
     print("- 进入容器调试: docker exec -it TradingAgents-web bash")
-    print("- 检查配置文件: docker exec TradingAgents-web cat /app/config/logging_docker.toml")
+    print(
+        "- 检查配置文件: docker exec TradingAgents-web cat /app/config/logging_docker.toml"
+    )
+
 
 if __name__ == "__main__":
     main()
