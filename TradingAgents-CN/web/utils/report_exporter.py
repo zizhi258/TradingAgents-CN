@@ -252,7 +252,12 @@ class ReportExporter:
 *报告生成时间: {timestamp}*
 """
         
-        return md_content
+        # 可选：在导出Markdown时也进行清洗，避免后续阅读器误解析数学模式
+        try:
+            from .markdown_sanitizer import sanitize_markdown_for_streamlit
+            return sanitize_markdown_for_streamlit(md_content)
+        except Exception:
+            return md_content
     
     def generate_docx_report(self, results: Dict[str, Any]) -> bytes:
         """生成Word文档格式的报告（基于HTML渲染再转换，版式更接近Web展示）"""
@@ -437,11 +442,14 @@ class ReportExporter:
             state = results.get('state', {})
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
 
+            from .markdown_sanitizer import sanitize_markdown_for_streamlit
+
             def md_to_html(text: str) -> str:
                 try:
                     if not text:
                         return '<p>暂无数据</p>'
-                    return markdown.markdown(str(text), extensions=['tables'])
+                    safe = sanitize_markdown_for_streamlit(str(text))
+                    return markdown.markdown(safe, extensions=['tables'])
                 except Exception:
                     return f"<pre>{str(text)}</pre>"
 
