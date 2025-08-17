@@ -69,6 +69,16 @@ class DatabaseManager:
             "timeout": 2
         }
 
+        # 端口健壮性校验：端口<=0视为未配置，自动禁用
+        if self.mongodb_config["port"] <= 0:
+            self.logger.info("MongoDB端口无效(<=0)，视为未启用")
+            self.mongodb_config["enabled"] = False
+            self.mongodb_enabled = False
+        if self.redis_config["port"] <= 0:
+            self.logger.info("Redis端口无效(<=0)，视为未启用")
+            self.redis_config["enabled"] = False
+            self.redis_enabled = False
+
         self.logger.info(f"MongoDB启用: {self.mongodb_enabled}")
         self.logger.info(f"Redis启用: {self.redis_enabled}")
         if self.mongodb_enabled:
@@ -238,6 +248,67 @@ class DatabaseManager:
             except Exception as e:
                 self.logger.error(f"Redis客户端初始化失败: {e}")
                 self.redis_available = False
+
+    # 兼容外部调用：提供显式初始化入口，避免 AttributeError
+    def initialize_database(self) -> Dict[str, Any]:
+        """显式初始化/验证数据库与缓存后端。
+
+        目的:
+        - 兼容外部代码调用 get_database_manager().initialize_database()
+        - 在容器中数据库不可用时，保持应用可用并降级至文件缓存
+
+        Returns:
+            包含各后端可用性与健康检查结果的字典
+        """
+        result: Dict[str, Any] = {
+            "mongodb": {"enabled": bool(self.mongodb_enabled), "available": False, "error": None},
+            "redis": {"enabled": bool(self.redis_enabled), "available": False, "error": None},
+            "cache_backend": getattr(self, "primary_backend", "file"),
+        }
+
+        # 再次检测并尝试连接（防止先前环境变化）
+        try:
+            self._detect_databases()
+            self._initialize_connections()
+        except Exception as e:
+            self.logger.warning(f"初始化数据库时发生非致命异常: {e}")
+
+        # 健康检查 MongoDB
+        if self.mongodb_available and self.mongodb_client:
+            try:
+                # 轻量健康检查
+                self.mongodb_client.admin.command("ping")
+                # 可选：确保默认数据库存在（不做业务集合/索引操作，避免未知结构）
+                _ = self.mongodb_client.get_database(self.mongodb_config.get("database", "tradingagents"))
+                result["mongodb"]["available"] = True
+            except Exception as e:
+                result["mongodb"]["error"] = str(e)
+                self.logger.warning(f"MongoDB健康检查失败: {e}")
+                self.mongodb_available = False
+
+        # 健康检查 Redis
+        if self.redis_available and self.redis_client:
+            try:
+                self.redis_client.ping()
+                result["redis"]["available"] = True
+            except Exception as e:
+                result["redis"]["error"] = str(e)
+                self.logger.warning(f"Redis健康检查失败: {e}")
+                self.redis_available = False
+
+        # 更新主后端判断
+        self._update_config_based_on_detection()
+        result["cache_backend"] = self.primary_backend
+
+        # 汇总日志（不抛异常，保证最小可用）
+        if not (result["mongodb"]["available"] or result["redis"]["available"]):
+            self.logger.info("未检测到可用的MongoDB/Redis，已降级为文件缓存模式")
+        else:
+            self.logger.info(
+                f"数据库初始化完成 - MongoDB: {result['mongodb']['available']}, Redis: {result['redis']['available']}, 后端: {self.primary_backend}"
+            )
+
+        return result
     
     def get_mongodb_client(self):
         """获取MongoDB客户端"""
@@ -359,3 +430,7 @@ def get_mongodb_client():
 def get_redis_client():
     """获取Redis客户端"""
     return get_database_manager().get_redis_client()
+
+def initialize_database() -> Dict[str, Any]:
+    """显式初始化数据库，返回状态信息（兼容外部调用）。"""
+    return get_database_manager().initialize_database()
