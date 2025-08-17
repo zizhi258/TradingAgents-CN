@@ -1,11 +1,10 @@
 import questionary
-from typing import List, Optional, Tuple, Dict
 from rich.console import Console
 
 from cli.models import AnalystType
 from tradingagents.utils.logging_manager import get_logger
 
-logger = get_logger('cli')
+logger = get_logger("cli")
 console = Console()
 
 ANALYST_ORDER = [
@@ -20,7 +19,8 @@ def get_ticker() -> str:
     """Prompt the user to enter a ticker symbol."""
     ticker = questionary.text(
         "请输入要分析的股票代码 | Enter the ticker symbol to analyze:",
-        validate=lambda x: len(x.strip()) > 0 or "请输入有效的股票代码 | Please enter a valid ticker symbol.",
+        validate=lambda x: len(x.strip()) > 0
+        or "请输入有效的股票代码 | Please enter a valid ticker symbol.",
         style=questionary.Style(
             [
                 ("text", "fg:green"),
@@ -30,7 +30,9 @@ def get_ticker() -> str:
     ).ask()
 
     if not ticker:
-        logger.info(f"\n[red]未提供股票代码，退出程序... | No ticker symbol provided. Exiting...[/red]")
+        logger.info(
+            "\n[red]未提供股票代码，退出程序... | No ticker symbol provided. Exiting...[/red]"
+        )
         exit(1)
 
     return ticker.strip().upper()
@@ -63,13 +65,15 @@ def get_analysis_date() -> str:
     ).ask()
 
     if not date:
-        logger.info(f"\n[red]未提供日期，退出程序... | No date provided. Exiting...[/red]")
+        logger.info(
+            "\n[red]未提供日期，退出程序... | No date provided. Exiting...[/red]"
+        )
         exit(1)
 
     return date.strip()
 
 
-def select_analysts() -> List[AnalystType]:
+def select_analysts() -> list[AnalystType]:
     """Select analysts using an interactive checkbox."""
     choices = questionary.checkbox(
         "选择您的分析师团队 | Select Your [Analysts Team]:",
@@ -77,7 +81,8 @@ def select_analysts() -> List[AnalystType]:
             questionary.Choice(display, value=value) for display, value in ANALYST_ORDER
         ],
         instruction="\n- 按空格键选择/取消选择分析师 | Press Space to select/unselect analysts\n- 按 'a' 键全选/取消全选 | Press 'a' to select/unselect all\n- 按回车键完成选择 | Press Enter when done",
-        validate=lambda x: len(x) > 0 or "您必须至少选择一个分析师 | You must select at least one analyst.",
+        validate=lambda x: len(x) > 0
+        or "您必须至少选择一个分析师 | You must select at least one analyst.",
         style=questionary.Style(
             [
                 ("checkbox-selected", "fg:green"),
@@ -89,7 +94,9 @@ def select_analysts() -> List[AnalystType]:
     ).ask()
 
     if not choices:
-        logger.info(f"\n[red]未选择分析师，退出程序... | No analysts selected. Exiting...[/red]")
+        logger.info(
+            "\n[red]未选择分析师，退出程序... | No analysts selected. Exiting...[/red]"
+        )
         exit(1)
 
     return choices
@@ -100,9 +107,18 @@ def select_research_depth() -> int:
 
     # Define research depth options with their corresponding values
     DEPTH_OPTIONS = [
-        ("浅层 - 快速研究，少量辩论和策略讨论 | Shallow - Quick research, few debate rounds", 1),
-        ("中等 - 中等程度，适度的辩论和策略讨论 | Medium - Moderate debate and strategy discussion", 3),
-        ("深度 - 全面研究，深入的辩论和策略讨论 | Deep - Comprehensive research, in-depth debate", 5),
+        (
+            "浅层 - 快速研究，少量辩论和策略讨论 | Shallow - Quick research, few debate rounds",
+            1,
+        ),
+        (
+            "中等 - 中等程度，适度的辩论和策略讨论 | Medium - Moderate debate and strategy discussion",
+            3,
+        ),
+        (
+            "深度 - 全面研究，深入的辩论和策略讨论 | Deep - Comprehensive research, in-depth debate",
+            5,
+        ),
     ]
 
     choice = questionary.select(
@@ -121,7 +137,9 @@ def select_research_depth() -> int:
     ).ask()
 
     if choice is None:
-        logger.info(f"\n[red]未选择研究深度，退出程序... | No research depth selected. Exiting...[/red]")
+        logger.info(
+            "\n[red]未选择研究深度，退出程序... | No research depth selected. Exiting...[/red]"
+        )
         exit(1)
 
     return choice
@@ -134,25 +152,55 @@ def select_shallow_thinking_agent(provider) -> str:
     SHALLOW_AGENT_OPTIONS = {
         "openai": [
             ("GPT-4o-mini - Fast and efficient for quick tasks", "gpt-4o-mini"),
-            ("GPT-4.1-nano - Ultra-lightweight model for basic operations", "gpt-4.1-nano"),
+            (
+                "GPT-4.1-nano - Ultra-lightweight model for basic operations",
+                "gpt-4.1-nano",
+            ),
             ("GPT-4.1-mini - Compact model with good performance", "gpt-4.1-mini"),
             ("GPT-4o - Standard model with solid capabilities", "gpt-4o"),
         ],
         "anthropic": [
-            ("Claude Haiku 3.5 - Fast inference and standard capabilities", "claude-3-5-haiku-latest"),
-            ("Claude Sonnet 3.5 - Highly capable standard model", "claude-3-5-sonnet-latest"),
-            ("Claude Sonnet 3.7 - Exceptional hybrid reasoning and agentic capabilities", "claude-3-7-sonnet-latest"),
-            ("Claude Sonnet 4 - High performance and excellent reasoning", "claude-sonnet-4-0"),
+            (
+                "Claude Haiku 3.5 - Fast inference and standard capabilities",
+                "claude-3-5-haiku-latest",
+            ),
+            (
+                "Claude Sonnet 3.5 - Highly capable standard model",
+                "claude-3-5-sonnet-latest",
+            ),
+            (
+                "Claude Sonnet 3.7 - Exceptional hybrid reasoning and agentic capabilities",
+                "claude-3-7-sonnet-latest",
+            ),
+            (
+                "Claude Sonnet 4 - High performance and excellent reasoning",
+                "claude-sonnet-4-0",
+            ),
         ],
         "google": [
-            ("Gemini 2.0 Flash-Lite - Cost efficiency and low latency", "gemini-2.0-flash-lite"),
-            ("Gemini 2.0 Flash - Next generation features, speed, and thinking", "gemini-2.0-flash"),
-            ("Gemini 2.5 Flash - Adaptive thinking, cost efficiency", "gemini-2.5-flash"),
+            (
+                "Gemini 2.0 Flash-Lite - Cost efficiency and low latency",
+                "gemini-2.0-flash-lite",
+            ),
+            (
+                "Gemini 2.0 Flash - Next generation features, speed, and thinking",
+                "gemini-2.0-flash",
+            ),
+            (
+                "Gemini 2.5 Flash - Adaptive thinking, cost efficiency",
+                "gemini-2.5-flash",
+            ),
         ],
         "openrouter": [
             ("Meta: Llama 4 Scout", "meta-llama/llama-4-scout:free"),
-            ("Meta: Llama 3.3 8B Instruct - A lightweight and ultra-fast variant of Llama 3.3 70B", "meta-llama/llama-3.3-8b-instruct:free"),
-            ("google/gemini-2.0-flash-exp:free - Gemini Flash 2.0 offers a significantly faster time to first token", "google/gemini-2.0-flash-exp:free"),
+            (
+                "Meta: Llama 3.3 8B Instruct - A lightweight and ultra-fast variant of Llama 3.3 70B",
+                "meta-llama/llama-3.3-8b-instruct:free",
+            ),
+            (
+                "google/gemini-2.0-flash-exp:free - Gemini Flash 2.0 offers a significantly faster time to first token",
+                "google/gemini-2.0-flash-exp:free",
+            ),
         ],
         "ollama": [
             ("llama3.1 local", "llama3.1"),
@@ -161,7 +209,7 @@ def select_shallow_thinking_agent(provider) -> str:
         # 阿里百炼 (dashscope) 已移除
         "deepseek v3": [
             ("DeepSeek Chat - 通用对话模型，适合股票投资分析", "deepseek-chat"),
-        ]
+        ],
     }
 
     # 获取选项列表
@@ -177,8 +225,7 @@ def select_shallow_thinking_agent(provider) -> str:
     choice = questionary.select(
         "选择您的快速思考LLM引擎 | Select Your [Quick-Thinking LLM Engine]:",
         choices=[
-            questionary.Choice(display, value=value)
-            for display, value in options
+            questionary.Choice(display, value=value) for display, value in options
         ],
         default=default_choice,
         instruction="\n- 使用方向键导航 | Use arrow keys to navigate\n- 按回车键选择 | Press Enter to select",
@@ -206,7 +253,10 @@ def select_deep_thinking_agent(provider) -> str:
     # Define deep thinking llm engine options with their corresponding model names
     DEEP_AGENT_OPTIONS = {
         "openai": [
-            ("GPT-4.1-nano - Ultra-lightweight model for basic operations", "gpt-4.1-nano"),
+            (
+                "GPT-4.1-nano - Ultra-lightweight model for basic operations",
+                "gpt-4.1-nano",
+            ),
             ("GPT-4.1-mini - Compact model with good performance", "gpt-4.1-mini"),
             ("GPT-4o - Standard model with solid capabilities", "gpt-4o"),
             ("o4-mini - Specialized reasoning model (compact)", "o4-mini"),
@@ -215,21 +265,48 @@ def select_deep_thinking_agent(provider) -> str:
             ("o1 - Premier reasoning and problem-solving model", "o1"),
         ],
         "anthropic": [
-            ("Claude Haiku 3.5 - Fast inference and standard capabilities", "claude-3-5-haiku-latest"),
-            ("Claude Sonnet 3.5 - Highly capable standard model", "claude-3-5-sonnet-latest"),
-            ("Claude Sonnet 3.7 - Exceptional hybrid reasoning and agentic capabilities", "claude-3-7-sonnet-latest"),
-            ("Claude Sonnet 4 - High performance and excellent reasoning", "claude-sonnet-4-0"),
+            (
+                "Claude Haiku 3.5 - Fast inference and standard capabilities",
+                "claude-3-5-haiku-latest",
+            ),
+            (
+                "Claude Sonnet 3.5 - Highly capable standard model",
+                "claude-3-5-sonnet-latest",
+            ),
+            (
+                "Claude Sonnet 3.7 - Exceptional hybrid reasoning and agentic capabilities",
+                "claude-3-7-sonnet-latest",
+            ),
+            (
+                "Claude Sonnet 4 - High performance and excellent reasoning",
+                "claude-sonnet-4-0",
+            ),
             ("Claude Opus 4 - Most powerful Anthropic model", "	claude-opus-4-0"),
         ],
         "google": [
-            ("Gemini 2.0 Flash-Lite - Cost efficiency and low latency", "gemini-2.0-flash-lite"),
-            ("Gemini 2.0 Flash - Next generation features, speed, and thinking", "gemini-2.0-flash"),
-            ("Gemini 2.5 Flash - Adaptive thinking, cost efficiency", "gemini-2.5-flash"),
+            (
+                "Gemini 2.0 Flash-Lite - Cost efficiency and low latency",
+                "gemini-2.0-flash-lite",
+            ),
+            (
+                "Gemini 2.0 Flash - Next generation features, speed, and thinking",
+                "gemini-2.0-flash",
+            ),
+            (
+                "Gemini 2.5 Flash - Adaptive thinking, cost efficiency",
+                "gemini-2.5-flash",
+            ),
             ("Gemini 2.5 Pro", "gemini-2.5-pro"),
         ],
         "openrouter": [
-            ("DeepSeek V3 - a 685B-parameter, mixture-of-experts model", "deepseek/deepseek-chat-v3-0324:free"),
-            ("Deepseek - latest iteration of the flagship chat model family from the DeepSeek team.", "deepseek/deepseek-chat-v3-0324:free"),
+            (
+                "DeepSeek V3 - a 685B-parameter, mixture-of-experts model",
+                "deepseek/deepseek-chat-v3-0324:free",
+            ),
+            (
+                "Deepseek - latest iteration of the flagship chat model family from the DeepSeek team.",
+                "deepseek/deepseek-chat-v3-0324:free",
+            ),
         ],
         "ollama": [
             ("llama3.1 local", "llama3.1"),
@@ -238,9 +315,9 @@ def select_deep_thinking_agent(provider) -> str:
         # 阿里百炼 (dashscope) 已移除
         "deepseek v3": [
             ("DeepSeek Chat - 通用对话模型，适合股票投资分析", "deepseek-chat"),
-        ]
+        ],
     }
-    
+
     # 获取选项列表
     options = DEEP_AGENT_OPTIONS[provider.lower()]
 
@@ -254,8 +331,7 @@ def select_deep_thinking_agent(provider) -> str:
     choice = questionary.select(
         "选择您的深度思考LLM引擎 | Select Your [Deep-Thinking LLM Engine]:",
         choices=[
-            questionary.Choice(display, value=value)
-            for display, value in options
+            questionary.Choice(display, value=value) for display, value in options
         ],
         default=default_choice,
         instruction="\n- 使用方向键导航 | Use arrow keys to navigate\n- 按回车键选择 | Press Enter to select",
@@ -269,10 +345,13 @@ def select_deep_thinking_agent(provider) -> str:
     ).ask()
 
     if choice is None:
-        logger.info(f"\n[red]未选择深度思考LLM引擎，退出程序... | No deep thinking llm engine selected. Exiting...[/red]")
+        logger.info(
+            "\n[red]未选择深度思考LLM引擎，退出程序... | No deep thinking llm engine selected. Exiting...[/red]"
+        )
         exit(1)
 
     return choice
+
 
 def select_llm_provider() -> tuple[str, str]:
     """Select the LLM provider using interactive selection."""
@@ -286,7 +365,7 @@ def select_llm_provider() -> tuple[str, str]:
         ("Openrouter", "https://openrouter.ai/api/v1"),
         ("Ollama", "http://localhost:11434/v1"),
     ]
-    
+
     choice = questionary.select(
         "选择您的LLM提供商 | Select your LLM Provider:",
         choices=[
@@ -303,11 +382,13 @@ def select_llm_provider() -> tuple[str, str]:
             ]
         ),
     ).ask()
-    
+
     if choice is None:
-        logger.info(f"\n[red]未选择LLM提供商，退出程序... | No LLM provider selected. Exiting...[/red]")
+        logger.info(
+            "\n[red]未选择LLM提供商，退出程序... | No LLM provider selected. Exiting...[/red]"
+        )
         exit(1)
-    
+
     display_name, url = choice
     logger.info(f"您选择了 | You selected: {display_name}\tURL: {url}")
 

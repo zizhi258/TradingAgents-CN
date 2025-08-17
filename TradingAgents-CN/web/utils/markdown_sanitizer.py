@@ -10,10 +10,8 @@ Goals:
 
 from __future__ import annotations
 
-import re
-from typing import Iterable
 import os
-
+import re
 
 _CJK_RE = re.compile(r"[\u4e00-\u9fff]")
 _UNESCAPED_DOLLAR_RE = re.compile(r"(?<!\\)\$")
@@ -29,7 +27,7 @@ def _enabled() -> bool:
 
 
 def sanitize_markdown_for_streamlit(md: str) -> str:
-    """Sanitize Markdown to avoid KaTeX strict warnings.
+    r"""Sanitize Markdown to avoid KaTeX strict warnings.
 
     Rules (applied outside fenced code):
     - Escape "$" before digits (currency): $123 -> \$123

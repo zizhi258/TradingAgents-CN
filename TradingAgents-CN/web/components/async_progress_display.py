@@ -5,13 +5,13 @@
 """
 
 import time
-from typing import Dict, Any
+from typing import Any
 
 import streamlit as st
-from web.utils.async_progress_tracker import get_progress_by_id, format_time
 
 # 统一日志
 from tradingagents.utils.logging_manager import get_logger
+from web.utils.async_progress_tracker import format_time, get_progress_by_id
 
 logger = get_logger("async_display")
 
@@ -34,7 +34,9 @@ class AsyncProgressDisplay:
         self.last_update = 0.0
         self.is_completed = False
 
-        logger.info(f"📊 [异步显示] 初始化: {analysis_id}, 刷新间隔: {refresh_interval}s")
+        logger.info(
+            f"📊 [异步显示] 初始化: {analysis_id}, 刷新间隔: {refresh_interval}s"
+        )
 
     def update_display(self) -> bool:
         """更新显示，返回是否需要继续刷新"""
@@ -56,7 +58,7 @@ class AsyncProgressDisplay:
         self.is_completed = status in ["completed", "failed"]
         return not self.is_completed
 
-    def _render_progress(self, progress_data: Dict[str, Any]) -> None:
+    def _render_progress(self, progress_data: dict[str, Any]) -> None:
         """渲染进度显示"""
         try:
             current_step = progress_data.get("current_step", 0)
@@ -72,7 +74,9 @@ class AsyncProgressDisplay:
             step_description = progress_data.get("current_step_description", "")
             last_message = progress_data.get("last_message", "")
 
-            status_icon = {"running": "🔄", "completed": "✅", "failed": "❌"}.get(status, "🔄")
+            status_icon = {"running": "🔄", "completed": "✅", "failed": "❌"}.get(
+                status, "🔄"
+            )
             self.status_text.info(f"{status_icon} **当前状态**: {last_message}")
 
             if status == "failed":
@@ -98,6 +102,19 @@ class AsyncProgressDisplay:
                                     if formatted:
                                         st.session_state.analysis_results = formatted
                                         st.session_state.analysis_running = False
+                                    # 兼容多模型页面：同时写入多模型结果与跳转标记
+                                    if isinstance(raw_results, dict) and (
+                                        "results" in raw_results
+                                        or "agents_used" in raw_results
+                                        or raw_results.get("collaboration_mode")
+                                    ):
+                                        st.session_state.multi_model_analysis_results = (
+                                            raw_results
+                                        )
+                                        st.session_state.show_multi_model_results = True
+                                        st.session_state.multi_model_current_analysis_id = (
+                                            analysis_id
+                                        )
                             except Exception as e:  # noqa: BLE001
                                 st.error(f"恢复分析结果失败: {e}")
 
@@ -157,14 +174,18 @@ def create_async_progress_display(
     return AsyncProgressDisplay(container, analysis_id, refresh_interval)
 
 
-def auto_refresh_progress(display: AsyncProgressDisplay, max_duration: float = 1800) -> None:
+def auto_refresh_progress(
+    display: AsyncProgressDisplay, max_duration: float = 1800
+) -> None:
     """自动刷新进度显示"""
     started = time.time()
     placeholder = st.empty()
     while True:
         if time.time() - started > max_duration:
             with placeholder:
-                st.warning("⚠️ 分析时间过长，已停止自动刷新。请手动刷新页面查看最新状态。")
+                st.warning(
+                    "⚠️ 分析时间过长，已停止自动刷新。请手动刷新页面查看最新状态。"
+                )
             break
 
         if not display.update_display():
@@ -175,7 +196,9 @@ def auto_refresh_progress(display: AsyncProgressDisplay, max_duration: float = 1
     logger.info(f"📊 [异步显示] 自动刷新结束: {display.analysis_id}")
 
 
-def streamlit_auto_refresh_progress(analysis_id: str, refresh_interval: int = 2) -> bool:
+def streamlit_auto_refresh_progress(
+    analysis_id: str, refresh_interval: int = 2
+) -> bool:
     """Streamlit专用的自动刷新进度显示"""
     progress_data = get_progress_by_id(analysis_id)
     if not progress_data:
@@ -215,6 +238,17 @@ def streamlit_auto_refresh_progress(analysis_id: str, refresh_interval: int = 2)
                         if formatted:
                             st.session_state.analysis_results = formatted
                             st.session_state.analysis_running = False
+                        # 兼容多模型页面
+                        if isinstance(raw_results, dict) and (
+                            "results" in raw_results
+                            or "agents_used" in raw_results
+                            or raw_results.get("collaboration_mode")
+                        ):
+                            st.session_state.multi_model_analysis_results = raw_results
+                            st.session_state.show_multi_model_results = True
+                            st.session_state.multi_model_current_analysis_id = (
+                                analysis_id
+                            )
                 except Exception as e:  # noqa: BLE001
                     st.error(f"恢复分析结果失败: {e}")
     else:
@@ -233,7 +267,9 @@ def streamlit_auto_refresh_progress(analysis_id: str, refresh_interval: int = 2)
         with col2:
             auto_refresh_key = f"auto_refresh_streamlit_{analysis_id}"
             default_value = st.session_state.get(auto_refresh_key, True)
-            auto_refresh = st.checkbox("🔄 自动刷新", value=default_value, key=auto_refresh_key)
+            auto_refresh = st.checkbox(
+                "🔄 自动刷新", value=default_value, key=auto_refresh_key
+            )
             if auto_refresh:
                 last_refresh_key = f"last_refresh_{analysis_id}"
                 now = time.time()
@@ -294,16 +330,26 @@ def display_static_progress(analysis_id: str) -> bool:
         st.error(f"❌ **分析失败**: {last_message}")
     elif status == "completed":
         st.success(f"🎉 **分析完成**: {last_message}")
-        if st.button("📊 查看分析报告", key=f"view_report_static_{analysis_id}", type="primary"):
+        if st.button(
+            "📊 查看分析报告", key=f"view_report_static_{analysis_id}", type="primary"
+        ):
             if not st.session_state.get("analysis_results"):
                 try:
                     from web.utils.analysis_runner import format_analysis_results
+
                     raw = progress_data.get("raw_results")
                     if raw:
                         formatted = format_analysis_results(raw)
                         if formatted:
                             st.session_state.analysis_results = formatted
                             st.session_state.analysis_running = False
+                        # 兼容多模型：同步写入多模型结果与标记
+                        if isinstance(raw, dict) and (
+                            "results" in raw or "agents_used" in raw or raw.get("collaboration_mode")
+                        ):
+                            st.session_state.multi_model_analysis_results = raw
+                            st.session_state.show_multi_model_results = True
+                            st.session_state.multi_model_current_analysis_id = analysis_id
                 except Exception as e:  # noqa: BLE001
                     st.error(f"恢复分析结果失败: {e}")
             st.session_state.show_analysis_results = True
@@ -314,14 +360,19 @@ def display_static_progress(analysis_id: str) -> bool:
 
     # 清理完成态的会话键
     if status in ["completed", "failed"]:
-        for key in [f"progress_display_{analysis_id}", f"refresh_container_{analysis_id}"]:
+        for key in [
+            f"progress_display_{analysis_id}",
+            f"refresh_container_{analysis_id}",
+        ]:
             if key in st.session_state:
                 del st.session_state[key]
 
     return status in ["completed", "failed"]
 
 
-def display_unified_progress(analysis_id: str, show_refresh_controls: bool = True) -> bool:
+def display_unified_progress(
+    analysis_id: str, show_refresh_controls: bool = True
+) -> bool:
     """统一的进度显示函数，返回是否已完成"""
     completed = display_static_progress(analysis_id)
     if show_refresh_controls and not completed:
@@ -332,14 +383,17 @@ def display_unified_progress(analysis_id: str, show_refresh_controls: bool = Tru
         with col2:
             auto_refresh_key = f"auto_refresh_unified_{analysis_id}"
             default_value = st.session_state.get(auto_refresh_key, True)
-            auto_refresh = st.checkbox("🔄 自动刷新", value=default_value, key=auto_refresh_key)
+            auto_refresh = st.checkbox(
+                "🔄 自动刷新", value=default_value, key=auto_refresh_key
+            )
             if auto_refresh:
                 time.sleep(2)
                 st.rerun()
     return completed
 
 
-def display_static_progress_with_controls(analysis_id: str, show_refresh_controls: bool = True) -> bool:
+def display_static_progress_with_controls(
+    analysis_id: str, show_refresh_controls: bool = True
+) -> bool:
     """显示静态进度，可控制是否显示刷新控件（兼容旧接口）"""
     return display_unified_progress(analysis_id, show_refresh_controls)
-

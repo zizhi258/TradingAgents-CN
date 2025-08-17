@@ -8,53 +8,77 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+from typing import Any
+
 import streamlit as st
-from typing import Dict, Any, List
 
-from tradingagents.config.provider_models import (
-    model_provider_manager,
+# 确保可导入 web/utils 与项目根目录模块
+CURRENT_DIR = Path(__file__).resolve()
+WEB_DIR = CURRENT_DIR.parent.parent
+PROJECT_ROOT = WEB_DIR.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+if str(WEB_DIR) not in sys.path:
+    sys.path.append(str(WEB_DIR))
+
+from tradingagents.config.provider_models import (  # noqa: E402
     ROLE_DEFINITIONS,
+    model_provider_manager,
 )
-from tradingagents.config.role_library import (
-    load_role_library,
-    upsert_role,
+from tradingagents.config.role_library import (  # noqa: E402
     delete_role,
-    save_role_library,
     fill_missing_prompts_in_library,
-    overwrite_prompts_with_defaults,
+    load_role_library,
+    save_role_library,
+    upsert_role,
 )
+from utils.ui_utils import get_available_agents_for_ui  # noqa: E402
 
 
-def _all_model_names() -> List[str]:
+def _all_model_names() -> list[str]:
     return list(model_provider_manager.model_catalog.keys())
 
 
-def _load_all_roles() -> Dict[str, Any]:
+def _load_all_roles() -> dict[str, Any]:
     # 基于当前管理器视图（合并内置与自定义）
-    merged: Dict[str, Any] = {}
+    merged: dict[str, Any] = {}
     for k, v in model_provider_manager.role_definitions.items():
         merged[k] = {
-            'name': v.name,
-            'description': v.description,
-            'allowed_models': list(v.allowed_models),
-            'preferred_model': v.preferred_model,
-            'locked_model': v.locked_model,
-            'enabled': getattr(v, 'enabled', True),
+            "name": v.name,
+            "description": v.description,
+            "allowed_models": list(v.allowed_models),
+            "preferred_model": v.preferred_model,
+            "locked_model": v.locked_model,
+            "enabled": getattr(v, "enabled", True),
         }
     # 合并库中的 prompts 与 task_type
     lib = load_role_library()
-    for k, cfg in lib.get('roles', {}).items():
+    for k, cfg in lib.get("roles", {}).items():
         merged.setdefault(k, {})
-        merged[k].update({
-            'name': cfg.get('name') or merged[k].get('name') or k,
-            'description': cfg.get('description') or merged[k].get('description') or '',
-            'allowed_models': cfg.get('allowed_models') or merged[k].get('allowed_models') or [],
-            'preferred_model': cfg.get('preferred_model') or merged[k].get('preferred_model'),
-            'locked_model': cfg.get('locked_model') or merged[k].get('locked_model'),
-            'enabled': cfg.get('enabled') if cfg.get('enabled') is not None else merged[k].get('enabled', True),
-            'prompts': cfg.get('prompts') or {},
-            'task_type': cfg.get('task_type') or '',
-        })
+        merged[k].update(
+            {
+                "name": cfg.get("name") or merged[k].get("name") or k,
+                "description": cfg.get("description")
+                or merged[k].get("description")
+                or "",
+                "allowed_models": cfg.get("allowed_models")
+                or merged[k].get("allowed_models")
+                or [],
+                "preferred_model": cfg.get("preferred_model")
+                or merged[k].get("preferred_model"),
+                "locked_model": cfg.get("locked_model")
+                or merged[k].get("locked_model"),
+                "enabled": (
+                    cfg.get("enabled")
+                    if cfg.get("enabled") is not None
+                    else merged[k].get("enabled", True)
+                ),
+                "prompts": cfg.get("prompts") or {},
+                "task_type": cfg.get("task_type") or "",
+            }
+        )
     return merged
 
 
@@ -79,6 +103,34 @@ def render_role_library():
     roles = _load_all_roles()
     all_role_keys = sorted(roles.keys())
 
+    # 后端可用角色（API优先，本地回退）
+    try:
+        meta = get_available_agents_for_ui()
+        available_roles = meta.get("available_agents", []) or []
+    except Exception:
+        available_roles = []
+
+    # 过滤开关
+    filter_to_available = False
+    if available_roles:
+        st.markdown("---")
+        st.caption(
+            "后端可用智能体: "
+            + ", ".join(
+                [
+                    roles.get(k, {}).get("name") or k
+                    for k in available_roles
+                    if k in roles
+                ]
+            )
+        )
+        filter_to_available = st.checkbox("仅显示后端可用角色", value=True)
+        if filter_to_available:
+            all_role_keys = [k for k in all_role_keys if k in available_roles]
+            if not all_role_keys:
+                st.info("后端可用角色列表为空，显示全部角色。")
+                all_role_keys = sorted(roles.keys())
+
     c1, c2 = st.columns([1, 2])
     with c1:
         st.markdown("### 角色列表")
@@ -88,7 +140,7 @@ def render_role_library():
             "选择角色",
             all_role_keys,
             key="role_lib_select",
-            format_func=lambda k: (roles.get(k, {}).get('name') or k)
+            format_func=lambda k: (roles.get(k, {}).get("name") or k),
         )
         # 内置角色标识与提示
         if selected_key in builtin_keys:
@@ -96,19 +148,24 @@ def render_role_library():
                 "<div style='color:#c92a2a; font-weight:600;'>内置角色（谨慎处理）</div>",
                 unsafe_allow_html=True,
             )
-        new_role = st.text_input("新建角色key", value="", placeholder="如: sector_specialist")
+        new_role = st.text_input(
+            "新建角色key", value="", placeholder="如: sector_specialist"
+        )
         if st.button("➕ 新建"):
             if new_role and new_role not in roles:
-                upsert_role(new_role, {
-                    'name': new_role,
-                    'description': '',
-                    'allowed_models': [],
-                    'preferred_model': None,
-                    'locked_model': None,
-                    'enabled': True,
-                    'prompts': {},
-                    'task_type': '',
-                })
+                upsert_role(
+                    new_role,
+                    {
+                        "name": new_role,
+                        "description": "",
+                        "allowed_models": [],
+                        "preferred_model": None,
+                        "locked_model": None,
+                        "enabled": True,
+                        "prompts": {},
+                        "task_type": "",
+                    },
+                )
                 model_provider_manager.reload_role_library()
                 st.success(f"已创建角色: {new_role}")
                 try:
@@ -120,7 +177,7 @@ def render_role_library():
 
         # 删除/清除按钮（区分内置与自定义）
         lib = load_role_library()
-        lib_roles = lib.get('roles', {}) if isinstance(lib.get('roles'), dict) else {}
+        lib_roles = lib.get("roles", {}) if isinstance(lib.get("roles"), dict) else {}
         if selected_key in builtin_keys:
             # 内置角色：仅允许清除自定义覆盖
             if st.button("🧹 清除自定义覆盖"):
@@ -165,43 +222,95 @@ def render_role_library():
             st.write("")
 
         with st.form("role_edit_form", clear_on_submit=False):
-            name = st.text_input("显示名称", value=cfg.get('name') or rk)
-            desc = st.text_area("描述", value=cfg.get('description') or '')
+            name = st.text_input("显示名称", value=cfg.get("name") or rk)
+            desc = st.text_area("描述", value=cfg.get("description") or "")
             task_type = st.selectbox(
                 "任务类型",
-                ["", "fundamental_analysis", "technical_analysis", "news_analysis", "sentiment_analysis", "policy_analysis", "risk_assessment", "compliance_check", "decision_making", "general"],
-                index=0 if not cfg.get('task_type') else ["", "fundamental_analysis", "technical_analysis", "news_analysis", "sentiment_analysis", "policy_analysis", "risk_assessment", "compliance_check", "decision_making", "general"].index(cfg.get('task_type'))
+                [
+                    "",
+                    "fundamental_analysis",
+                    "technical_analysis",
+                    "news_analysis",
+                    "sentiment_analysis",
+                    "policy_analysis",
+                    "risk_assessment",
+                    "compliance_check",
+                    "decision_making",
+                    "general",
+                ],
+                index=(
+                    0
+                    if not cfg.get("task_type")
+                    else [
+                        "",
+                        "fundamental_analysis",
+                        "technical_analysis",
+                        "news_analysis",
+                        "sentiment_analysis",
+                        "policy_analysis",
+                        "risk_assessment",
+                        "compliance_check",
+                        "decision_making",
+                        "general",
+                    ].index(cfg.get("task_type"))
+                ),
             )
 
             models_all = _all_model_names()
-            allowed = st.multiselect("允许模型", models_all, default=cfg.get('allowed_models') or [])
-            preferred = st.selectbox("首选模型", ["(无)"] + allowed, index= ( ["(无)"] + allowed ).index(cfg.get('preferred_model')) if cfg.get('preferred_model') in allowed else 0 )
-            locked = st.selectbox("锁定模型", ["(无)"] + allowed, index= ( ["(无)"] + allowed ).index(cfg.get('locked_model')) if cfg.get('locked_model') in allowed else 0 )
+            allowed = st.multiselect(
+                "允许模型", models_all, default=cfg.get("allowed_models") or []
+            )
+            preferred = st.selectbox(
+                "首选模型",
+                ["(无)"] + allowed,
+                index=(
+                    (["(无)"] + allowed).index(cfg.get("preferred_model"))
+                    if cfg.get("preferred_model") in allowed
+                    else 0
+                ),
+            )
+            locked = st.selectbox(
+                "锁定模型",
+                ["(无)"] + allowed,
+                index=(
+                    (["(无)"] + allowed).index(cfg.get("locked_model"))
+                    if cfg.get("locked_model") in allowed
+                    else 0
+                ),
+            )
 
-            enabled = st.checkbox("启用该角色", value=bool(cfg.get('enabled', True)))
+            enabled = st.checkbox("启用该角色", value=bool(cfg.get("enabled", True)))
 
-            prompts = cfg.get('prompts') or {}
-            sys_prompt = st.text_area("System Prompt（系统提示）", value=prompts.get('system_prompt') or '', height=180)
-            analysis_prompt = st.text_area("Analysis Prompt 模板（可选）", value=prompts.get('analysis_prompt_template') or '', height=160)
+            prompts = cfg.get("prompts") or {}
+            sys_prompt = st.text_area(
+                "System Prompt（系统提示）",
+                value=prompts.get("system_prompt") or "",
+                height=180,
+            )
+            analysis_prompt = st.text_area(
+                "Analysis Prompt 模板（可选）",
+                value=prompts.get("analysis_prompt_template") or "",
+                height=160,
+            )
 
             save = st.form_submit_button("💾 保存")
             if save:
                 data = load_role_library()
-                roles_lib = data.get('roles', {})
+                roles_lib = data.get("roles", {})
                 roles_lib[rk] = {
-                    'name': name,
-                    'description': desc,
-                    'task_type': task_type or '',
-                    'allowed_models': allowed,
-                    'preferred_model': (None if preferred == "(无)" else preferred),
-                    'locked_model': (None if locked == "(无)" else locked),
-                    'enabled': bool(enabled),
-                    'prompts': {
-                        'system_prompt': sys_prompt,
-                        'analysis_prompt_template': analysis_prompt,
-                    }
+                    "name": name,
+                    "description": desc,
+                    "task_type": task_type or "",
+                    "allowed_models": allowed,
+                    "preferred_model": (None if preferred == "(无)" else preferred),
+                    "locked_model": (None if locked == "(无)" else locked),
+                    "enabled": bool(enabled),
+                    "prompts": {
+                        "system_prompt": sys_prompt,
+                        "analysis_prompt_template": analysis_prompt,
+                    },
                 }
-                data['roles'] = roles_lib
+                data["roles"] = roles_lib
                 upsert_role(rk, roles_lib[rk])
                 model_provider_manager.reload_role_library()
                 st.success("已保存并应用。")
@@ -211,7 +320,10 @@ def render_role_library():
         with col_r1:
             if st.button("🧭 用推荐模板覆盖该角色"):
                 try:
-                    from tradingagents.config.role_library import overwrite_prompts_with_defaults
+                    from tradingagents.config.role_library import (
+                        overwrite_prompts_with_defaults,
+                    )
+
                     cnt = overwrite_prompts_with_defaults([rk])
                     model_provider_manager.reload_role_library()
                     if cnt:
@@ -228,7 +340,8 @@ def render_role_library():
             st.markdown("**导出角色库**")
             lib = load_role_library()
             import json as _json
-            json_bytes = _json.dumps(lib, ensure_ascii=False, indent=2).encode('utf-8')
+
+            json_bytes = _json.dumps(lib, ensure_ascii=False, indent=2).encode("utf-8")
             st.download_button(
                 label="⬇️ 导出为 JSON",
                 data=json_bytes,
@@ -237,10 +350,11 @@ def render_role_library():
             )
             try:
                 import yaml as _yaml  # type: ignore
+
                 yaml_str = _yaml.safe_dump(lib, allow_unicode=True, sort_keys=False)
                 st.download_button(
                     label="⬇️ 导出为 YAML",
-                    data=yaml_str.encode('utf-8'),
+                    data=yaml_str.encode("utf-8"),
                     file_name="role_library.yaml",
                     mime="text/yaml",
                 )
@@ -249,21 +363,29 @@ def render_role_library():
 
         with sub_c2:
             st.markdown("**导入角色库**")
-            uploaded = st.file_uploader("上传 JSON 或 YAML 文件", type=["json", "yaml", "yml"], key="role_lib_uploader")
-            merge_strategy = st.radio("合并策略", ["合并（同名覆盖）", "替换全部"], horizontal=True)
+            uploaded = st.file_uploader(
+                "上传 JSON 或 YAML 文件",
+                type=["json", "yaml", "yml"],
+                key="role_lib_uploader",
+            )
+            merge_strategy = st.radio(
+                "合并策略", ["合并（同名覆盖）", "替换全部"], horizontal=True
+            )
             if st.button("📤 导入并应用", type="primary"):
                 if not uploaded:
                     st.warning("请先选择文件")
                 else:
                     try:
-                        content = uploaded.read().decode('utf-8')
+                        content = uploaded.read().decode("utf-8")
                         data = None
                         import json as _json
+
                         try:
                             data = _json.loads(content)
                         except Exception:
                             try:
                                 import yaml as _yaml  # type: ignore
+
                                 data = _yaml.safe_load(content)
                             except Exception:
                                 data = None
@@ -274,11 +396,19 @@ def render_role_library():
                             if merge_strategy == "替换全部":
                                 save_role_library(data)
                             else:
-                                roles_cur = current.get('roles', {}) if isinstance(current.get('roles'), dict) else {}
-                                roles_new = data.get('roles', {}) if isinstance(data.get('roles'), dict) else {}
+                                roles_cur = (
+                                    current.get("roles", {})
+                                    if isinstance(current.get("roles"), dict)
+                                    else {}
+                                )
+                                roles_new = (
+                                    data.get("roles", {})
+                                    if isinstance(data.get("roles"), dict)
+                                    else {}
+                                )
                                 merged = roles_cur.copy()
                                 merged.update(roles_new)
-                                save_role_library({'roles': merged})
+                                save_role_library({"roles": merged})
                             model_provider_manager.reload_role_library()
                             st.success("导入完成并已应用。")
                     except Exception as e:

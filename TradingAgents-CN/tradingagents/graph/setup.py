@@ -1,18 +1,20 @@
 # TradingAgents/graph/setup.py
 
-from typing import Dict, Any
+from typing import Any
+
 from langchain_openai import ChatOpenAI
-from langgraph.graph import END, StateGraph, START
+from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
 
 from tradingagents.agents import *
 from tradingagents.agents.utils.agent_states import AgentState
 from tradingagents.agents.utils.agent_utils import Toolkit
 
-from .conditional_logic import ConditionalLogic
-
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
+
+from .conditional_logic import ConditionalLogic
+
 logger = get_logger("default")
 
 
@@ -24,15 +26,15 @@ class GraphSetup:
         quick_thinking_llm: ChatOpenAI,
         deep_thinking_llm: ChatOpenAI,
         toolkit: Toolkit,
-        tool_nodes: Dict[str, ToolNode],
+        tool_nodes: dict[str, ToolNode],
         bull_memory,
         bear_memory,
         trader_memory,
         invest_judge_memory,
         risk_manager_memory,
         conditional_logic: ConditionalLogic,
-        config: Dict[str, Any] = None,
-        react_llm = None,
+        config: dict[str, Any] = None,
+        react_llm=None,
     ):
         """Initialize with required components."""
         self.quick_thinking_llm = quick_thinking_llm
@@ -74,19 +76,21 @@ class GraphSetup:
 
             # 检查是否使用OpenAI兼容的阿里百炼适配器
             using_dashscope_openai = (
-                "dashscope" in llm_provider and
-                hasattr(self.quick_thinking_llm, '__class__') and
-                'OpenAI' in self.quick_thinking_llm.__class__.__name__
+                "dashscope" in llm_provider
+                and hasattr(self.quick_thinking_llm, "__class__")
+                and "OpenAI" in self.quick_thinking_llm.__class__.__name__
             )
 
             if using_dashscope_openai:
-                logger.debug(f"📈 [DEBUG] 使用标准市场分析师（阿里百炼OpenAI兼容模式）")
-            elif "dashscope" in llm_provider or "阿里百炼" in self.config.get("llm_provider", ""):
-                logger.debug(f"📈 [DEBUG] 使用标准市场分析师（阿里百炼原生模式）")
+                logger.debug("📈 [DEBUG] 使用标准市场分析师（阿里百炼OpenAI兼容模式）")
+            elif "dashscope" in llm_provider or "阿里百炼" in self.config.get(
+                "llm_provider", ""
+            ):
+                logger.debug("📈 [DEBUG] 使用标准市场分析师（阿里百炼原生模式）")
             elif "deepseek" in llm_provider:
-                logger.debug(f"📈 [DEBUG] 使用标准市场分析师（DeepSeek）")
+                logger.debug("📈 [DEBUG] 使用标准市场分析师（DeepSeek）")
             else:
-                logger.debug(f"📈 [DEBUG] 使用标准市场分析师")
+                logger.debug("📈 [DEBUG] 使用标准市场分析师")
 
             # 所有LLM都使用标准分析师
             analyst_nodes["market"] = create_market_analyst(
@@ -115,19 +119,23 @@ class GraphSetup:
 
             # 检查是否使用OpenAI兼容的阿里百炼适配器
             using_dashscope_openai = (
-                "dashscope" in llm_provider and
-                hasattr(self.quick_thinking_llm, '__class__') and
-                'OpenAI' in self.quick_thinking_llm.__class__.__name__
+                "dashscope" in llm_provider
+                and hasattr(self.quick_thinking_llm, "__class__")
+                and "OpenAI" in self.quick_thinking_llm.__class__.__name__
             )
 
             if using_dashscope_openai:
-                logger.debug(f"📊 [DEBUG] 使用标准基本面分析师（阿里百炼OpenAI兼容模式）")
-            elif "dashscope" in llm_provider or "阿里百炼" in self.config.get("llm_provider", ""):
-                logger.debug(f"📊 [DEBUG] 使用标准基本面分析师（阿里百炼原生模式）")
+                logger.debug(
+                    "📊 [DEBUG] 使用标准基本面分析师（阿里百炼OpenAI兼容模式）"
+                )
+            elif "dashscope" in llm_provider or "阿里百炼" in self.config.get(
+                "llm_provider", ""
+            ):
+                logger.debug("📊 [DEBUG] 使用标准基本面分析师（阿里百炼原生模式）")
             elif "deepseek" in llm_provider:
-                logger.debug(f"📊 [DEBUG] 使用标准基本面分析师（DeepSeek）")
+                logger.debug("📊 [DEBUG] 使用标准基本面分析师（DeepSeek）")
             else:
-                logger.debug(f"📊 [DEBUG] 使用标准基本面分析师")
+                logger.debug("📊 [DEBUG] 使用标准基本面分析师")
 
             # 所有LLM都使用标准分析师（包含强制工具调用机制）
             analyst_nodes["fundamentals"] = create_fundamentals_analyst(

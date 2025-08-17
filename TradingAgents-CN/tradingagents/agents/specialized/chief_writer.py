@@ -3,21 +3,21 @@ Chief Writer (主笔人)
 负责在多智能体完成分析后，汲取各方观点，产出结构化、完整、不可偷懒的长文报告
 """
 
-from typing import Dict, Any, List
 from datetime import datetime
+from typing import Any
 
-from .base_specialized_agent import BaseSpecializedAgent, AgentAnalysisResult
-from tradingagents.utils.logging_init import get_logger
 from tradingagents.config.provider_models import model_provider_manager
+from tradingagents.utils.logging_init import get_logger
 
+from .base_specialized_agent import AgentAnalysisResult, BaseSpecializedAgent
 
-logger = get_logger('chief_writer')
+logger = get_logger("chief_writer")
 
 
 class ChiefWriter(BaseSpecializedAgent):
     """主笔人/总编辑：融合多方观点，写作规整长文"""
 
-    def __init__(self, multi_model_manager, config: Dict[str, Any] = None):
+    def __init__(self, multi_model_manager, config: dict[str, Any] = None):
         super().__init__(
             agent_role="chief_writer",
             description="主笔人，负责融合多方专家观点，输出结构化长文",
@@ -67,36 +67,42 @@ class ChiefWriter(BaseSpecializedAgent):
     def get_specialized_task_type(self) -> str:
         return "article_composition"
 
-    def validate_input_data(self, data: Dict[str, Any]) -> bool:
+    def validate_input_data(self, data: dict[str, Any]) -> bool:
         # 需要至少包含专家分析列表
         if not isinstance(data, dict):
             return False
-        if 'expert_analyses' not in data:
+        if "expert_analyses" not in data:
             logger.warning("主笔人输入缺少 expert_analyses")
             return False
-        experts = data.get('expert_analyses')
+        experts = data.get("expert_analyses")
         return isinstance(experts, list) and len(experts) > 0
 
-    def extract_key_metrics(self, analysis_result: str) -> Dict[str, Any]:
+    def extract_key_metrics(self, analysis_result: str) -> dict[str, Any]:
         # 简要提取文章长度与章节覆盖度
         try:
             word_count = len(analysis_result)
             section_keywords = [
-                "执行摘要", "背景", "观点融汇", "分歧与共识",
-                "投资逻辑", "情景", "风险", "结论与操作建议",
+                "执行摘要",
+                "背景",
+                "观点融汇",
+                "分歧与共识",
+                "投资逻辑",
+                "情景",
+                "风险",
+                "结论与操作建议",
             ]
             sections_covered = sum(1 for k in section_keywords if k in analysis_result)
             return {
-                'word_count': word_count,
-                'sections_covered': sections_covered,
+                "word_count": word_count,
+                "sections_covered": sections_covered,
             }
         except Exception:
-            return {'word_count': 0, 'sections_covered': 0}
+            return {"word_count": 0, "sections_covered": 0}
 
     def analyze(
         self,
-        input_data: Dict[str, Any],
-        context: Dict[str, Any] = None,
+        input_data: dict[str, Any],
+        context: dict[str, Any] = None,
         complexity_level: str = "high",
     ) -> AgentAnalysisResult:
         start_time = datetime.now()
@@ -111,24 +117,27 @@ class ChiefWriter(BaseSpecializedAgent):
             # 解析主笔人模型优先级：context(会话/临时) > 持久化/角色库推荐 > 合理默认
             selected_model = None
             try:
-                ctx_overrides = (context or {}).get('model_overrides') or {}
+                ctx_overrides = (context or {}).get("model_overrides") or {}
                 if isinstance(ctx_overrides, dict):
                     selected_model = ctx_overrides.get(self.agent_role)
                 if not selected_model:
                     # 使用角色库/推荐策略选择最佳模型
-                    selected_model = model_provider_manager.get_best_model_for_role('chief_writer') or 'gemini-2.5-pro'
+                    selected_model = (
+                        model_provider_manager.get_best_model_for_role("chief_writer")
+                        or "gemini-2.5-pro"
+                    )
             except Exception:
-                selected_model = 'gemini-2.5-pro'
+                selected_model = "gemini-2.5-pro"
 
             # Ensure sensible defaults for heavy long-form writing to reduce timeouts
             merged_ctx = dict(context or {})
-            model_params = dict(merged_ctx.get('model_params') or {})
+            model_params = dict(merged_ctx.get("model_params") or {})
             # Prefer streaming and a bounded max_tokens; keep user-provided values
-            model_params.setdefault('stream', True)
-            model_params.setdefault('temperature', 0.3)
-            model_params.setdefault('top_p', 0.9)
-            model_params.setdefault('max_tokens', 1500)
-            merged_ctx['model_params'] = model_params
+            model_params.setdefault("stream", True)
+            model_params.setdefault("temperature", 0.3)
+            model_params.setdefault("top_p", 0.9)
+            model_params.setdefault("max_tokens", 1500)
+            merged_ctx["model_params"] = model_params
 
             task_result = self.multi_model_manager.execute_task(
                 agent_role=self.agent_role,
@@ -147,9 +156,9 @@ class ChiefWriter(BaseSpecializedAgent):
             metrics = self.extract_key_metrics(task_result.result)
             lazy_phrases = ["省略", "篇幅有限", "不再赘述"]
             need_retry = (
-                metrics.get('word_count', 0) < 1200 or
-                metrics.get('sections_covered', 0) < 6 or
-                any(p in task_result.result for p in lazy_phrases)
+                metrics.get("word_count", 0) < 1200
+                or metrics.get("sections_covered", 0) < 6
+                or any(p in task_result.result for p in lazy_phrases)
             )
 
             if need_retry:
@@ -162,36 +171,48 @@ class ChiefWriter(BaseSpecializedAgent):
                 # 二次写作沿用上一次选择的模型
                 # Keep the same streaming-friendly params in retry
                 retry_ctx = dict(merged_ctx)
-                retry_mp = dict(retry_ctx.get('model_params') or {})
-                retry_mp.setdefault('stream', True)
-                retry_mp.setdefault('temperature', 0.3)
-                retry_mp.setdefault('top_p', 0.9)
-                retry_mp.setdefault('max_tokens', 1800)
-                retry_ctx['model_params'] = retry_mp
+                retry_mp = dict(retry_ctx.get("model_params") or {})
+                retry_mp.setdefault("stream", True)
+                retry_mp.setdefault("temperature", 0.3)
+                retry_mp.setdefault("top_p", 0.9)
+                retry_mp.setdefault("max_tokens", 1800)
+                retry_ctx["model_params"] = retry_mp
 
                 task_result = self.multi_model_manager.execute_task(
                     agent_role=self.agent_role,
                     task_prompt=reinforce_prompt,
                     task_type=self.get_specialized_task_type(),
                     complexity_level=complexity_level,
-                    context={**retry_ctx, 'reinforced': True} if retry_ctx else {'reinforced': True},
+                    context=(
+                        {**retry_ctx, "reinforced": True}
+                        if retry_ctx
+                        else {"reinforced": True}
+                    ),
                     model_override=selected_model,
                 )
                 exec_ms = int((datetime.now() - start_time).total_seconds() * 1000)
                 if not task_result.success:
-                    raise RuntimeError(f"主笔人二次写作失败: {task_result.error_message}")
+                    raise RuntimeError(
+                        f"主笔人二次写作失败: {task_result.error_message}"
+                    )
                 metrics = self.extract_key_metrics(task_result.result)
 
             return AgentAnalysisResult(
                 agent_role=self.agent_role,
                 analysis_content=task_result.result,
-                confidence_score=0.9 if metrics.get('sections_covered', 0) >= 6 else 0.75,
+                confidence_score=(
+                    0.9 if metrics.get("sections_covered", 0) >= 6 else 0.75
+                ),
                 key_points=[],
                 risk_factors=[],
                 recommendations=[],
                 supporting_data=metrics,
                 timestamp=start_time,
-                model_used=task_result.model_used.name if task_result.model_used else 'gemini-2.5-pro',
+                model_used=(
+                    task_result.model_used.name
+                    if task_result.model_used
+                    else "gemini-2.5-pro"
+                ),
                 execution_time=exec_ms,
             )
 
@@ -207,8 +228,6 @@ class ChiefWriter(BaseSpecializedAgent):
                 recommendations=[],
                 supporting_data={},
                 timestamp=start_time,
-                model_used='unknown',
+                model_used="unknown",
                 execution_time=exec_ms,
             )
-
-

@@ -6,14 +6,13 @@ Unify model options across panels by reading shared config or backend specs.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List
 
 
 def _project_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def _load_models_from_yaml() -> List[str]:
+def _load_models_from_yaml() -> list[str]:
     """Try to load SiliconFlow models from config/multi_model_config.yaml.
 
     Returns a list of model names (may be empty if file or PyYAML unavailable).
@@ -31,7 +30,7 @@ def _load_models_from_yaml() -> List[str]:
         with cfg_path.open("r", encoding="utf-8") as f:
             raw = yaml.safe_load(f) or {}
         catalog = (raw.get("model_catalog") or {}).get("siliconflow") or []
-        names: List[str] = []
+        names: list[str] = []
         for item in catalog:
             if isinstance(item, dict) and item.get("name"):
                 names.append(str(item["name"]))
@@ -42,19 +41,21 @@ def _load_models_from_yaml() -> List[str]:
         return []
 
 
-def _load_models_from_backend() -> List[str]:
+def _load_models_from_backend() -> list[str]:
     """Fallback: read supported models from backend SiliconFlow client class."""
     try:
-        from tradingagents.api.siliconflow_client import SiliconFlowClient  # type: ignore
+        from tradingagents.api.siliconflow_client import (
+            SiliconFlowClient,  # type: ignore
+        )
 
         return list(SiliconFlowClient.SUPPORTED_MODELS.keys())
     except Exception:
         return []
 
 
-def _dedupe_preserve_order(items: List[str]) -> List[str]:
+def _dedupe_preserve_order(items: list[str]) -> list[str]:
     seen = set()
-    out: List[str] = []
+    out: list[str] = []
     for x in items:
         if x in seen:
             continue
@@ -63,7 +64,7 @@ def _dedupe_preserve_order(items: List[str]) -> List[str]:
     return out
 
 
-def get_siliconflow_models() -> List[str]:
+def get_siliconflow_models() -> list[str]:
     """Return a unified list of SiliconFlow chat/reasoning models for UI.
 
     Priority:
@@ -81,10 +82,12 @@ def get_siliconflow_models() -> List[str]:
             "zai-org/GLM-4.5",
             "moonshotai/Kimi-K2-Instruct",
         ]
-    return _dedupe_preserve_order([str(n) for n in names if isinstance(n, str) and n.strip()])
+    return _dedupe_preserve_order(
+        [str(n) for n in names if isinstance(n, str) and n.strip()]
+    )
 
 
-def get_deepseek_models() -> List[str]:
+def get_deepseek_models() -> list[str]:
     """Return DeepSeek models for UI, from backend or minimal defaults."""
     try:
         from tradingagents.api.deepseek_client import DeepSeekClient  # type: ignore
@@ -92,10 +95,12 @@ def get_deepseek_models() -> List[str]:
         names = list(DeepSeekClient.SUPPORTED_MODELS.keys())
     except Exception:
         names = ["deepseek-chat", "deepseek-reasoner"]
-    return _dedupe_preserve_order([n for n in names if isinstance(n, str) and n.strip()])
+    return _dedupe_preserve_order(
+        [n for n in names if isinstance(n, str) and n.strip()]
+    )
 
 
-def get_google_models() -> List[str]:
+def get_google_models() -> list[str]:
     """Return Google Gemini models for UI, from backend or minimal defaults."""
     try:
         from tradingagents.api.google_ai_client import GoogleAIClient  # type: ignore
@@ -103,10 +108,12 @@ def get_google_models() -> List[str]:
         names = list(GoogleAIClient.SUPPORTED_MODELS.keys())
     except Exception:
         names = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"]
-    return _dedupe_preserve_order([n for n in names if isinstance(n, str) and n.strip()])
+    return _dedupe_preserve_order(
+        [n for n in names if isinstance(n, str) and n.strip()]
+    )
 
 
-def get_gemini_api_models() -> List[str]:
+def get_gemini_api_models() -> list[str]:
     """Return Gemini models for the OpenAI-compatible reverse proxy channel.
 
     Keep names aligned with Google family for recognition, but the backend will
@@ -121,7 +128,7 @@ def get_gemini_api_models() -> List[str]:
     return _dedupe_preserve_order(names)
 
 
-def get_openrouter_models() -> List[str]:
+def get_openrouter_models() -> list[str]:
     """Return a curated list of OpenRouter models for UI.
 
     We do not hit network here; provide a sensible default catalog that
@@ -145,4 +152,6 @@ def get_openrouter_models() -> List[str]:
         # Mistral
         "mistralai/mistral-large-latest",
     ]
-    return _dedupe_preserve_order([n for n in defaults if isinstance(n, str) and n.strip()])
+    return _dedupe_preserve_order(
+        [n for n in defaults if isinstance(n, str) and n.strip()]
+    )

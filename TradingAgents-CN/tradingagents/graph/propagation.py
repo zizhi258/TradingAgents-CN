@@ -1,12 +1,12 @@
 # TradingAgents/graph/propagation.py
 
-from typing import Dict, Any
+from typing import Any
 
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
+
 logger = get_logger("default")
-from tradingagents.agents.utils.agent_states import (
-    AgentState,
+from tradingagents.agents.utils.agent_states import (  # noqa: E402
     InvestDebateState,
     RiskDebateState,
 )
@@ -21,7 +21,7 @@ class Propagator:
 
     def create_initial_state(
         self, company_name: str, trade_date: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create the initial state for the agent graph."""
         return {
             "messages": [("human", company_name)],
@@ -45,7 +45,7 @@ class Propagator:
             "news_report": "",
         }
 
-    def get_graph_args(self) -> Dict[str, Any]:
+    def get_graph_args(self) -> dict[str, Any]:
         """Get arguments for the graph invocation."""
         return {
             "stream_mode": "values",

@@ -1,5 +1,6 @@
-import streamlit as st
 from pathlib import Path
+
+import streamlit as st
 
 
 def _read_markdown(rel_path: str) -> str:
@@ -26,43 +27,49 @@ def _render_doc_file(rel_path: str):
 def render_docs():
     # 与截图保持一致，但提供真正的“详细版”内容渲染
     st.header("📖 使用文档（详细版）")
-    
+
     # 创建标签页
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "🚀 快速开始", 
-        "⚙️ 配置参数", 
-        "📊 模型选择", 
-        "🎯 报告导出",
-        "❓ 常见问题",
-        "📚 常用外链"
-    ])
-    
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+        [
+            "🚀 快速开始",
+            "⚙️ 配置参数",
+            "📊 模型选择",
+            "🎯 报告导出",
+            "❓ 常见问题",
+            "📚 常用外链",
+        ]
+    )
+
     with tab1:
         st.markdown("### 🚀 快速开始")
         st.caption("内容来自 `docs/overview/quick-start.md`")
         _render_doc_file("docs/overview/quick-start.md")
-    
+
     with tab2:
         st.markdown("### ⚙️ 配置参数")
         st.caption("内容来自 `docs/configuration/config-guide.md`")
         _render_doc_file("docs/configuration/config-guide.md")
-    
+
     with tab3:
         st.markdown("### 📊 Web 界面与模型选择")
         st.caption("内容来自 `docs/usage/web-interface-guide.md`")
         _render_doc_file("docs/usage/web-interface-guide.md")
-    
+
     with tab4:
         st.markdown("### 🎯 报告导出")
-        st.caption("内容来自 `docs/guides/report-export-guide.md`（若存在）或 README 段落")
+        st.caption(
+            "内容来自 `docs/guides/report-export-guide.md`（若存在）或 README 段落"
+        )
         # 优先尝试专门的导出指南；若没有则提示
         project_root = Path(__file__).parent.parent.parent
         guide = project_root / "docs/guides/report-export-guide.md"
         if guide.exists():
             _render_doc_file("docs/guides/report-export-guide.md")
         else:
-            st.info("未找到 `docs/guides/report-export-guide.md`，请参考 README 中的导出说明或右侧导出按钮帮助。")
-    
+            st.info(
+                "未找到 `docs/guides/report-export-guide.md`，请参考 README 中的导出说明或右侧导出按钮帮助。"
+            )
+
     with tab5:
         st.markdown("### ❓ 常见问题")
         st.caption("内容来自 `docs/faq/faq.md`，若不存在则列出常见问题文档")
@@ -71,8 +78,10 @@ def render_docs():
         if faq.exists():
             _render_doc_file("docs/faq/faq.md")
         else:
-            st.markdown("- `docs/troubleshooting/web-startup-issues.md`\n- `docs/troubleshooting/docker-troubleshooting.md`\n- `docs/troubleshooting/export-issues.md`")
-    
+            st.markdown(
+                "- `docs/troubleshooting/web-startup-issues.md`\n- `docs/troubleshooting/docker-troubleshooting.md`\n- `docs/troubleshooting/export-issues.md`"
+            )
+
     with tab6:
         st.markdown("### 📚 常用外链与快速预览")
         st.markdown("#### 📖 项目文档（点击下拉选择即可预览）")
@@ -85,7 +94,8 @@ def render_docs():
         selected = st.selectbox("选择文档进行预览", list(choices.keys()))
         _render_doc_file(choices[selected])
 
-        st.markdown("""
+        st.markdown(
+            """
         #### 🔗 外部资源
         - **GitHub项目**: [TradingAgents-CN](https://github.com/hsliuping/TradingAgents-CN)
         - **原版项目**: [TradingAgents](https://github.com/TauricResearch/TradingAgents)
@@ -96,8 +106,9 @@ def render_docs():
         - **Google AI**: [aistudio.google.com](https://aistudio.google.com/)
         - **DeepSeek**: [platform.deepseek.com](https://platform.deepseek.com/)
         - **Tushare**: [tushare.pro](https://tushare.pro/)
-        """)
-    
+        """
+        )
+
     # 添加页脚信息
     st.markdown("---")
     st.info(

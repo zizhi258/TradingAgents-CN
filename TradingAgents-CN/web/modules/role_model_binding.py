@@ -9,9 +9,9 @@
 
 from __future__ import annotations
 
-from typing import Dict, Any, List
-from pathlib import Path
 import sys
+from pathlib import Path
+from typing import Any
 
 import streamlit as st
 
@@ -24,31 +24,45 @@ if str(PROJECT_ROOT) not in sys.path:
 if str(WEB_DIR) not in sys.path:
     sys.path.append(str(WEB_DIR))
 
-from tradingagents.config.provider_models import (
-    model_provider_manager,
-    RoutingStrategy,
+from tradingagents.config.provider_models import (  # noqa: E402
     ProviderType,
+    RoutingStrategy,
+    model_provider_manager,
 )
-from utils.ui_utils import (
+from utils.ui_utils import (  # noqa: E402
+    clear_role_config,
+    get_available_agents_for_ui,
     load_persistent_role_configs,
     save_persistent_role_config,
-    clear_role_config,
 )
 
 
-def _get_all_roles() -> List[str]:
-    """获取当前启用的全部角色键名（按角色定义顺序）。"""
-    return [
-        rk for rk, rc in model_provider_manager.role_definitions.items()
-        if getattr(rc, 'enabled', True)
+def _get_all_roles() -> list[str]:
+    """获取当前启用的全部角色键名（按后端可用性优先排序/过滤）。"""
+    # 基础角色（启用状态）
+    base = [
+        rk
+        for rk, rc in model_provider_manager.role_definitions.items()
+        if getattr(rc, "enabled", True)
     ]
+    # 后端可用性（API优先，本地回退）
+    try:
+        meta = get_available_agents_for_ui()
+        available = meta.get("available_agents", []) or []
+        if available:
+            # 按 base 的顺序保留且仅取后端可用角色
+            filtered = [rk for rk in base if rk in available]
+            return filtered if filtered else base
+    except Exception:
+        pass
+    return base
 
 
 def _display_role_card(
     role_key: str,
     default_value: str | None,
-    session_overrides: Dict[str, str],
-    persistent_overrides: Dict[str, Any],
+    session_overrides: dict[str, str],
+    persistent_overrides: dict[str, Any],
 ) -> str:
     """渲染单个角色的绑定卡片，返回选择的模型名或"(不锁定)"。"""
     role_cfg = model_provider_manager.get_role_config(role_key)
@@ -61,13 +75,19 @@ def _display_role_card(
     recommended = (
         role_cfg.locked_model
         or role_cfg.preferred_model
-        or model_provider_manager.get_best_model_for_role(role_key, RoutingStrategy.BALANCED)
+        or model_provider_manager.get_best_model_for_role(
+            role_key, RoutingStrategy.BALANCED
+        )
     )
 
     # 当前值：优先会话，其次永久，再次默认/推荐
     current_value = (
         session_overrides.get(role_key)
-        or (persistent_overrides.get(role_key, {}).get("model") if persistent_overrides else None)
+        or (
+            persistent_overrides.get(role_key, {}).get("model")
+            if persistent_overrides
+            else None
+        )
         or default_value
         or "(不锁定)"
     )
@@ -88,7 +108,9 @@ def _display_role_card(
         st.markdown('<div class="role-card">', unsafe_allow_html=True)
         st.markdown(f"<h4>{display_name}</h4>", unsafe_allow_html=True)
         st.caption(
-            f"允许: {', '.join(allowed_models)}" if allowed_models else "该角色未设置允许模型"
+            f"允许: {', '.join(allowed_models)}"
+            if allowed_models
+            else "该角色未设置允许模型"
         )
 
         # 选择器
@@ -106,7 +128,7 @@ def _display_role_card(
             help=(f"推荐: {recommended}" if recommended else None),
         )
 
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
     return selection
 
@@ -115,7 +137,9 @@ def render_role_model_binding() -> None:
     """渲染“主笔人模型绑定”优先视图，并提供高级模式供全角色绑定。"""
     # ========= 主笔人模型绑定（主视图） =========
     st.title("✍️ 主笔人模型绑定")
-    st.caption("为主笔人（长文写作）选择模型，支持多提供商；其他角色的绑定请展开下方高级设置。")
+    st.caption(
+        "为主笔人（长文写作）选择模型，支持多提供商；其他角色的绑定请展开下方高级设置。"
+    )
 
     # 会话与永久绑定读取
     persistent_config = load_persistent_role_configs() or {"role_overrides": {}}
@@ -128,9 +152,7 @@ def render_role_model_binding() -> None:
     allowed_models = role_cfg.allowed_models if role_cfg else []
 
     # 计算可用提供商与分组
-    provider_to_models: Dict[str, List[str]] = {
-        p.value: [] for p in ProviderType
-    }
+    provider_to_models: dict[str, list[str]] = {p.value: [] for p in ProviderType}
     for m in allowed_models:
         info = model_provider_manager.get_model_info(m)
         if info:
@@ -143,8 +165,14 @@ def render_role_model_binding() -> None:
     # 当前已选（会话优先）
     current_value = (
         session_overrides.get(role_key)
-        or (persistent_overrides.get(role_key, {}).get("model") if persistent_overrides else None)
-        or role_cfg.preferred_model if role_cfg else None
+        or (
+            persistent_overrides.get(role_key, {}).get("model")
+            if persistent_overrides
+            else None
+        )
+        or role_cfg.preferred_model
+        if role_cfg
+        else None
     )
 
     # 提供商选择
@@ -160,13 +188,19 @@ def render_role_model_binding() -> None:
     # 推断当前值对应的提供商，默认取第一项
     def _infer_provider(model_name: str) -> str:
         info = model_provider_manager.get_model_info(model_name) if model_name else None
-        return info.provider.value if info else (provider_keys[0] if provider_keys else "")
+        return (
+            info.provider.value if info else (provider_keys[0] if provider_keys else "")
+        )
 
     default_provider = _infer_provider(current_value)
     provider = st.selectbox(
         "选择提供商",
         options=provider_keys,
-        index=provider_keys.index(default_provider) if default_provider in provider_keys else 0,
+        index=(
+            provider_keys.index(default_provider)
+            if default_provider in provider_keys
+            else 0
+        ),
         format_func=lambda k: provider_labels.get(k, k),
         key="chief_writer_provider_select",
     )
@@ -211,7 +245,11 @@ def render_role_model_binding() -> None:
     st.markdown("### 当前生效（主笔人）")
     active_model = (
         st.session_state.get("model_overrides", {}).get(role_key)
-        or (persistent_overrides.get(role_key, {}).get("model") if persistent_overrides else None)
+        or (
+            persistent_overrides.get(role_key, {}).get("model")
+            if persistent_overrides
+            else None
+        )
         or "(未绑定，将按策略自动选择)"
     )
     st.json({role_key: active_model})
@@ -223,7 +261,7 @@ def render_role_model_binding() -> None:
             st.markdown("### 全角色绑定设置")
 
             cols = st.columns(3)
-            selections: Dict[str, str] = {}
+            selections: dict[str, str] = {}
             for idx, rk in enumerate(roles):
                 col = cols[idx % 3]
                 with col:
@@ -242,7 +280,9 @@ def render_role_model_binding() -> None:
             reset_all = btn_c3.form_submit_button("🧹 重置所有")
 
             if save_session:
-                overrides = {k: v for k, v in selections.items() if v and v != "(不锁定)"}
+                overrides = {
+                    k: v for k, v in selections.items() if v and v != "(不锁定)"
+                }
                 st.session_state.model_overrides = overrides
                 st.success("✅ 已保存到本次会话。")
 
@@ -268,5 +308,3 @@ def render_role_model_binding() -> None:
                         pass
                 st.session_state.model_overrides = {}
                 st.success("✅ 已重置所有绑定。")
-
-

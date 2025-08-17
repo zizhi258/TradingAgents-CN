@@ -3,10 +3,11 @@ Database Migration: ChartingArtist Configuration and Chart Management
 Version: 002_charting_artist_schema
 """
 
-from datetime import datetime
-from typing import Dict, Any, List, Optional
 import logging
-from pymongo import MongoClient, ASCENDING, DESCENDING, TEXT
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from pymongo import ASCENDING, DESCENDING, TEXT, MongoClient
 from pymongo.errors import PyMongoError
 
 logger = logging.getLogger(__name__)
@@ -694,7 +695,7 @@ def check_migration_required(mongodb_url: str) -> bool:
 
 if __name__ == "__main__":
     import os
-    
+
     # 从环境变量获取MongoDB URL
     mongodb_url = os.getenv(
         "TRADINGAGENTS_MONGODB_URL", 

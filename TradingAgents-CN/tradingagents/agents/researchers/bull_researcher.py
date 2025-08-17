@@ -1,15 +1,14 @@
-from langchain_core.messages import AIMessage
-import time
-import json
+import os
 
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
+
 logger = get_logger("default")
 
 
 def create_bull_researcher(llm, memory):
     def bull_node(state) -> dict:
-        logger.debug(f"🐂 [DEBUG] ===== 看涨研究员节点开始 =====")
+        logger.debug("🐂 [DEBUG] ===== 看涨研究员节点开始 =====")
 
         investment_debate_state = state["investment_debate_state"]
         history = investment_debate_state.get("history", "")
@@ -22,24 +21,31 @@ def create_bull_researcher(llm, memory):
         fundamentals_report = state["fundamentals_report"]
 
         # 使用统一的股票类型检测
-        company_name = state.get('company_of_interest', 'Unknown')
+        company_name = state.get("company_of_interest", "Unknown")
         from tradingagents.utils.stock_utils import StockUtils
+
         market_info = StockUtils.get_market_info(company_name)
-        is_china = market_info['is_china']
-        is_hk = market_info['is_hk']
-        is_us = market_info['is_us']
+        is_china = market_info["is_china"]
+        is_hk = market_info["is_hk"]
+        is_us = market_info["is_us"]
 
-        currency = market_info['currency_name']
-        currency_symbol = market_info['currency_symbol']
+        currency = market_info["currency_name"]
+        currency_symbol = market_info["currency_symbol"]
 
-        logger.debug(f"🐂 [DEBUG] 接收到的报告:")
+        logger.debug("🐂 [DEBUG] 接收到的报告:")
         logger.debug(f"🐂 [DEBUG] - 市场报告长度: {len(market_research_report)}")
         logger.debug(f"🐂 [DEBUG] - 情绪报告长度: {len(sentiment_report)}")
         logger.debug(f"🐂 [DEBUG] - 新闻报告长度: {len(news_report)}")
         logger.debug(f"🐂 [DEBUG] - 基本面报告长度: {len(fundamentals_report)}")
-        logger.debug(f"🐂 [DEBUG] - 基本面报告前200字符: {fundamentals_report[:200]}...")
-        logger.debug(f"🐂 [DEBUG] - 股票代码: {company_name}, 类型: {market_info['market_name']}, 货币: {currency}")
-        logger.debug(f"🐂 [DEBUG] - 市场详情: 中国A股={is_china}, 港股={is_hk}, 美股={is_us}")
+        logger.debug(
+            f"🐂 [DEBUG] - 基本面报告前200字符: {fundamentals_report[:200]}..."
+        )
+        logger.debug(
+            f"🐂 [DEBUG] - 股票代码: {company_name}, 类型: {market_info['market_name']}, 货币: {currency}"
+        )
+        logger.debug(
+            f"🐂 [DEBUG] - 市场详情: 中国A股={is_china}, 港股={is_hk}, 美股={is_us}"
+        )
 
         curr_situation = f"{market_research_report}\n\n{sentiment_report}\n\n{news_report}\n\n{fundamentals_report}"
 
@@ -47,12 +53,34 @@ def create_bull_researcher(llm, memory):
         if memory is not None:
             past_memories = memory.get_memories(curr_situation, n_matches=2)
         else:
-            logger.warning(f"⚠️ [DEBUG] memory为None，跳过历史记忆检索")
+            logger.warning("⚠️ [DEBUG] memory为None，跳过历史记忆检索")
             past_memories = []
 
         past_memory_str = ""
         for i, rec in enumerate(past_memories, 1):
             past_memory_str += rec["recommendation"] + "\n\n"
+
+        # Feature Flags（默认关闭，兼容旧流程）
+        def _env_bool(name: str, default: bool = False) -> bool:
+            v = os.getenv(name)
+            if v is None:
+                return default
+            return str(v).strip().lower() in {"1", "true", "yes", "on"}
+
+        react_enabled = _env_bool("DEBATE_REACT_ENABLED", False)
+        crossq_enabled = _env_bool("DEBATE_CROSS_QUESTION_ENABLED", False)
+
+        react_instructions = ""
+        if react_enabled:
+            react_instructions = (
+                "\n\n[证据与行动要求]\n"
+                "- 若提出任何事实性主张，请引用上方提供的报告内容（使用 [cite:来源/段落] 标注），并尽量标明出处类型（市场/情绪/新闻/基本面）。\n"
+                "- 若需要，请明确指出需要进一步检索/工具调用的点（例如: [tool:search/news/fundamentals 提示]），但为保持兼容性，此处仅做显式说明，不调用外部工具。\n"
+                "- 优先引用带来源的论据；无来源主张需谨慎。\n"
+            )
+        crossq_note = ""
+        if crossq_enabled:
+            crossq_note = "\n- 在回答结尾向对方提出一个具体的交叉质询问题（cross-question），以推动辩论收敛。"
 
         prompt = f"""你是一位看涨分析师，负责为股票 {company_name} 的投资建立强有力的论证。
 
@@ -78,33 +106,111 @@ def create_bull_researcher(llm, memory):
 
 请使用这些信息提供令人信服的看涨论点，反驳看跌担忧，并参与动态辩论，展示看涨立场的优势。你还必须处理反思并从过去的经验教训和错误中学习。
 
-请确保所有回答都使用中文。
+请确保所有回答都使用中文。{react_instructions}{crossq_note}
 """
 
         # 尝试从角色库覆盖
         try:
-            from tradingagents.config.role_library import get_prompt, format_prompt
-            custom_sys = get_prompt('bull_researcher', 'system_prompt')
+            from tradingagents.config.role_library import format_prompt, get_prompt
+
+            custom_sys = get_prompt("bull_researcher", "system_prompt")
             if custom_sys:
-                prompt = format_prompt(custom_sys, {
-                    'company_name': company_name,
-                    'market_info': market_info,
-                    'currency': currency,
-                    'currency_symbol': currency_symbol,
-                    'history': history,
-                    'current_response': current_response,
-                    'market_research_report': market_research_report,
-                    'sentiment_report': sentiment_report,
-                    'news_report': news_report,
-                    'fundamentals_report': fundamentals_report,
-                    'past_memory_str': past_memory_str,
-                })
+                prompt = format_prompt(
+                    custom_sys,
+                    {
+                        "company_name": company_name,
+                        "market_info": market_info,
+                        "currency": currency,
+                        "currency_symbol": currency_symbol,
+                        "history": history,
+                        "current_response": current_response,
+                        "market_research_report": market_research_report,
+                        "sentiment_report": sentiment_report,
+                        "news_report": news_report,
+                        "fundamentals_report": fundamentals_report,
+                        "past_memory_str": past_memory_str,
+                    },
+                )
         except Exception:
             pass
 
         response = llm.invoke(prompt)
 
         argument = f"Bull Analyst: {response.content}"
+
+        # 简单埋点：是否包含引用标记 & 记录metrics
+        try:
+            has_citation = (
+                ("[cite:" in response.content)
+                or ("来源:" in response.content)
+                or ("参考:" in response.content)
+            )
+            logger.debug(f"🐂 [DEBUG] 看涨发言包含引用标记: {has_citation}")
+            try:
+                from tradingagents.monitoring.debate_metrics import record_citation
+
+                record_citation("bull", bool(has_citation))
+            except Exception:
+                pass
+        except Exception:
+            has_citation = False
+
+        # 提取简单的工具与引用标记，写入可选 tool_calls / cross_question
+        tool_calls = []
+        citations = []
+        try:
+            import re
+
+            citations = re.findall(r"\[cite:([^\]]+)\]", response.content or "")
+            for m in re.finditer(
+                r"\[tool:([a-zA-Z_]+)([^\]]*)\]", response.content or ""
+            ):
+                tool = m.group(1)
+                args = (m.group(2) or "").strip()
+                observation = "not_executed (compat mode)"
+                # 执行本地轻量检索作为观察（仅基于已有报告）
+                try:
+                    from tradingagents.utils.evidence_search import (
+                        extract_evidence_snippets,
+                    )
+
+                    sources = {
+                        "market": market_research_report,
+                        "sentiment": sentiment_report,
+                        "news": news_report,
+                        "fundamentals": fundamentals_report,
+                    }
+                    q = args or response.content
+                    ev = extract_evidence_snippets(q, sources, top_k=2)
+                    if ev:
+                        observation = " | ".join(
+                            [f"{src}:{snippet}" for src, snippet in ev]
+                        )
+                        # 同步扩展 citations
+                        for src, snippet in ev:
+                            citations.append(f"{src}:{snippet[:30]}...")
+                except Exception:
+                    pass
+                tool_calls.append(
+                    {
+                        "tool": tool,
+                        "args": args,
+                        "observation": observation,
+                        "citations": citations,
+                    }
+                )
+        except Exception:
+            pass
+
+        cross_question_text = None
+        if crossq_enabled:
+            try:
+                # 取最后一句问句作为交叉质询
+                last = (response.content or "").strip().splitlines()[-1]
+                if last.endswith("？") or last.endswith("?"):
+                    cross_question_text = last
+            except Exception:
+                pass
 
         new_investment_debate_state = {
             "history": history + "\n" + argument,
@@ -113,6 +219,10 @@ def create_bull_researcher(llm, memory):
             "current_response": argument,
             "count": investment_debate_state["count"] + 1,
         }
+        if tool_calls:
+            new_investment_debate_state["tool_calls"] = tool_calls
+        if cross_question_text:
+            new_investment_debate_state["cross_question"] = cross_question_text
 
         return {"investment_debate_state": new_investment_debate_state}
 

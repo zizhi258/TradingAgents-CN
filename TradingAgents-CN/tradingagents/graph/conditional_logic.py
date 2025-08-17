@@ -1,9 +1,12 @@
 # TradingAgents/graph/conditional_logic.py
 
+import os
+
 from tradingagents.agents.utils.agent_states import AgentState
 
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
+
 logger = get_logger("default")
 
 
@@ -21,7 +24,7 @@ class ConditionalLogic:
         last_message = messages[-1]
 
         # 只有AIMessage才有tool_calls属性
-        if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+        if hasattr(last_message, "tool_calls") and last_message.tool_calls:
             return "tools_market"
         return "Msg Clear Market"
 
@@ -31,7 +34,7 @@ class ConditionalLogic:
         last_message = messages[-1]
 
         # 只有AIMessage才有tool_calls属性
-        if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+        if hasattr(last_message, "tool_calls") and last_message.tool_calls:
             return "tools_social"
         return "Msg Clear Social"
 
@@ -41,7 +44,7 @@ class ConditionalLogic:
         last_message = messages[-1]
 
         # 只有AIMessage才有tool_calls属性
-        if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+        if hasattr(last_message, "tool_calls") and last_message.tool_calls:
             return "tools_news"
         return "Msg Clear News"
 
@@ -51,16 +54,22 @@ class ConditionalLogic:
         last_message = messages[-1]
 
         # 只有AIMessage才有tool_calls属性
-        if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+        if hasattr(last_message, "tool_calls") and last_message.tool_calls:
             return "tools_fundamentals"
         return "Msg Clear Fundamentals"
 
     def should_continue_debate(self, state: AgentState) -> str:
         """Determine if debate should continue."""
-
-        if (
-            state["investment_debate_state"]["count"] >= 2 * self.max_debate_rounds
-        ):  # 3 rounds of back-and-forth between 2 agents
+        # 早停开关（占位，默认关闭）：减少一轮对话阈值
+        early_flag = str(
+            os.getenv("DEBATE_EARLY_STOP_BY_ENTROPY", "false")
+        ).strip().lower() in {"1", "true", "yes", "on"}
+        if early_flag:
+            if state["investment_debate_state"]["count"] >= max(
+                1, 2 * self.max_debate_rounds - 1
+            ):
+                return "Research Manager"
+        if state["investment_debate_state"]["count"] >= 2 * self.max_debate_rounds:
             return "Research Manager"
         if state["investment_debate_state"]["current_response"].startswith("Bull"):
             return "Bear Researcher"
@@ -68,9 +77,16 @@ class ConditionalLogic:
 
     def should_continue_risk_analysis(self, state: AgentState) -> str:
         """Determine if risk analysis should continue."""
-        if (
-            state["risk_debate_state"]["count"] >= 3 * self.max_risk_discuss_rounds
-        ):  # 3 rounds of back-and-forth between 3 agents
+        # 早停（占位）：若开启，则少一轮
+        early_flag = str(
+            os.getenv("DEBATE_EARLY_STOP_BY_ENTROPY", "false")
+        ).strip().lower() in {"1", "true", "yes", "on"}
+        if early_flag:
+            if state["risk_debate_state"]["count"] >= max(
+                2, 3 * self.max_risk_discuss_rounds - 1
+            ):
+                return "Risk Judge"
+        if state["risk_debate_state"]["count"] >= 3 * self.max_risk_discuss_rounds:
             return "Risk Judge"
         if state["risk_debate_state"]["latest_speaker"].startswith("Risky"):
             return "Safe Analyst"

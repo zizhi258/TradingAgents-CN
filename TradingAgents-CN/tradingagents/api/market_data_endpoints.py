@@ -8,7 +8,7 @@ All endpoints are read-only and return JSON-serializable payloads.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -28,16 +28,16 @@ class Pagination(BaseModel):
 
 class StockInfo(BaseModel):
     code: str
-    name: Optional[str] = None
-    market: Optional[str] = None
-    category: Optional[str] = None
-    ts_code: Optional[str] = None
-    source: Optional[str] = None
-    updated_at: Optional[str] = None
+    name: str | None = None
+    market: str | None = None
+    category: str | None = None
+    ts_code: str | None = None
+    source: str | None = None
+    updated_at: str | None = None
 
 
 class StockInfoPage(BaseModel):
-    items: List[StockInfo]
+    items: list[StockInfo]
     pagination: Pagination
 
 
@@ -45,22 +45,23 @@ class StockInfoPage(BaseModel):
 # Cross-market OHLC (CN/HK/US)
 # ------------------------------
 
+
 class OHLCRecord(BaseModel):
     date: str
-    open: Optional[float] = None
-    high: Optional[float] = None
-    low: Optional[float] = None
-    close: Optional[float] = None
-    volume: Optional[float] = None
-    amount: Optional[float] = None
+    open: float | None = None
+    high: float | None = None
+    low: float | None = None
+    close: float | None = None
+    volume: float | None = None
+    amount: float | None = None
 
 
 class OHLCResult(BaseModel):
     symbol: str
     market: str
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
-    records: List[OHLCRecord]
+    start_date: str | None = None
+    end_date: str | None = None
+    records: list[OHLCRecord]
 
 
 @router.get("/stocks/{code}/info", response_model=StockInfo)
@@ -91,7 +92,7 @@ def list_stocks(
 
         items = _list()
         # Convert list[dict] -> list[StockInfo]
-        rows: List[StockInfo] = []
+        rows: list[StockInfo] = []
         for it in items:
             if isinstance(it, dict) and it.get("error"):
                 continue
@@ -124,7 +125,7 @@ def search_stocks(
         from .stock_api import search_stocks as _search
 
         items = _search(q)
-        rows: List[StockInfo] = []
+        rows: list[StockInfo] = []
         for it in items:
             if isinstance(it, dict) and it.get("error"):
                 continue
@@ -147,10 +148,12 @@ def search_stocks(
 @router.get("/stocks/{code}/daily")
 def get_daily(
     code: str,
-    start_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
-    end_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
-    adj: Optional[str] = Query("qfq", pattern="^(|qfq|hfq)$", description="pro_bar adj: '', qfq, hfq"),
-) -> Dict[str, Any]:
+    start_date: str | None = Query(None, description="YYYY-MM-DD"),
+    end_date: str | None = Query(None, description="YYYY-MM-DD"),
+    adj: str | None = Query(
+        "qfq", pattern="^(|qfq|hfq)$", description="pro_bar adj: '', qfq, hfq"
+    ),
+) -> dict[str, Any]:
     """Daily bars with optional pro_bar adj (requires Tushare token; 2000+ 积分)."""
     try:
         # Prefer pro_bar when adj provided; otherwise fallback to provider.daily
@@ -177,7 +180,7 @@ def get_daily(
 
 
 @router.get("/summary")
-def market_summary() -> Dict[str, Any]:
+def market_summary() -> dict[str, Any]:
     """Market-wide summary derived from current stock list."""
     try:
         from .stock_api import get_market_summary as _summary
@@ -191,8 +194,8 @@ def market_summary() -> Dict[str, Any]:
 @router.get("/stocks/{code}/ohlc", response_model=OHLCResult)
 def get_stock_ohlc(
     code: str,
-    start_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
-    end_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
+    start_date: str | None = Query(None, description="YYYY-MM-DD"),
+    end_date: str | None = Query(None, description="YYYY-MM-DD"),
 ) -> OHLCResult:
     """Unified OHLC endpoint for CN/HK/US using internal dataflows.
 
@@ -202,7 +205,12 @@ def get_stock_ohlc(
     """
     try:
         from tradingagents.dataflows.interface import get_stock_ohlc_json as _ohlc
-        payload = _ohlc(code, start_date or "2000-01-01", end_date or datetime.now().strftime("%Y-%m-%d"))
+
+        payload = _ohlc(
+            code,
+            start_date or "2000-01-01",
+            end_date or datetime.now().strftime("%Y-%m-%d"),
+        )
         if not isinstance(payload, dict) or "records" not in payload:
             raise ValueError("Invalid OHLC payload")
         recs = payload.get("records", [])
@@ -215,7 +223,8 @@ def get_stock_ohlc(
                 close=r.get("close"),
                 volume=r.get("volume"),
                 amount=r.get("amount"),
-            ) for r in recs
+            )
+            for r in recs
         ]
         return OHLCResult(
             symbol=payload.get("symbol", code),
@@ -231,9 +240,11 @@ def get_stock_ohlc(
 
 # Optional: expose a small set of 2000+ 积分 Tushare endpoints
 
+
 def _tushare_api_or_raise():
     try:
         import tushare as ts  # type: ignore
+
         return ts.pro_api()
     except Exception as e:
         raise HTTPException(
@@ -243,19 +254,19 @@ def _tushare_api_or_raise():
 
 
 class DividendQuery(BaseModel):
-    ts_code: Optional[str] = Field(None, description="e.g., 600519.SH")
-    ann_date: Optional[str] = Field(None, description="YYYYMMDD")
-    record_date: Optional[str] = None
-    ex_date: Optional[str] = None
+    ts_code: str | None = Field(None, description="e.g., 600519.SH")
+    ann_date: str | None = Field(None, description="YYYYMMDD")
+    record_date: str | None = None
+    ex_date: str | None = None
 
 
 @router.get("/tushare/dividend")
 def tushare_dividend(
-    ts_code: Optional[str] = None,
-    ann_date: Optional[str] = None,
-    record_date: Optional[str] = None,
-    ex_date: Optional[str] = None,
-) -> Dict[str, Any]:
+    ts_code: str | None = None,
+    ann_date: str | None = None,
+    record_date: str | None = None,
+    ex_date: str | None = None,
+) -> dict[str, Any]:
     """Tushare dividend (2000+) — mirrors doc index_105.md."""
     api = _tushare_api_or_raise()
     try:
@@ -274,7 +285,7 @@ def tushare_dividend(
 
 
 @router.get("/tushare/pledge_stat")
-def tushare_pledge_stat(ts_code: Optional[str] = None) -> Dict[str, Any]:
+def tushare_pledge_stat(ts_code: str | None = None) -> dict[str, Any]:
     """Tushare pledge_stat (2000+) — mirrors doc index_112.md."""
     api = _tushare_api_or_raise()
     try:
@@ -288,7 +299,7 @@ def tushare_pledge_stat(ts_code: Optional[str] = None) -> Dict[str, Any]:
 
 
 @router.get("/tushare/pledge_detail")
-def tushare_pledge_detail(ts_code: Optional[str] = None) -> Dict[str, Any]:
+def tushare_pledge_detail(ts_code: str | None = None) -> dict[str, Any]:
     """Tushare pledge_detail (2000+) — mirrors doc index_113.md."""
     api = _tushare_api_or_raise()
     try:
@@ -302,7 +313,7 @@ def tushare_pledge_detail(ts_code: Optional[str] = None) -> Dict[str, Any]:
 
 
 @router.get("/tushare/top_list")
-def tushare_top_list(trade_date: Optional[str] = None) -> Dict[str, Any]:
+def tushare_top_list(trade_date: str | None = None) -> dict[str, Any]:
     """Tushare top_list (2000+) — mirrors doc index_108.md."""
     api = _tushare_api_or_raise()
     try:
@@ -316,7 +327,7 @@ def tushare_top_list(trade_date: Optional[str] = None) -> Dict[str, Any]:
 
 
 @router.get("/tushare/top_inst")
-def tushare_top_inst(trade_date: Optional[str] = None) -> Dict[str, Any]:
+def tushare_top_inst(trade_date: str | None = None) -> dict[str, Any]:
     """Tushare top_inst (2000+) — mirrors doc index_109.md."""
     api = _tushare_api_or_raise()
     try:
@@ -333,18 +344,22 @@ def tushare_top_inst(trade_date: Optional[str] = None) -> Dict[str, Any]:
 # Additional Tushare endpoints (2000 积分档内常用)
 # ------------------------------
 
+
 @router.get("/tushare/daily_basic")
 def tushare_daily_basic(
-    ts_code: Optional[str] = None,
-    trade_date: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-) -> Dict[str, Any]:
+    ts_code: str | None = None,
+    trade_date: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> dict[str, Any]:
     """Tushare daily_basic (2000+) — common daily indicators."""
     api = _tushare_api_or_raise()
     try:
         df = api.daily_basic(
-            ts_code=ts_code, trade_date=trade_date, start_date=start_date, end_date=end_date
+            ts_code=ts_code,
+            trade_date=trade_date,
+            start_date=start_date,
+            end_date=end_date,
         )
         data = [] if df is None else df.to_dict(orient="records")
         return {"rows": len(data), "data": data}
@@ -355,16 +370,19 @@ def tushare_daily_basic(
 
 @router.get("/tushare/moneyflow")
 def tushare_moneyflow(
-    ts_code: Optional[str] = None,
-    trade_date: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-) -> Dict[str, Any]:
+    ts_code: str | None = None,
+    trade_date: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> dict[str, Any]:
     """Tushare moneyflow (2000+) — 个股资金流向。"""
     api = _tushare_api_or_raise()
     try:
         df = api.moneyflow(
-            ts_code=ts_code, trade_date=trade_date, start_date=start_date, end_date=end_date
+            ts_code=ts_code,
+            trade_date=trade_date,
+            start_date=start_date,
+            end_date=end_date,
         )
         data = [] if df is None else df.to_dict(orient="records")
         return {"rows": len(data), "data": data}
@@ -375,16 +393,19 @@ def tushare_moneyflow(
 
 @router.get("/tushare/block_trade")
 def tushare_block_trade(
-    ts_code: Optional[str] = None,
-    trade_date: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-) -> Dict[str, Any]:
+    ts_code: str | None = None,
+    trade_date: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> dict[str, Any]:
     """Tushare block_trade (2000+) — 大宗交易。"""
     api = _tushare_api_or_raise()
     try:
         df = api.block_trade(
-            ts_code=ts_code, trade_date=trade_date, start_date=start_date, end_date=end_date
+            ts_code=ts_code,
+            trade_date=trade_date,
+            start_date=start_date,
+            end_date=end_date,
         )
         data = [] if df is None else df.to_dict(orient="records")
         return {"rows": len(data), "data": data}
@@ -394,7 +415,9 @@ def tushare_block_trade(
 
 
 @router.get("/tushare/stk_limit")
-def tushare_stk_limit(ts_code: Optional[str] = None, trade_date: Optional[str] = None) -> Dict[str, Any]:
+def tushare_stk_limit(
+    ts_code: str | None = None, trade_date: str | None = None
+) -> dict[str, Any]:
     """Tushare stk_limit (2000+) — 涨跌停价格。"""
     api = _tushare_api_or_raise()
     try:
@@ -407,7 +430,9 @@ def tushare_stk_limit(ts_code: Optional[str] = None, trade_date: Optional[str] =
 
 
 @router.get("/tushare/hk_hold")
-def tushare_hk_hold(ts_code: Optional[str] = None, trade_date: Optional[str] = None) -> Dict[str, Any]:
+def tushare_hk_hold(
+    ts_code: str | None = None, trade_date: str | None = None
+) -> dict[str, Any]:
     """Tushare hk_hold (2000+) — 沪深股通持股明细。"""
     api = _tushare_api_or_raise()
     try:
@@ -424,19 +449,19 @@ def tushare_hk_hold(ts_code: Optional[str] = None, trade_date: Optional[str] = N
 # Group/custom filters for A股清单（指数预设相关接口已移除）
 # ------------------------------
 """
-    
 
 
 class GroupResult(BaseModel):
     group: str
-    items: List[StockInfo]
+    items: list[StockInfo]
     pagination: Pagination
 
 
-def _load_all_stock_infos() -> List[StockInfo]:
+def _load_all_stock_infos() -> list[StockInfo]:
     from .stock_api import get_all_stocks as _list
+
     items = _list()
-    rows: List[StockInfo] = []
+    rows: list[StockInfo] = []
     for it in items:
         if isinstance(it, dict) and it.get("error"):
             continue
@@ -458,11 +483,13 @@ def filter_by_group(
     if group == "sme":
         filtered = [r for r in rows if r.code.startswith("002")]  # 中小板常见代码前缀
     elif group == "st":
-        def _is_st(name: Optional[str]) -> bool:
+
+        def _is_st(name: str | None) -> bool:
             if not name:
                 return False
             n = name.upper()
             return ("ST" in n) or ("*ST" in n) or ("退" in n)
+
         filtered = [r for r in rows if _is_st(r.name)]
     else:
         raise HTTPException(status_code=404, detail="Unknown group")
@@ -478,27 +505,27 @@ def filter_by_group(
 
 
 class CustomFilter(BaseModel):
-    markets: Optional[List[str]] = Field(None, description="e.g., ['上海','深圳']")
-    code_prefixes: Optional[List[str]] = None
-    name_contains: Optional[str] = None
-    include_st: Optional[bool] = None
-    exclude_st: Optional[bool] = None
-    category_in: Optional[List[str]] = None
-    industry_in: Optional[List[str]] = None
+    markets: list[str] | None = Field(None, description="e.g., ['上海','深圳']")
+    code_prefixes: list[str] | None = None
+    name_contains: str | None = None
+    include_st: bool | None = None
+    exclude_st: bool | None = None
+    category_in: list[str] | None = None
+    industry_in: list[str] | None = None
     limit: int = 200
     offset: int = 0
 
 
 class CustomFilterResponse(BaseModel):
     total: int
-    items: List[StockInfo]
+    items: list[StockInfo]
 
 
 @router.post("/filters/custom", response_model=CustomFilterResponse)
 def custom_filter(payload: CustomFilter) -> CustomFilterResponse:
     rows = _load_all_stock_infos()
 
-    def is_st(name: Optional[str]) -> bool:
+    def is_st(name: str | None) -> bool:
         if not name:
             return False
         n = name.upper()
@@ -509,11 +536,23 @@ def custom_filter(payload: CustomFilter) -> CustomFilterResponse:
         ok = True
         if payload.markets and r.market not in payload.markets:
             ok = False
-        if ok and payload.code_prefixes and not any(r.code.startswith(p) for p in payload.code_prefixes):
+        if (
+            ok
+            and payload.code_prefixes
+            and not any(r.code.startswith(p) for p in payload.code_prefixes)
+        ):
             ok = False
-        if ok and payload.name_contains and (not r.name or payload.name_contains not in r.name):
+        if (
+            ok
+            and payload.name_contains
+            and (not r.name or payload.name_contains not in r.name)
+        ):
             ok = False
-        if ok and payload.category_in and (not r.category or r.category not in payload.category_in):
+        if (
+            ok
+            and payload.category_in
+            and (not r.category or r.category not in payload.category_in)
+        ):
             ok = False
         if ok and payload.industry_in:
             # StockInfo currently doesn't expose industry; treat as not match

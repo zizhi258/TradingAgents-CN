@@ -1,10 +1,9 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-import time
-import json
 
 # 导入统一日志系统和分析模块日志装饰器
 from tradingagents.utils.logging_init import get_logger
 from tradingagents.utils.tool_logging import log_analyst_module
+
 logger = get_logger("analysts.social_media")
 
 
@@ -13,7 +12,7 @@ def create_social_media_analyst(llm, toolkit):
     def social_media_analyst_node(state):
         current_date = state["trade_date"]
         ticker = state["company_of_interest"]
-        company_name = state["company_of_interest"]
+        state["company_of_interest"]
 
         if toolkit.config["online_tools"]:
             tools = [toolkit.get_stock_news_openai]
@@ -24,8 +23,7 @@ def create_social_media_analyst(llm, toolkit):
                 toolkit.get_reddit_stock_info,
             ]
 
-        system_message = (
-            """您是一位专业的中国市场社交媒体和投资情绪分析师，负责分析中国投资者对特定股票的讨论和情绪变化。
+        system_message = """您是一位专业的中国市场社交媒体和投资情绪分析师，负责分析中国投资者对特定股票的讨论和情绪变化。
 
 您的主要职责包括：
 1. 分析中国主要财经平台的投资者情绪（如雪球、东方财富股吧等）
@@ -64,7 +62,6 @@ def create_social_media_analyst(llm, toolkit):
 
 请撰写详细的中文分析报告，并在报告末尾附上Markdown表格总结关键发现。
 注意：由于中国社交媒体API限制，如果数据获取受限，请明确说明并提供替代分析建议。"""
-        )
 
         prompt = ChatPromptTemplate.from_messages(
             [
@@ -87,9 +84,9 @@ def create_social_media_analyst(llm, toolkit):
         # 安全地获取工具名称，处理函数和工具对象
         tool_names = []
         for tool in tools:
-            if hasattr(tool, 'name'):
+            if hasattr(tool, "name"):
                 tool_names.append(tool.name)
-            elif hasattr(tool, '__name__'):
+            elif hasattr(tool, "__name__"):
                 tool_names.append(tool.__name__)
             else:
                 tool_names.append(str(tool))

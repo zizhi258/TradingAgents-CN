@@ -12,24 +12,25 @@ from __future__ import annotations
 
 import os
 import time
-import json
-from typing import Dict, Any, List
+from typing import Any
 
 try:
     from openai import OpenAI  # type: ignore
+
     OPENAI_AVAILABLE = True
 except Exception:
     OPENAI_AVAILABLE = False
     OpenAI = None  # type: ignore
 
+from tradingagents.utils.logging_init import get_logger
+
 from ..core.base_multi_model_adapter import (
     BaseMultiModelAdapter,
     ModelProvider,
     ModelSpec,
-    TaskSpec,
     TaskResult,
+    TaskSpec,
 )
-from tradingagents.utils.logging_init import get_logger
 
 logger = get_logger("gemini_openai_compat_client")
 
@@ -38,7 +39,7 @@ class GeminiOpenAICompatClient(BaseMultiModelAdapter):
     """Gemini 兼容 OpenAI 协议的客户端（自建反代渠道）。"""
 
     # 依据常见可用模型列举（与 Google 官方命名一致，便于前端认知）
-    SUPPORTED_MODELS: Dict[str, Dict[str, Any]] = {
+    SUPPORTED_MODELS: dict[str, dict[str, Any]] = {
         # 无前缀（与 Google 官方命名一致）
         "gemini-2.5-pro": {
             "type": "premium",
@@ -99,7 +100,7 @@ class GeminiOpenAICompatClient(BaseMultiModelAdapter):
         },
     }
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         super().__init__(ModelProvider.OPENAI, config)  # 使用 OPENAI 表示协议兼容
 
         if not OPENAI_AVAILABLE:
@@ -120,7 +121,9 @@ class GeminiOpenAICompatClient(BaseMultiModelAdapter):
         self.timeout = int(config.get("timeout", 60))
 
         if not self.api_key:
-            raise ValueError("Gemini-API(兼容) 未配置 API Key: 设置 GEMINI_API_COMPAT_API_KEY 或 OPENAI_API_KEY")
+            raise ValueError(
+                "Gemini-API(兼容) 未配置 API Key: 设置 GEMINI_API_COMPAT_API_KEY 或 OPENAI_API_KEY"
+            )
 
         self.initialize_client()
 
@@ -143,10 +146,12 @@ class GeminiOpenAICompatClient(BaseMultiModelAdapter):
             f"Gemini-API(兼容) 客户端初始化完成，base_url={self.base_url}, 支持 {len(self._supported_models)} 个模型"
         )
 
-    def get_supported_models(self) -> Dict[str, ModelSpec]:
+    def get_supported_models(self) -> dict[str, ModelSpec]:
         return self._supported_models.copy()
 
-    def execute_task(self, model_name: str, prompt: str, task_spec: TaskSpec, **kwargs) -> TaskResult:
+    def execute_task(
+        self, model_name: str, prompt: str, task_spec: TaskSpec, **kwargs
+    ) -> TaskResult:
         start = time.time()
         try:
             if model_name not in self._supported_models:
@@ -159,7 +164,11 @@ class GeminiOpenAICompatClient(BaseMultiModelAdapter):
             streaming = bool(kwargs.get("stream", False))
             on_token = kwargs.get("on_token")
 
-            invoke_model = model_name.split('/', 1)[1] if model_name.startswith('gemini-api/') else model_name
+            invoke_model = (
+                model_name.split("/", 1)[1]
+                if model_name.startswith("gemini-api/")
+                else model_name
+            )
 
             if streaming and callable(on_token):
                 resp = self.client.chat.completions.create(
@@ -224,7 +233,11 @@ class GeminiOpenAICompatClient(BaseMultiModelAdapter):
                 timeout=self.timeout,
             )
             exec_ms = int((time.time() - start) * 1000)
-            text = (resp.choices[0].message.content or "") if getattr(resp, "choices", None) else ""
+            text = (
+                (resp.choices[0].message.content or "")
+                if getattr(resp, "choices", None)
+                else ""
+            )
             usage_meta = getattr(resp, "usage", None)
             if not text:
                 return TaskResult(
@@ -239,7 +252,9 @@ class GeminiOpenAICompatClient(BaseMultiModelAdapter):
             if usage_meta:
                 usage = {
                     "prompt_tokens": int(getattr(usage_meta, "prompt_tokens", 0) or 0),
-                    "completion_tokens": int(getattr(usage_meta, "completion_tokens", 0) or 0),
+                    "completion_tokens": int(
+                        getattr(usage_meta, "completion_tokens", 0) or 0
+                    ),
                     "total_tokens": int(getattr(usage_meta, "total_tokens", 0) or 0),
                 }
             else:
@@ -283,7 +298,11 @@ class GeminiOpenAICompatClient(BaseMultiModelAdapter):
     def health_check(self) -> bool:
         # 使用最短调用验证端点可用
         try:
-            invoke_model = self.default_model.split('/', 1)[1] if self.default_model.startswith('gemini-api/') else self.default_model
+            invoke_model = (
+                self.default_model.split("/", 1)[1]
+                if self.default_model.startswith("gemini-api/")
+                else self.default_model
+            )
             resp = self.client.chat.completions.create(
                 model=invoke_model,
                 messages=[{"role": "user", "content": "ping"}],

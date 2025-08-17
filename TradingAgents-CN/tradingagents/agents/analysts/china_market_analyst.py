@@ -1,28 +1,26 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-import time
-import json
 
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
+
 logger = get_logger("default")
 
 
 def create_china_market_analyst(llm, toolkit):
     """创建中国市场分析师"""
-    
+
     def china_market_analyst_node(state):
         current_date = state["trade_date"]
         ticker = state["company_of_interest"]
-        
+
         # 中国股票分析工具
         tools = [
             toolkit.get_china_stock_data,
             toolkit.get_china_market_overview,
             toolkit.get_YFin_data,  # 备用数据源
         ]
-        
-        system_message = (
-            """您是一位专业的中国股市分析师，专门分析A股、港股等中国资本市场。您具备深厚的中国股市知识和丰富的本土投资经验。
+
+        system_message = """您是一位专业的中国股市分析师，专门分析A股、港股等中国资本市场。您具备深厚的中国股市知识和丰富的本土投资经验。
 
 您的专业领域包括：
 1. **A股市场分析**: 深度理解A股的独特性，包括涨跌停制度、T+1交易、融资融券等
@@ -47,8 +45,7 @@ def create_china_market_analyst(llm, toolkit):
 
 请基于Tushare数据接口提供的实时数据和技术指标，结合中国股市的特殊性，撰写专业的中文分析报告。
 确保在报告末尾附上Markdown表格总结关键发现和投资建议。"""
-        )
-        
+
         prompt = ChatPromptTemplate.from_messages(
             [
                 (
@@ -63,14 +60,14 @@ def create_china_market_analyst(llm, toolkit):
                 MessagesPlaceholder(variable_name="messages"),
             ]
         )
-        
+
         prompt = prompt.partial(system_message=system_message)
         # 安全地获取工具名称，处理函数和工具对象
         tool_names = []
         for tool in tools:
-            if hasattr(tool, 'name'):
+            if hasattr(tool, "name"):
                 tool_names.append(tool.name)
-            elif hasattr(tool, '__name__'):
+            elif hasattr(tool, "__name__"):
                 tool_names.append(tool.__name__)
             else:
                 tool_names.append(str(tool))
@@ -78,36 +75,35 @@ def create_china_market_analyst(llm, toolkit):
         prompt = prompt.partial(tool_names=", ".join(tool_names))
         prompt = prompt.partial(current_date=current_date)
         prompt = prompt.partial(ticker=ticker)
-        
+
         chain = prompt | llm.bind_tools(tools)
         result = chain.invoke(state["messages"])
-        
+
         report = ""
-        
+
         if len(result.tool_calls) == 0:
             report = result.content
-        
+
         return {
             "messages": [result],
             "china_market_report": report,
             "sender": "ChinaMarketAnalyst",
         }
-    
+
     return china_market_analyst_node
 
 
 def create_china_stock_screener(llm, toolkit):
     """创建中国股票筛选器"""
-    
+
     def china_stock_screener_node(state):
         current_date = state["trade_date"]
-        
+
         tools = [
             toolkit.get_china_market_overview,
         ]
-        
-        system_message = (
-            """您是一位专业的中国股票筛选专家，负责从A股市场中筛选出具有投资价值的股票。
+
+        system_message = """您是一位专业的中国股票筛选专家，负责从A股市场中筛选出具有投资价值的股票。
 
 筛选维度包括：
 1. **基本面筛选**: 
@@ -137,12 +133,11 @@ def create_china_stock_screener(llm, toolkit):
 - **周期投资**: 经济周期、行业周期、季节性
 
 请基于当前市场环境和政策背景，提供专业的股票筛选建议。"""
-        )
-        
+
         prompt = ChatPromptTemplate.from_messages(
             [
                 (
-                    "system", 
+                    "system",
                     "您是一位专业的股票筛选专家。"
                     " 使用提供的工具分析市场概况。"
                     " 您可以访问以下工具：{tool_names}。\n{system_message}"
@@ -151,28 +146,28 @@ def create_china_stock_screener(llm, toolkit):
                 MessagesPlaceholder(variable_name="messages"),
             ]
         )
-        
+
         prompt = prompt.partial(system_message=system_message)
         # 安全地获取工具名称，处理函数和工具对象
         tool_names = []
         for tool in tools:
-            if hasattr(tool, 'name'):
+            if hasattr(tool, "name"):
                 tool_names.append(tool.name)
-            elif hasattr(tool, '__name__'):
+            elif hasattr(tool, "__name__"):
                 tool_names.append(tool.__name__)
             else:
                 tool_names.append(str(tool))
 
         prompt = prompt.partial(tool_names=", ".join(tool_names))
         prompt = prompt.partial(current_date=current_date)
-        
+
         chain = prompt | llm.bind_tools(tools)
         result = chain.invoke(state["messages"])
-        
+
         return {
             "messages": [result],
             "stock_screening_report": result.content,
             "sender": "ChinaStockScreener",
         }
-    
+
     return china_stock_screener_node

@@ -4,93 +4,84 @@
 将现有脚本按功能分类到子目录中
 """
 
-import os
 import shutil
 from pathlib import Path
 
 # 导入日志模块
 from tradingagents.utils.logging_manager import get_logger
-logger = get_logger('scripts')
+
+logger = get_logger("scripts")
 
 
 def create_scripts_structure():
     """创建scripts子目录结构"""
-    
+
     project_path = Path("C:/code/TradingAgentsCN")
     scripts_path = project_path / "scripts"
-    
-    logger.info(f"📁 整理TradingAgentsCN项目的scripts目录")
-    logger.info(f"=")
-    
+
+    logger.info("📁 整理TradingAgentsCN项目的scripts目录")
+    logger.info("=")
+
     # 定义目录结构和脚本分类
     script_categories = {
         "setup": {
             "description": "安装和配置脚本",
             "scripts": [
                 "setup_databases.py",
-                "init_database.py", 
+                "init_database.py",
                 "setup_fork_environment.sh",
-                "migrate_env_to_config.py"
-            ]
+                "migrate_env_to_config.py",
+            ],
         },
         "validation": {
-            "description": "验证和检查脚本", 
+            "description": "验证和检查脚本",
             "scripts": [
                 # 这里会放置验证脚本
-            ]
+            ],
         },
         "maintenance": {
             "description": "维护和管理脚本",
-            "scripts": [
-                "sync_upstream.py",
-                "branch_manager.py",
-                "version_manager.py"
-            ]
+            "scripts": ["sync_upstream.py", "branch_manager.py", "version_manager.py"],
         },
         "development": {
             "description": "开发辅助脚本",
             "scripts": [
                 "prepare_upstream_contribution.py",
                 "download_finnhub_sample_data.py",
-                "fix_streamlit_watcher.py"
-            ]
+                "fix_streamlit_watcher.py",
+            ],
         },
         "deployment": {
             "description": "部署和发布脚本",
             "scripts": [
                 "create_github_release.py",
-                "release_v0.1.2.py", 
-                "release_v0.1.3.py"
-            ]
+                "release_v0.1.2.py",
+                "release_v0.1.3.py",
+            ],
         },
         "docker": {
             "description": "Docker相关脚本",
             "scripts": [
                 "docker-compose-start.bat",
                 "start_docker_services.bat",
-                "start_docker_services.sh", 
+                "start_docker_services.sh",
                 "stop_docker_services.bat",
                 "stop_docker_services.sh",
                 "start_services_alt_ports.bat",
                 "start_services_simple.bat",
-                "mongo-init.js"
-            ]
+                "mongo-init.js",
+            ],
         },
-        "git": {
-            "description": "Git相关脚本",
-            "scripts": [
-                "upstream_git_workflow.sh"
-            ]
-        }
+        "git": {"description": "Git相关脚本", "scripts": ["upstream_git_workflow.sh"]},
     }
-    
+
     # 创建子目录
-    logger.info(f"📁 创建子目录...")
+    logger.info("📁 创建子目录...")
     for category, info in script_categories.items():
         category_path = scripts_path / category
         category_path.mkdir(exist_ok=True)
         logger.info(f"✅ 创建目录: scripts/{category} - {info['description']}")
-        
+
         # 创建README文件
         readme_path = category_path / "README.md"
         readme_content = f"""# {category.title()} Scripts
@@ -102,9 +93,9 @@ def create_scripts_structure():
 ## 脚本列表
 
 """
-        for script in info['scripts']:
+        for script in info["scripts"]:
             readme_content += f"- `{script}` - 脚本功能说明\n"
-        
+
         readme_content += f"""
 ## 使用方法
 
@@ -122,21 +113,21 @@ python scripts/{category}/script_name.py
 - 检查脚本的依赖要求
 - 某些脚本可能需要管理员权限
 """
-        
-        with open(readme_path, 'w', encoding='utf-8') as f:
+
+        with open(readme_path, "w", encoding="utf-8") as f:
             f.write(readme_content)
         logger.info(f"📝 创建README: scripts/{category}/README.md")
-    
+
     # 移动现有脚本到对应目录
-    logger.info(f"\n📦 移动现有脚本...")
-    
+    logger.info("\n📦 移动现有脚本...")
+
     for category, info in script_categories.items():
         category_path = scripts_path / category
-        
-        for script_name in info['scripts']:
+
+        for script_name in info["scripts"]:
             source_path = scripts_path / script_name
             target_path = category_path / script_name
-            
+
             if source_path.exists():
                 try:
                     shutil.move(str(source_path), str(target_path))
@@ -145,9 +136,9 @@ python scripts/{category}/script_name.py
                     logger.error(f"⚠️ 移动失败 {script_name}: {e}")
             else:
                 logger.info(f"ℹ️ 脚本不存在: {script_name}")
-    
+
     # 创建主README
-    logger.info(f"\n📝 创建主README...")
+    logger.info("\n📝 创建主README...")
     main_readme_path = scripts_path / "README.md"
     main_readme_content = """# Scripts Directory
 
@@ -220,51 +211,53 @@ powershell -ExecutionPolicy Bypass -File scripts/maintenance/cleanup.ps1
 - 某些脚本可能需要特殊权限
 - 保持脚本的独立性和可重用性
 """
-    
-    with open(main_readme_path, 'w', encoding='utf-8') as f:
+
+    with open(main_readme_path, "w", encoding="utf-8") as f:
         f.write(main_readme_content)
-    logger.info(f"📝 创建主README: scripts/README.md")
-    
+    logger.info("📝 创建主README: scripts/README.md")
+
     # 显示剩余的未分类脚本
-    logger.info(f"\n📊 检查未分类的脚本...")
+    logger.info("\n📊 检查未分类的脚本...")
     remaining_scripts = []
     for item in scripts_path.iterdir():
-        if item.is_file() and item.suffix in ['.py', '.sh', '.bat', '.js']:
-            if item.name not in ['README.md']:
+        if item.is_file() and item.suffix in [".py", ".sh", ".bat", ".js"]:
+            if item.name not in ["README.md"]:
                 remaining_scripts.append(item.name)
-    
+
     if remaining_scripts:
-        logger.warning(f"⚠️ 未分类的脚本:")
+        logger.warning("⚠️ 未分类的脚本:")
         for script in remaining_scripts:
             logger.info(f"  - {script}")
-        logger.info(f"建议手动将这些脚本移动到合适的分类目录中")
+        logger.info("建议手动将这些脚本移动到合适的分类目录中")
     else:
-        logger.info(f"✅ 所有脚本都已分类")
-    
-    logger.info(f"\n🎉 Scripts目录整理完成！")
-    
+        logger.info("✅ 所有脚本都已分类")
+
+    logger.info("\n🎉 Scripts目录整理完成！")
+
     return True
+
 
 def main():
     """主函数"""
     try:
         success = create_scripts_structure()
-        
+
         if success:
-            logger.info(f"\n🎯 整理结果:")
-            logger.info(f"✅ 创建了分类子目录")
-            logger.info(f"✅ 移动了现有脚本")
-            logger.info(f"✅ 生成了README文档")
-            logger.info(f"\n💡 建议:")
-            logger.info(f"1. 验证脚本放在 scripts/validation/")
-            logger.info(f"2. 测试代码放在 tests/")
-            logger.info(f"3. 新脚本按功能放在对应分类目录")
-        
+            logger.info("\n🎯 整理结果:")
+            logger.info("✅ 创建了分类子目录")
+            logger.info("✅ 移动了现有脚本")
+            logger.info("✅ 生成了README文档")
+            logger.info("\n💡 建议:")
+            logger.info("1. 验证脚本放在 scripts/validation/")
+            logger.info("2. 测试代码放在 tests/")
+            logger.info("3. 新脚本按功能放在对应分类目录")
+
         return success
-        
+
     except Exception as e:
         logger.error(f"❌ 整理失败: {e}")
         return False
+
 
 if __name__ == "__main__":
     success = main()
