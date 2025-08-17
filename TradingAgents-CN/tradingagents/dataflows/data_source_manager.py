@@ -311,6 +311,16 @@ class DataSourceManager:
         Returns:
             str: 格式化的股票数据
         """
+        # DEMO_MODE: 仅替代输入数据，流程保持不变
+        try:
+            from .demo_adapter import is_demo_mode, build_china_stock_data_from_demo
+            if is_demo_mode():
+                logger.info("🧪 [DEMO] 使用演示数据替代股票数据输入")
+                return build_china_stock_data_from_demo(symbol, start_date or "", end_date or "")
+        except Exception as _demo_e:
+            # 若演示模块异常，继续真实分支
+            logger.warning(f"⚠️ [DEMO] 读取演示数据失败，改用真实数据源: {_demo_e}")
+
         # 记录详细的输入参数
         logger.info(f"📊 [数据获取] 开始获取股票数据",
                    extra={
@@ -620,6 +630,26 @@ class DataSourceManager:
     
     def get_stock_info(self, symbol: str) -> Dict:
         """获取股票基本信息，支持降级机制"""
+        # DEMO_MODE: 使用演示基本信息
+        try:
+            from .demo_adapter import is_demo_mode, _load_demo_json  # type: ignore
+            if is_demo_mode():
+                demo = _load_demo_json()
+                info = demo.get('stock_info', {})
+                result = {
+                    'symbol': symbol,
+                    'name': info.get('name', f'股票{symbol}'),
+                    'industry': info.get('industry', '未知'),
+                    'area': info.get('area', '未知'),
+                    'market': 'A股',
+                    'list_date': info.get('list_date', '未知'),
+                    'source': 'demo',
+                }
+                logger.info("🧪 [DEMO] 使用演示股票基本信息")
+                return result
+        except Exception as _demo_e:
+            logger.warning(f"⚠️ [DEMO] 读取演示股票信息失败，改用真实数据源: {_demo_e}")
+
         logger.info(f"📊 [股票信息] 开始获取{symbol}基本信息...")
 
         # 首先尝试当前数据源

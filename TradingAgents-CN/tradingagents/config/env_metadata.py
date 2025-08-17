@@ -295,6 +295,23 @@ ENV_FIELDS = [
         "label": "启用内存功能 (ChromaDB)",
         "desc": "Windows 10 如遇兼容性问题可关闭。"
     },
+    # 演示/模拟
+    {
+        "key": "DEMO_MODE",
+        "type": "bool",
+        "group": "应用",
+        "label": "演示模式",
+        "desc": "启用后不请求真实行情/财务接口，使用本地示例数据生成分析报告。"
+    },
+    {
+        "key": "DEMO_DATA_FILE",
+        "type": "string",
+        "group": "应用",
+        "label": "演示数据文件路径",
+        "desc": "JSON 文件（相对项目根目录路径）。留空则使用默认 data/demo/changan_000625_demo.json。",
+        "placeholder": "data/demo/changan_000625_demo.json",
+        "example": "data/demo/changan_000625_demo.json"
+    },
     
     # Reddit
     {
