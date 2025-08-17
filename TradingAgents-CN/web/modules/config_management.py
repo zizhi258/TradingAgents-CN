@@ -35,6 +35,7 @@ from tradingagents.config.env_metadata import (
     get_field_metadata, is_known_field,
     get_field_label, get_field_help, get_field_placeholder, GROUP_HELP
 )
+from tradingagents.config.env_utils import parse_bool_env  # 布尔解析
 
 
 def render_config_management():
@@ -491,6 +492,39 @@ def render_env_status():
         total_keys = len(env_status["api_keys"])
         st.metric("API密钥配置", f"{configured_keys}/{total_keys}")
 
+    # 显示演示模式状态（仅替换输入数据，其余流程不变）
+    try:
+        from tradingagents.config.env_editor import read_env, get_effective_env_value
+        env_path = project_root / ".env"
+        _raw, env_kv = read_env(env_path)
+        # 读取并解析 DEMO_MODE
+        demo_mode_effective = get_effective_env_value("DEMO_MODE", env_kv.get("DEMO_MODE", "")) or "false"
+        demo_mode_on = str(demo_mode_effective).strip().lower() in {"true", "1", "yes", "on", "enable", "enabled", "t", "y", "ok", "okay"}
+        # 读取 DEMO_DATA_FILE
+        demo_file_effective = get_effective_env_value("DEMO_DATA_FILE", env_kv.get("DEMO_DATA_FILE", ""))
+        if not demo_file_effective:
+            demo_file_effective = "data/demo/changan_000625_demo.json"
+        # 解析存在性
+        demo_file_path = Path(demo_file_effective)
+        if not demo_file_path.is_absolute():
+            demo_file_path = project_root / demo_file_path
+        exists = demo_file_path.exists()
+
+        st.markdown("**🧪 演示模式（仅替代输入数据）**")
+        c1, c2, c3 = st.columns([1, 2, 1])
+        with c1:
+            st.metric("演示模式", "开启" if demo_mode_on else "关闭")
+        with c2:
+            st.caption("演示数据文件：")
+            st.code(str(demo_file_path), language="bash")
+        with c3:
+            if exists:
+                st.success("演示数据文件存在")
+            else:
+                st.error("演示数据文件不存在")
+    except Exception as e:
+        st.warning(f"无法读取演示模式状态：{e}")
+
     # 详细API密钥状态
     with st.expander("🔑 API密钥详细状态", expanded=False):
         api_col1, api_col2 = st.columns(2)
@@ -524,6 +558,26 @@ def render_env_status():
     """)
 
     st.divider()
+
+    # 演示模式状态概览
+    demo_mode = str(os.getenv('DEMO_MODE', 'false')).lower() == 'true'
+    demo_path = os.getenv('DEMO_DATA_FILE', 'data/demo/changan_000625_demo.json')
+    dcol1, dcol2 = st.columns(2)
+    with dcol1:
+        st.metric("演示模式", "开启" if demo_mode else "关闭")
+        if st.toggle("切换演示模式", value=demo_mode, key="demo_mode_toggle", help="切换演示模式后需要重启应用才能生效"):
+            if not demo_mode:
+                st.session_state['DEMO_MODE'] = 'true'
+            else:
+                st.session_state['DEMO_MODE'] = 'false'
+        else:
+            if not demo_mode:
+                st.session_state['DEMO_MODE'] = 'false'
+            else:
+                st.session_state['DEMO_MODE'] = 'true'
+
+    with dcol2:
+        st.caption(f"演示数据文件: {demo_path}")
 
 
 def render_env_editor():

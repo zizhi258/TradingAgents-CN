@@ -94,6 +94,21 @@ class WebMultiModelCollaborationManager:
             分析结果字典
         """
         try:
+            # 演示模式：仅模拟“输入股票数据”，其余流程与正式版一致
+            demo_sections = None
+            try:
+                import os as _os
+                if str(_os.getenv('DEMO_MODE', 'false')).lower() == 'true':
+                    if progress_callback:
+                        try:
+                            progress_callback({'stage': 'demo', 'message': '演示模式：已加载本地示例数据，其他流程保持一致'})
+                        except Exception:
+                            pass
+                    from .demo_data import build_markdown_sections_from_demo, load_demo_json
+                    demo_sections = build_markdown_sections_from_demo(load_demo_json())
+            except Exception:
+                demo_sections = None
+
             logger.info(f"🚀 开始多模型协作分析: {stock_symbol}")
             
             # 准备分析数据
@@ -102,7 +117,9 @@ class WebMultiModelCollaborationManager:
                 'market_type': market_type,
                 'analysis_date': analysis_date or datetime.now().isoformat(),
                 'research_depth': research_depth,
-                'custom_requirements': custom_requirements
+                'custom_requirements': custom_requirements,
+                # 若为演示模式，附加各模块的“输入数据”片段供提示词使用
+                'demo_sections': demo_sections if demo_sections else None,
             }
             
             # 根据协作模式执行分析
@@ -462,7 +479,7 @@ class WebMultiModelCollaborationManager:
         market_type = analysis_data.get('market_type', 'A股')
         analysis_date = analysis_data.get('analysis_date', datetime.now().strftime('%Y-%m-%d'))
         custom_requirements = analysis_data.get('custom_requirements', '')
-        
+
         base_prompt = f"""请作为{self._get_agent_chinese_name(agent_type)}分析{market_type}股票 {stock_symbol}。
 分析日期：{analysis_date}
 
@@ -471,10 +488,24 @@ class WebMultiModelCollaborationManager:
 2. 给出具体的投资建议
 3. 评估相关风险和机会
 """
-        
+
         if custom_requirements:
             base_prompt += f"\n特别要求：{custom_requirements}\n"
-        
+
+        # 若演示模式传入了已准备好的“输入数据”片段，则将其作为上下文附加
+        demo_sections = analysis_data.get('demo_sections') or {}
+        if isinstance(demo_sections, dict) and demo_sections:
+            section_map = {
+                'fundamental_expert': 'fundamentals_report',
+                'news_hunter': 'news_report',
+                'technical_analyst': 'market_report',
+                'sentiment_analyst': 'sentiment_report',
+                'risk_manager': 'risk_assessment',
+            }
+            key = section_map.get(agent_type)
+            if key and demo_sections.get(key):
+                base_prompt += "\n\n【参考数据(演示)】\n" + str(demo_sections.get(key)) + "\n"
+
         if previous_results and agent_type != 'news_hunter':  # 第一个智能体不需要前置结果
             base_prompt += "\n前面的分析结果：\n"
             for prev in previous_results[-2:]:  # 只包含最近2个分析
