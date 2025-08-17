@@ -17,6 +17,14 @@ from email import encoders
 from pathlib import Path
 from typing import List, Dict, Optional
 from jinja2 import Environment, FileSystemLoader
+from html import escape as _html_escape
+
+try:
+    # 仅用于清理分析结果中可能含有的 $ 分隔符，避免下游渲染器误判数学环境
+    from web.utils.markdown_sanitizer import sanitize_markdown_for_streamlit as _sanitize_md
+except Exception:
+    def _sanitize_md(s: str) -> str:  # type: ignore
+        return s
 
 from tradingagents.utils.logging_manager import get_logger
 
@@ -124,11 +132,21 @@ class EmailSender:
                 # 使用模板
                 try:
                     template = self.jinja_env.get_template('analysis_report.html')
+                    # 对关键字段进行预处理：恢复 $ 并转义HTML
+                    def _prep_text(txt: str) -> str:
+                        if txt is None:
+                            return ''
+                        cleaned = _sanitize_md(str(txt)).replace('\\$', '$')
+                        return _html_escape(cleaned)
+
+                    _decision = dict(analysis_result.get('decision', {}) or {})
+                    if 'reasoning' in _decision:
+                        _decision['reasoning'] = _prep_text(_decision.get('reasoning'))
                     html_content = template.render(
                         stock_symbol=stock_symbol,
                         analysis_date=analysis_result.get('analysis_date', ''),
-                        decision=analysis_result.get('decision', {}),
-                        full_analysis=analysis_result.get('full_analysis', '')
+                        decision=_decision,
+                        full_analysis=_prep_text(analysis_result.get('full_analysis', ''))
                     )
                 except Exception as e:
                     logger.warning(f"⚠️ 模板渲染失败，使用简单格式: {e}")
@@ -245,6 +263,13 @@ class EmailSender:
     def _create_simple_html(self, stock_symbol: str, analysis_result: Dict) -> str:
         """创建简单的HTML邮件内容"""
         decision = analysis_result.get('decision', {})
+
+        # 预处理文本（邮件客户端不运行KaTeX，恢复\$为$，并进行HTML转义以防注入）
+        def _prep_text(txt: str) -> str:
+            if txt is None:
+                return ''
+            cleaned = _sanitize_md(str(txt)).replace('\\$', '$')
+            return _html_escape(cleaned)
         
         html = f"""
         <html>
@@ -287,10 +312,10 @@ class EmailSender:
                     </div>
                     
                     <h3>Key Analysis</h3>
-                    <p>{decision.get('reasoning', 'No analysis available')}</p>
+                    <p>{_prep_text(decision.get('reasoning', 'No analysis available'))}</p>
                     
                     <h3>Detailed Analysis</h3>
-                    <pre style="white-space: pre-wrap;">{analysis_result.get('full_analysis', 'No detailed analysis available')}</pre>
+                    <pre style="white-space: pre-wrap;">{_prep_text(analysis_result.get('full_analysis', 'No detailed analysis available'))}</pre>
                     
                     <div class="disclaimer">
                         <strong>Important Notice</strong><br>

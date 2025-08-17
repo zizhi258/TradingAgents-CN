@@ -11,6 +11,7 @@ import os
 
 # 导入导出功能和邮件发送功能
 from utils.report_exporter import render_export_buttons
+from utils.markdown_sanitizer import sanitize_markdown_for_streamlit
 from components.email_sender import render_email_sender
 
 # 导入ChartingArtist相关组件
@@ -203,7 +204,7 @@ def render_results(results):
         st.markdown("---")
         st.subheader("📝 主笔人长文（融合多方观点）")
         with st.expander("点击展开查看主笔人长文", expanded=True):
-            st.markdown(final_article)
+            st.markdown(sanitize_markdown_for_streamlit(final_article))
             import io
             article_bytes = final_article.encode('utf-8')
             st.download_button(
@@ -406,7 +407,10 @@ def render_decision_summary(decision, stock_symbol=None):
     # 分析推理
     if 'reasoning' in decision and decision['reasoning']:
         with st.expander("🧠 AI分析推理", expanded=True):
-            st.markdown(decision['reasoning'])
+            try:
+                st.markdown(sanitize_markdown_for_streamlit(str(decision['reasoning'])))
+            except Exception:
+                st.markdown(str(decision['reasoning']))
 
 def render_detailed_analysis(state):
     """渲染详细分析报告"""
@@ -464,7 +468,7 @@ def render_detailed_analysis(state):
                 # 格式化显示内容
                 content = state[module['key']]
                 if isinstance(content, str):
-                    st.markdown(content)
+                    st.markdown(sanitize_markdown_for_streamlit(content))
                 elif isinstance(content, dict):
                     # 如果是字典，格式化显示
                     for key, value in content.items():

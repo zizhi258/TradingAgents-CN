@@ -131,8 +131,10 @@ class TradingAgentsLogger:
     def _load_config_file(self) -> Optional[Dict[str, Any]]:
         """从配置文件加载日志配置"""
         # 确定配置文件路径
+        # 更健壮的 Docker 环境判定（大小写/常见值）
+        _docker_flag = os.getenv('DOCKER_CONTAINER', '').strip().lower() in {'true', '1', 'yes', 'y'}
         config_paths = [
-            'config/logging_docker.toml' if os.getenv('DOCKER_CONTAINER') == 'true' else None,
+            'config/logging_docker.toml' if _docker_flag else None,
             'config/logging.toml',
             './logging.toml'
         ]
@@ -146,7 +148,10 @@ class TradingAgentsLogger:
                     # 转换配置格式
                     return self._convert_toml_config(config_data)
                 except Exception as e:
-                    logger.warning(f"警告: 无法加载配置文件 {config_path}: {e}")
+                    # 使用模块级后备logger，避免未初始化的变量
+                    logging.getLogger(__name__).warning(
+                        f"警告: 无法加载配置文件 {config_path}: {e}"
+                    )
                     continue
 
         return None
@@ -177,10 +182,15 @@ class TradingAgentsLogger:
     
     def _setup_logging(self):
         """设置日志系统"""
-        # 创建日志目录
+        # 创建日志目录（若失败不阻塞启动）
         if self.config['handlers']['file']['enabled']:
             log_dir = Path(self.config['handlers']['file']['directory'])
-            log_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                log_dir.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                logging.getLogger(__name__).warning(
+                    f"无法创建日志目录 {log_dir}: {e}，将仅使用控制台日志"
+                )
         
         # 设置根日志级别
         root_logger = logging.getLogger()
@@ -191,12 +201,19 @@ class TradingAgentsLogger:
         
         # 添加处理器
         self._add_console_handler(root_logger)
-        
-        if not self.config['docker']['enabled'] or not self.config['docker']['stdout_only']:
-            self._add_file_handler(root_logger)
-            if self.config['handlers']['structured']['enabled']:
-                self._add_structured_handler(root_logger)
-        
+
+        # 在 Docker 或不可写环境中，优先保证不因文件日志失败而崩溃
+        try:
+            if not self.config['docker']['enabled'] or not self.config['docker']['stdout_only']:
+                self._add_file_handler(root_logger)
+                if self.config['handlers']['structured']['enabled']:
+                    self._add_structured_handler(root_logger)
+        except Exception as e:
+            # 捕获所有文件处理器异常，降级到stdout，避免应用启动失败
+            logging.getLogger(__name__).warning(
+                f"文件日志初始化失败，已降级为仅控制台日志: {e}"
+            )
+
         # 配置特定日志器
         self._configure_specific_loggers()
     
@@ -225,21 +242,42 @@ class TradingAgentsLogger:
             
         log_dir = Path(self.config['handlers']['file']['directory'])
         log_file = log_dir / 'tradingagents.log'
-        
+
+        # 确保目录存在且可写
+        try:
+            log_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            logging.getLogger(__name__).warning(
+                f"无法创建日志目录 {log_dir}: {e}，跳过文件日志"
+            )
+            return
+
+        if not os.access(log_dir, os.W_OK):
+            logging.getLogger(__name__).warning(
+                f"日志目录不可写: {log_dir}，跳过文件日志"
+            )
+            return
+
         # 使用RotatingFileHandler进行日志轮转
         max_size = self._parse_size(self.config['handlers']['file']['max_size'])
         backup_count = self.config['handlers']['file']['backup_count']
-        
-        file_handler = logging.handlers.RotatingFileHandler(
-            log_file,
-            maxBytes=max_size,
-            backupCount=backup_count,
-            encoding='utf-8'
-        )
-        
+
+        try:
+            file_handler = logging.handlers.RotatingFileHandler(
+                log_file,
+                maxBytes=max_size,
+                backupCount=backup_count,
+                encoding='utf-8'
+            )
+        except Exception as e:
+            logging.getLogger(__name__).warning(
+                f"创建文件日志处理器失败({log_file}): {e}，跳过文件日志"
+            )
+            return
+
         file_level = getattr(logging, self.config['handlers']['file']['level'])
         file_handler.setLevel(file_level)
-        
+
         formatter = logging.Formatter(self.config['format']['file'])
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
@@ -248,17 +286,37 @@ class TradingAgentsLogger:
         """添加结构化日志处理器"""
         log_dir = Path(self.config['handlers']['structured']['directory'])
         log_file = log_dir / 'tradingagents_structured.log'
-        
-        structured_handler = logging.handlers.RotatingFileHandler(
-            log_file,
-            maxBytes=self._parse_size('10MB'),
-            backupCount=3,
-            encoding='utf-8'
-        )
-        
+
+        try:
+            log_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            logging.getLogger(__name__).warning(
+                f"无法创建结构化日志目录 {log_dir}: {e}，跳过结构化日志"
+            )
+            return
+
+        if not os.access(log_dir, os.W_OK):
+            logging.getLogger(__name__).warning(
+                f"结构化日志目录不可写: {log_dir}，跳过结构化日志"
+            )
+            return
+
+        try:
+            structured_handler = logging.handlers.RotatingFileHandler(
+                log_file,
+                maxBytes=self._parse_size('10MB'),
+                backupCount=3,
+                encoding='utf-8'
+            )
+        except Exception as e:
+            logging.getLogger(__name__).warning(
+                f"创建结构化文件日志处理器失败({log_file}): {e}，跳过结构化日志"
+            )
+            return
+
         structured_level = getattr(logging, self.config['handlers']['structured']['level'])
         structured_handler.setLevel(structured_level)
-        
+
         formatter = StructuredFormatter()
         structured_handler.setFormatter(formatter)
         logger.addHandler(structured_handler)

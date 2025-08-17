@@ -484,23 +484,77 @@ class WebMultiModelCollaborationManager:
 
     def _build_prompt_for_role(self, agent_type: str, analysis_data: Dict[str, Any], 
                               previous_results: List[Dict[str, Any]] = None) -> str:
-        """优先使用角色库模板生成提示，否则回退到通用提示。"""
+        """优先使用角色库模板生成提示，否则回退到通用提示。
+
+        修复点：原实现仅返回 system_prompt，且上下文键使用了 ticker 等不匹配占位符，
+        导致未包含具体标的（如 000625），模型易输出与标的不符的示例内容（如贵州茅台）。
+        现合并 system_prompt + analysis_prompt_template，并提供匹配占位符的上下文。"""
         try:
             from tradingagents.config.role_library import get_prompt, format_prompt
-            sys_tpl = get_prompt(agent_type, 'system_prompt')
-            if sys_tpl:
-                ctx = {
-                    'ticker': analysis_data.get('stock_symbol', ''),
-                    'company_name': analysis_data.get('stock_symbol', ''),
-                    'market_type': analysis_data.get('market_type', ''),
-                    'current_date': analysis_data.get('analysis_date', ''),
-                    'custom_requirements': analysis_data.get('custom_requirements', ''),
-                    'previous_results': previous_results or [],
-                }
-                return format_prompt(sys_tpl, ctx)
+
+            # 构建上下文，兼容常见占位符命名
+            symbol = analysis_data.get('stock_symbol', '')
+            market_type = analysis_data.get('market_type', '')
+            analysis_date = analysis_data.get('analysis_date', '')
+            custom_requirements = analysis_data.get('custom_requirements', '')
+
+            # 计算可选时间范围（部分模板可能需要）
+            start_date = ''
+            end_date = ''
+            try:
+                from datetime import datetime, timedelta
+                if analysis_date:
+                    dt = datetime.strptime(str(analysis_date), '%Y-%m-%d')
+                else:
+                    dt = datetime.now()
+                end_date = dt.strftime('%Y-%m-%d')
+                start_date = (dt - timedelta(days=60)).strftime('%Y-%m-%d')
+            except Exception:
+                pass
+
+            ctx = {
+                # 常用占位符
+                'symbol': symbol,
+                'ticker': symbol,
+                'company_name': symbol,
+                'market_type': market_type,
+                'current_date': analysis_date,
+                'analysis_date': analysis_date,
+                'start_date': start_date,
+                'end_date': end_date,
+                'custom_requirements': custom_requirements,
+                'previous_results': previous_results or [],
+            }
+
+            sys_tpl = get_prompt(agent_type, 'system_prompt') or ''
+            ana_tpl = get_prompt(agent_type, 'analysis_prompt_template') or ''
+
+            parts: list[str] = []
+            if sys_tpl.strip():
+                parts.append(format_prompt(sys_tpl, ctx))
+
+            if ana_tpl.strip():
+                # 角色分析模板存在 → 使用模板并注入上下文
+                parts.append(format_prompt(ana_tpl, ctx))
+            else:
+                # 无分析模板 → 回退到基础提示（确保包含标的与前置结果）
+                parts.append(self._build_agent_prompt(agent_type, analysis_data, previous_results))
+
+            # 附带前置结果摘要（若模板未涵盖）
+            if previous_results and ana_tpl.strip():
+                try:
+                    snippet = "\n前置分析摘要（最近2条）：\n"
+                    for prev in previous_results[-2:]:
+                        txt = str(prev.get('analysis', ''))[:200]
+                        snippet += f"- {prev.get('agent_type', '')}: {txt}...\n"
+                    parts.append(snippet)
+                except Exception:
+                    pass
+
+            return "\n\n".join([p for p in parts if p and p.strip()])
         except Exception:
-            pass
-        return self._build_agent_prompt(agent_type, analysis_data, previous_results)
+            # 任何异常下回退到基础提示，确保包含标的
+            return self._build_agent_prompt(agent_type, analysis_data, previous_results)
     
     def _get_task_type_for_agent(self, agent_type: str) -> str:
         """获取智能体对应的任务类型"""
